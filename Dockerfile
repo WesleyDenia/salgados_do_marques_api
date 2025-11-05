@@ -11,6 +11,8 @@ WORKDIR /var/www/html
 
 COPY . .
 
+COPY .env /var/www/html/.env
+
 RUN composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist
 
 RUN chown -R www-data:www-data storage bootstrap/cache

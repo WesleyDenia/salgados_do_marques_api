@@ -16,10 +16,7 @@ services:
     volumes:
       # 🔹 Persistência dos diretórios necessários
       - ./storage:/var/www/html/storage
-      - ./bootstrap/cache:/var/www/html/bootstrap/cache
-
-      # 🔹 Monta apenas o .env explicitamente
-      - ./.env:/var/www/html/.env
+      - ./bootstrap/cache:/var/www/html/bootstrap/cache     
 
     networks:
       - laravel

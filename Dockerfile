@@ -1,29 +1,25 @@
 FROM php:8.3-fpm
 
-# 🔹 Instalar dependências do sistema e extensões PHP
 RUN apt-get update && apt-get install -y \
     git curl zip unzip libpng-dev libjpeg-dev libfreetype6-dev libzip-dev \
  && docker-php-ext-configure gd --with-freetype --with-jpeg \
  && docker-php-ext-install pdo pdo_mysql gd zip
 
-# 🔹 Instalar Composer
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 
 WORKDIR /var/www/html
 
-# 🔹 Copiar apenas arquivos necessários para build do Composer
+# 🔹 Etapa 1: instalar dependências sem rodar scripts (artisan ainda não existe)
 COPY composer.json composer.lock ./
+RUN composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist --no-scripts
 
-# 🔹 Instalar dependências do Laravel (sem dev)
-RUN composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist
-
-# 🔹 Copiar todo o código da aplicação
+# 🔹 Etapa 2: copiar todo o código
 COPY . .
 
-# 🔹 Garantir permissões corretas
-RUN chown -R www-data:www-data storage bootstrap/cache
+# 🔹 Etapa 3: agora sim, roda os scripts que dependem do artisan
+RUN composer run-script post-autoload-dump || true
 
-# 🔹 Otimizar o Laravel
-RUN php artisan config:clear || true && php artisan cache:clear || true
+# 🔹 Ajustar permissões
+RUN chown -R www-data:www-data storage bootstrap/cache
 
 CMD ["php-fpm"]

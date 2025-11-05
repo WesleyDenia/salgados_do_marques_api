@@ -8,7 +8,8 @@ services:
     container_name: salgados-app
     restart: unless-stopped
     volumes:
-      - .:/var/www/html
+      - ./storage:/var/www/html/storage
+      - ./bootstrap/cache:/var/www/html/bootstrap/cache
     environment:
       - APP_ENV=production
       - APP_DEBUG=false
@@ -17,6 +18,7 @@ services:
       - mysql
     networks:
       - laravel
+
 
   nginx:
     image: nginx:latest

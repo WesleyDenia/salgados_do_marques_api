@@ -9,15 +9,9 @@ RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local
 
 WORKDIR /var/www/html
 
-# Etapa 1: cache do composer
-COPY composer.json composer.lock ./
-RUN composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist --no-scripts
-
-# Etapa 2: copiar o código
 COPY . .
 
-# Etapa 3: agora roda os scripts que dependem do artisan
-RUN composer run-script post-autoload-dump
+RUN composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist
 
 RUN chown -R www-data:www-data storage bootstrap/cache
 

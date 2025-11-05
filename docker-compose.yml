@@ -1,0 +1,33 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: salgados-app
+    restart: unless-stopped
+    volumes:
+      - .:/var/www/html
+    networks:
+      - laravel
+      - nas-backend_laravel  # conecta à rede externa
+
+  nginx:
+    image: nginx:latest
+    container_name: salgados-nginx
+    ports:
+      - "8080:80"
+    volumes:
+      - .:/var/www/html
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - app      # ✅ mantém só aqui
+    networks:
+      - laravel
+      - nas-backend_laravel
+
+networks:
+  laravel:
+    driver: bridge
+
+  nas-backend_laravel:
+    external: true

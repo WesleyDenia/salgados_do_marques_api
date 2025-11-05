@@ -1,0 +1,44 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: .devcontainer/Dockerfile
+    container_name: salgados-app
+    working_dir: /var/www/html
+    volumes:
+      - ./:/var/www/html
+    networks:
+      - salgados
+    ports:
+      - "9000:9000" # PHP-FPM
+
+  web:
+    image: nginx:alpine
+    container_name: salgados-nginx
+    ports:
+      - "8000:80"
+    volumes:
+      - ./:/var/www/html
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf    
+    networks:
+      - salgados
+
+  db:
+    image: mysql:8
+    container_name: salgados-db
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: secret
+      MYSQL_DATABASE: salgados
+    volumes:
+      - dbdata:/var/lib/mysql
+    networks:
+      - salgados
+
+networks:
+  laravel:
+    driver: bridge
+
+volumes:
+  dbdata:

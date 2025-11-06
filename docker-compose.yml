@@ -45,7 +45,7 @@ services:
       MARIADB_ROOT_PASSWORD: rootpass
       MARIADB_DATABASE: salgados
       MARIADB_USER: laravel
-      MARIADB_PASSWORD: sY8#u2Vf$gE!pL9tQh^zK0wR@xN3aT5m
+      MARIADB_PASSWORD: Zf2hR7pL9mQxT4cV8nB1sE5kJ0dW6rH
     volumes:
       - ./mariadb_data:/var/lib/mysql
     ports:

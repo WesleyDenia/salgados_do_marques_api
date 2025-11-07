@@ -18,7 +18,7 @@ services:
     volumes:
       - ./storage:/var/www/html/storage
       - ./bootstrap/cache:/var/www/html/bootstrap/cache
-    entrypoint: ["sh", "./wait-for-db.sh", "mariadb", "php-fpm"]
+    command: sh -c "./wait-for-db.sh mariadb && php-fpm"
     networks:
       - laravel
 

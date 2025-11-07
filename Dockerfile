@@ -15,6 +15,8 @@ COPY .env /var/www/html/.env
 
 RUN composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist
 
-RUN chown -R www-data:www-data storage bootstrap/cache
+RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
+
+RUN chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
 
 CMD ["php-fpm"]

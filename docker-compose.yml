@@ -7,17 +7,32 @@ services:
       dockerfile: Dockerfile
     container_name: salgados-app
     restart: unless-stopped
-    environment:
-      - APP_ENV=production
-      - APP_DEBUG=false
-      - APP_URL=https://api.salgadosdomarques.pt
     depends_on:
       - mariadb
     expose:
       - "9000"
+
     volumes:
       - ./storage:/var/www/html/storage
       - ./bootstrap/cache:/var/www/html/bootstrap/cache
+      - ./docker/conf/php/uploads.ini:/usr/local/etc/php/conf.d/uploads.ini
+
+    secrets:
+      - db_password
+      - mail_password
+      - vendus_key
+      - wapify_key
+
+    environment:
+      APP_ENV: production
+      APP_DEBUG: "false"
+      APP_URL: https://api.salgadosdomarques.pt
+
+      DB_PASSWORD_FILE: /run/secrets/db_password
+      MAIL_PASSWORD_FILE: /run/secrets/mail_password
+      VENDUS_API_KEY_FILE: /run/secrets/vendus_key
+      WAPIFY_API_KEY_FILE: /run/secrets/wapify_key
+
     networks:
       - laravel
 
@@ -30,7 +45,7 @@ services:
       - "443:443"
     volumes:
       - ./public:/var/www/html/public
-      - ./nginx.conf:/etc/nginx/conf.d/default.conf
+      - ./docker/conf/nginx/nginx.conf:/etc/nginx/conf.d/default.conf
       - ./docker/certs:/etc/letsencrypt
     depends_on:
       - app
@@ -45,13 +60,24 @@ services:
       MARIADB_ROOT_PASSWORD: rootpass
       MARIADB_DATABASE: salgados
       MARIADB_USER: laravel
-      MARIADB_PASSWORD: Zf2hR7pL9mQxT4cV8nB1sE5kJ0dW6rH
+    secrets:
+      - db_password
     volumes:
       - ./mariadb_data:/var/lib/mysql
     ports:
       - "3306:3306"
     networks:
       - laravel
+
+secrets:
+  db_password:
+    file: ./docker/secrets/db_password.txt
+  mail_password:
+    file: ./docker/secrets/mail_password.txt
+  vendus_key:
+    file: ./docker/secrets/vendus_key.txt
+  wapify_key:
+    file: ./docker/secrets/wapify_key.txt
 
 networks:
   laravel:

@@ -66,7 +66,7 @@ class LoyaltyRewardService
         return $this->repository->update($reward, $data);
     }
 
-    public function redeem(User $user, LoyaltyReward $reward): UserCoupon
+    public function redeem(User $user, LoyaltyReward $reward, int $quantity = 1): UserCoupon
     {
         if (!$reward->active) {
             abort(422, 'Esta recompensa está inativa.');
@@ -86,14 +86,18 @@ class LoyaltyRewardService
             return $existing;
         }
 
-        return DB::transaction(function () use ($user, $reward) {
-            $account = $this->loyaltyRepository->getOrCreateAccount($user);
+        $quantity = max(1, $quantity);
 
-            if ($account->points < $reward->threshold) {
+        return DB::transaction(function () use ($user, $reward, $quantity) {
+            $account = $this->loyaltyRepository->getOrCreateAccount($user);
+            $requiredPoints = $reward->threshold * $quantity;
+
+            if ($account->points < $requiredPoints) {
                 abort(422, 'Pontos insuficientes para resgatar esta recompensa.');
             }
 
             $expiresAt = $this->resolveExpirationDate();
+            $totalValue = $reward->value * $quantity;
 
             $coupon = Coupon::create([
                 'title' => sprintf('Recompensa: %s', $reward->name),
@@ -105,7 +109,7 @@ class LoyaltyRewardService
                 'ends_at' => $expiresAt,
                 'active' => true,
                 'type' => 'money',
-                'amount' => $reward->value,
+                'amount' => $totalValue,
                 'is_loyalty_reward' => true,
             ]);
 
@@ -121,18 +125,19 @@ class LoyaltyRewardService
                 'status' => 'pending',
             ]);
 
-            $newPoints = $account->points - $reward->threshold;
+            $newPoints = $account->points - $requiredPoints;
             $this->loyaltyRepository->updatePoints($account, $newPoints);
 
             $this->loyaltyRepository->createTransaction([
                 'user_id' => $user->id,
                 'type' => 'redeem',
-                'points' => -$reward->threshold,
+                'points' => -$requiredPoints,
                 'reason' => sprintf('Resgate da recompensa "%s"', $reward->name),
                 'meta' => [
                     'loyalty_reward_id' => $reward->id,
                     'coupon_id' => $coupon->id,
-                    'value' => $reward->value,
+                    'value' => $totalValue,
+                    'quantity' => $quantity,
                     'expires_at' => $expiresAt?->toIso8601String(),
                 ],
             ]);

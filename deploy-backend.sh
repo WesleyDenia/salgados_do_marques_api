@@ -25,5 +25,7 @@ echo "[6/6] Iniciando serviços de sincronização com o Vendus..."
 docker-compose exec app php artisan vendus:sync-coupons
 docker-compose exec app php artisan vendus:sync-documents
 docker-compose exec app php artisan vendus:sync-loyalty 20
+docker-compose exec app php artisan queue:restart
+
 
 echo "Deploy concluído com sucesso!"

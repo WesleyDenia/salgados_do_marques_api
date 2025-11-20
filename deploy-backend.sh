@@ -18,7 +18,12 @@ docker-compose build --pull
 echo "[4/5] Subindo containers..."
 docker-compose up -d
 
-echo "[5/5] Executando migrations..."
+echo "[5/6] Executando migrations..."
 docker-compose exec app php artisan migrate --force
+
+echo "[6/6] Iniciando serviços de sincronização com o Vendus..."
+docker-compose exec app php artisan vendus:sync-coupons
+docker-compose exec app php artisan vendus:sync-documents
+docker-compose exec app php artisan vendus:sync-loyalty 20
 
 echo "Deploy concluído com sucesso!"

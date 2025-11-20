@@ -25,6 +25,7 @@ class ContentHomeResource extends JsonResource
             'component_props' => $this->component_props,
             'cta_label' => $this->cta_label,
             'cta_url' => $this->cta_url,
+            'cta_image_only' => (bool) $this->cta_image_only,
             'background_color' => $this->background_color,
             'display_order' => $this->display_order,
             'is_active' => $this->is_active,

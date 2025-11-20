@@ -20,6 +20,7 @@ class ContentHome extends Model
         'background_color',
         'is_active',
         'publish_at',
+        'cta_image_only',
     ];
 
     protected $casts = [
@@ -27,5 +28,6 @@ class ContentHome extends Model
         'publish_at' => 'datetime',
         'display_order' => 'integer',
         'component_props' => 'array',
+        'cta_image_only' => 'boolean',
     ];
 }

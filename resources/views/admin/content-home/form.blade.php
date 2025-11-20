@@ -121,6 +121,24 @@
     </div>
 
     <div class="form-group">
+      <label class="checkbox-row" style="margin-top:24px;">
+        <input
+          type="checkbox"
+          name="cta_image_only"
+          value="1"
+          {{ old('cta_image_only', $item->cta_image_only ?? false) ? 'checked' : '' }}
+        />
+        Somente imagem clicável (esconde o botão)
+      </label>
+      @error('cta_image_only')
+        <span class="alert alert-error">{{ $message }}</span>
+      @enderror
+      <p style="font-size:0.85rem; color:#6b7280; margin-top:6px;">
+        Quando marcado, apenas a imagem abrirá o link interno/externo, sem renderizar o botão de CTA.
+      </p>
+    </div>
+
+    <div class="form-group">
       <label for="background_color">Cor de fundo (hex)</label>
       <input
         type="text"

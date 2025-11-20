@@ -46,6 +46,7 @@ class ContentHomeController extends Controller
         }
 
         $data['is_active'] = $request->boolean('is_active');
+        $data['cta_image_only'] = $request->boolean('cta_image_only');
 
         DB::transaction(function () use ($data) {
             $desiredOrder = $data['display_order'];
@@ -77,6 +78,7 @@ class ContentHomeController extends Controller
         $data = $this->prepareComponentData($this->validateData($request, $contentHome->id));
 
         $data['is_active'] = $request->boolean('is_active');
+        $data['cta_image_only'] = $request->boolean('cta_image_only');
 
         if ($request->filled('remove_image')) {
             $this->deleteImage($contentHome->image_url);
@@ -134,6 +136,7 @@ class ContentHomeController extends Controller
             'component_props' => ['nullable', 'json'],
             'cta_label' => ['nullable', 'string', 'max:255'],
             'cta_url' => ['nullable', 'string', 'max:255'],
+            'cta_image_only' => ['nullable', 'boolean'],
             'background_color' => ['nullable', 'string', 'max:20'],
             'publish_at' => ['nullable', 'date'],
             'is_active' => ['nullable', 'boolean'],

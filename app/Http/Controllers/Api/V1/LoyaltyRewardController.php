@@ -30,11 +30,13 @@ class LoyaltyRewardController extends Controller
 
         $quantity = $validated['quantity'] ?? 1;
 
-        Log::info('Loyalty reward redeem request', [
-            'user_id' => $request->user()?->id,
-            'reward_id' => $loyaltyReward->id,
-            'quantity' => $quantity,
-        ]);
+        if (config('app.debug')) {
+            Log::info('Loyalty reward redeem request', [
+                'user_id' => $request->user()?->id,
+                'reward_id' => $loyaltyReward->id,
+                'quantity' => $quantity,
+            ]);
+        }
 
         $userCoupon = $this->service->redeem($request->user(), $loyaltyReward, $quantity);
 

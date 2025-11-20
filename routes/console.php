@@ -9,4 +9,4 @@ Schedule::job(new SyncPendingCustomersJob())->everyFiveMinutes()->withoutOverlap
 
 Schedule::job(new SyncVendusCouponsJob())->everyFiveMinutes()->withoutOverlapping();
 
-Schedule::job((new SyncAllUsersLoyaltyJob(20)))->everyFiveMinutes()->withoutOverlapping();
+Schedule::job((new SyncAllUsersLoyaltyJob(20)))->everyMinute()->withoutOverlapping();

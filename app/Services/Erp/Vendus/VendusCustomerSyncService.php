@@ -5,6 +5,7 @@ namespace App\Services\Erp\Vendus;
 
 use App\Contracts\Erp\CustomerSyncInterface;
 use App\DTOs\CustomerData;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Log;
 
 class VendusCustomerSyncService implements CustomerSyncInterface
@@ -33,12 +34,23 @@ class VendusCustomerSyncService implements CustomerSyncInterface
     public function upsert(CustomerData $customer): ?string
     {
         $payload = $this->toVendusPayload($customer);
-        Log::info('📤 [Vendus] POST /clients payload', $payload);
 
-        $resp = $this->http->client()->post('/clients/', $payload);
-        Log::info('📥 [Vendus] POST /clients resp', ['status' => $resp->status(), 'body' => $resp->body()]);
+        try {
+            $resp = $this->http->client()->post('/clients/', $payload);
+        } catch (RequestException $e) {
+            $resp = $e->response;
+            Log::warning('⚠️ [Vendus] POST /clients lançou exceção', [
+                'status' => $resp?->status(),
+                'body' => $resp?->body(),
+                'error' => $e->getMessage(),
+            ]);
+        }
 
-        if ($resp->successful()) {
+        if ($resp) {
+            Log::info('📥 [Vendus] POST /clients resp', ['status' => $resp->status(), 'body' => $resp->body()]);
+        }
+
+        if ($resp && $resp->successful()) {
             $json = $resp->json();
             return $json['id'] ?? ($json['client']['id'] ?? null);
         }

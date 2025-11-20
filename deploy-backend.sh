@@ -17,11 +17,14 @@ docker-compose build --pull
 
 echo "[4/5] Subindo containers..."
 docker-compose up -d
+docker-compose exec app chown -R www-data:www-data storage bootstrap/cache
+docker-compose exec app chmod -R 775 storage bootstrap/cache
 
 echo "[5/6] Executando migrations..."
 docker-compose exec app php artisan migrate --force
 
 echo "[6/6] Iniciando serviços de sincronização com o Vendus..."
+
 docker-compose exec app php artisan vendus:sync-coupons
 docker-compose exec app php artisan vendus:sync-documents
 docker-compose exec app php artisan vendus:sync-loyalty 20

@@ -14,17 +14,13 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::job(new SyncPendingCustomersJob())
-    ->everyFifteenMinutes()
+    ->everyTenMinutes()
     ->name('sync-pending-customers')
     ->withoutOverlapping();
 
-Schedule::job(new SyncVendusCouponsJob())->everyFifteenMinutes();
+Schedule::job(new SyncVendusCouponsJob())->everyTenMinutes();
 
-Schedule::call(function () {
-    dispatch((new \App\Jobs\SyncAllUsersLoyaltyJob(20))->onQueue('sync-loyalty'));
-    Log::info('[Scheduler] Job SyncAllUsersLoyaltyJob(20) despachado para fila sync-loyalty');
-})
-->name('sync-loyalty') 
-->everyTenMinutes()
-->withoutOverlapping()
-->appendOutputTo(storage_path('logs/vendus_sync.log'));
+Schedule::job((new \App\Jobs\SyncAllUsersLoyaltyJob(20))->onQueue('sync-loyalty'))
+    ->name('sync-loyalty')
+    ->everyTenMinutes()
+    ->withoutOverlapping();

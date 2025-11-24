@@ -15,6 +15,7 @@ Route::get('/', function () {
 });
 
 Route::view('/privacidade', 'privacy')->name('privacy');
+Route::view('/delete-account', 'delete-account')->name('delete-account');
 
 Route::get('/admin/login', [AdminAuthController::class, 'showLoginForm'])
     ->middleware('guest')

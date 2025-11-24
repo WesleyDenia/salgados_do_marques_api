@@ -14,6 +14,8 @@ Route::get('/', function () {
     return view('welcome');
 });
 
+Route::view('/privacidade', 'privacy')->name('privacy');
+
 Route::get('/admin/login', [AdminAuthController::class, 'showLoginForm'])
     ->middleware('guest')
     ->name('admin.login');

@@ -21,6 +21,11 @@ class AuthService
         $lgpdData = $data['lgpd'] ?? null;
         unset($data['lgpd']);
 
+        // Resposta amigável se e-mail já estiver em uso (evita SQL 500)
+        if (User::where('email', $data['email'])->exists()) {
+            abort(409, 'Este e-mail já está em uso.');
+        }
+
         if (!$lgpdData) {
             abort(422, 'Aceite do termo LGPD é obrigatório.');
         }
@@ -59,8 +64,17 @@ class AuthService
         $data['lgpd_consent_hash'] = $serverHash;
         $data['lgpd_consent_channel'] = $consentChannel;
 
-        /** @var User $user */
-        $user = User::create($data);
+        try {
+            /** @var User $user */
+            $user = User::create($data);
+        } catch (\Illuminate\Database\QueryException $e) {
+            // Proteção dupla para erros de integridade
+            if ($e->getCode() === '23000') {
+                abort(409, 'Este e-mail já está em uso.');
+            }
+            Log::error('💥 [AuthService] Erro ao criar usuário', ['error' => $e->getMessage()]);
+            abort(500, 'Não foi possível concluir o cadastro. Tente novamente em instantes.');
+        }
 
         UserConsent::create([
             'user_id'     => $user->id,

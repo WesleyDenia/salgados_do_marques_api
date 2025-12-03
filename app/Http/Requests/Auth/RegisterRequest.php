@@ -32,9 +32,9 @@ class RegisterRequest extends FormRequest
             'name.string'           => 'O nome deve ser um texto.',
             'name.max'              => 'O nome pode ter no máximo 255 caracteres.',
 
-            'email.required'        => 'Informe o e-mail.',
+            'email.required'        => 'O campo e-mail é obrigatório.',
             'email.email'           => 'Informe um e-mail válido.',
-            'email.unique'          => 'Este e-mail já está em uso.',
+            'email.unique'          => 'Esse e-mail já está a ser usado.',
 
             'password.required'     => 'Informe a senha.',
             'password.string'       => 'A senha deve ser um texto.',

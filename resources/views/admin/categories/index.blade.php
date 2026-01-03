@@ -25,10 +25,10 @@
           <th style="width:170px;">Ações</th>
         </tr>
       </thead>
-      <tbody>
+      <tbody id="sortable-categories">
         @forelse ($categories as $category)
-          <tr>
-            <td>{{ $category->display_order }}</td>
+          <tr data-id="{{ $category->id }}">
+            <td style="cursor:grab;">⋮⋮ {{ $category->display_order }}</td>
             <td>
               <strong>{{ $category->name }}</strong>
               @if ($category->description)
@@ -69,9 +69,37 @@
         @endforelse
       </tbody>
     </table>
-
-    <div style="margin-top:18px;">
-      {{ $categories->links() }}
-    </div>
   </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+  <script>
+    const el = document.getElementById('sortable-categories');
+    if (el) {
+      Sortable.create(el, {
+        handle: 'td:first-child',
+        animation: 150,
+        onEnd: async () => {
+          const order = Array.from(el.querySelectorAll('tr[data-id]')).map((row, idx) => ({
+            id: row.dataset.id,
+            position: idx + 1,
+          }));
+
+          try {
+            await fetch("{{ route('admin.categories.reorder') }}", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "X-CSRF-TOKEN": "{{ csrf_token() }}",
+                "Accept": "application/json",
+              },
+              body: JSON.stringify({ order }),
+            });
+          } catch (error) {
+            console.error('Falha ao reordenar categorias', error);
+            alert('Não foi possível salvar a nova ordem. Tente novamente.');
+          }
+        },
+      });
+    }
+  </script>
 @endsection

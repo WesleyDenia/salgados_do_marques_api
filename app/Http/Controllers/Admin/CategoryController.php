@@ -14,7 +14,7 @@ class CategoryController extends Controller
             ->withCount('products')
             ->orderBy('display_order')
             ->orderBy('name')
-            ->paginate(15);
+            ->get();
 
         return view('admin.categories.index', compact('categories'));
     }
@@ -72,6 +72,23 @@ class CategoryController extends Controller
         return redirect()
             ->route('admin.categories.index')
             ->with('status', 'Categoria removida com sucesso.');
+    }
+
+    public function reorder(Request $request)
+    {
+        $data = $request->validate([
+            'order' => ['required', 'array'],
+            'order.*.id' => ['required', 'integer', 'exists:categories,id'],
+            'order.*.position' => ['required', 'integer', 'min:1'],
+        ]);
+
+        \DB::transaction(function () use ($data) {
+            foreach ($data['order'] as $item) {
+                Category::where('id', $item['id'])->update(['display_order' => $item['position']]);
+            }
+        });
+
+        return response()->json(['status' => 'ok']);
     }
 
     protected function validateData(Request $request, ?int $ignoreId = null): array

@@ -32,6 +32,7 @@ Route::middleware('auth')
         Route::post('/logout', [AdminAuthController::class, 'logout'])->name('logout');
 
         Route::resource('content-home', ContentHomeController::class)->except('show');
+        Route::post('categories/reorder', [CategoryController::class, 'reorder'])->name('categories.reorder');
         Route::resource('categories', CategoryController::class)->except('show');
         Route::resource('products', ProductController::class)->except('show');
         Route::resource('coupons', CouponController::class)->except('show');

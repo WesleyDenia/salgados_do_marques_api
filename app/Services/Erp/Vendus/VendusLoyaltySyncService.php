@@ -29,11 +29,31 @@ class VendusLoyaltySyncService
             'aggregate' => 'no', 
         ];        
 
-        $response = $this->client->client()->get('/clients/'.$external_user_id.'/balance', 
-            http_build_query($params));
+        $response = $this->client->client()->get(
+            '/clients/'.$external_user_id.'/balance',
+            http_build_query($params)
+        );
+
+        // Tratamento de "sem dados" ou 404 como sucesso silencioso para evitar ruído
+        if ($response->status() === 404) {
+            return ['status' => 'success', 'processed' => [], 'message' => 'Sem dados'];
+        }
+
+        // Alguns retornos 200/400 trazem código A001 "No data"
+        $rawBody = $response->body();
+        $jsonBody = json_decode($rawBody, true);
+        $hasNoDataCode = is_array($jsonBody)
+            && isset($jsonBody['errors'])
+            && collect($jsonBody['errors'])->pluck('code')->contains('A001');
+        if ($hasNoDataCode) {
+            return ['status' => 'success', 'processed' => [], 'message' => 'Sem dados'];
+        }
 
         if ($response->failed()) {
-            Log::error('Erro ao sincronizar documentos do Vendus', ['error' => $response->body()]);
+            Log::warning('Erro ao sincronizar documentos do Vendus', [
+                'status' => $response->status(),
+                'body' => $rawBody,
+            ]);
             return ['status' => 'error', 'message' => 'Falha na comunicação com o Vendus'];
         }
 

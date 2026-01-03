@@ -37,9 +37,14 @@ class SyncAllUsersLoyaltyJob implements ShouldQueue
                 $result = $syncService->sync($externalId, $this->days);
 
                 if (($result['status'] ?? 'error') === 'error') {
-                    Log::warning("[GlobalLoyaltySync] Erro ao sincronizar {$user->name}: " . ($result['message'] ?? 'Erro desconhecido'));
+                    $message = $result['message'] ?? 'Erro desconhecido';
+                    // Silencia "sem dados" para evitar spam
+                    if (stripos($message, 'sem dados') !== false) {
+                        continue;
+                    }
+                    Log::warning("[GlobalLoyaltySync] Erro ao sincronizar {$user->name}: {$message}");
                     continue;
-                }                                
+                }
 
             } catch (\Throwable $e) {
                 Log::error("[GlobalLoyaltySync] Exceção para {$user->name}: {$e->getMessage()}");

@@ -64,6 +64,7 @@ services:
       - db_password
     volumes:
       - ./mariadb_data:/var/lib/mysql
+      - ./docker/conf/mysql/custom.cnf:/etc/mysql/conf.d/custom.cnf
     ports:
       - "3306:3306"
     networks:

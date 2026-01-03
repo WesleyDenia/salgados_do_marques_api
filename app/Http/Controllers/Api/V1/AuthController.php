@@ -92,6 +92,26 @@ class AuthController extends Controller
         return new UserResource($request->user());
     }
 
+    public function refresh(Request $request)
+    {
+        /** @var \App\Models\User|\Laravel\Sanctum\HasApiTokens $user */
+        $user = $request->user();
+        $currentToken = $user->currentAccessToken();
+
+        // Gera um novo token e remove o atual para evitar multiplicação de chaves
+        $newToken = $user->createToken('auth_token')->plainTextToken;
+
+        if ($currentToken) {
+            $currentToken->delete();
+        }
+
+        return response()->json([
+            'user'   => new UserResource($user),
+            'token'  => $newToken,
+            'config' => $this->getAppConfig(),
+        ]);
+    }
+
     protected function getAppConfig(): array
     {
         $baseUrl = Setting::where('key', 'ASSET_BASE_URL')->value('value');

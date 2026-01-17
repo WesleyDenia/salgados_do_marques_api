@@ -21,7 +21,7 @@ docker-compose exec app chown -R www-data:www-data storage bootstrap/cache
 docker-compose exec app chmod -R 775 storage bootstrap/cache
 
 echo "[5/6] Executando migrations..."
-docker-compose exec app php artisan migrate --force
+docker exec -it salgados-app sh -lc '/usr/local/bin/load-secrets.sh php artisan migrate'
 
 echo "[6/6] Iniciando serviços de sincronização com o Vendus..."
 

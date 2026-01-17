@@ -123,6 +123,21 @@
         <span class="alert alert-error">{{ $message }}</span>
       @enderror
     </div>
+
+    <div class="form-group">
+      <label class="checkbox-row">
+        <input
+          type="checkbox"
+          name="accepts_orders"
+          value="1"
+          {{ old('accepts_orders', $store->accepts_orders) ? 'checked' : '' }}
+        />
+        Aceita pedidos para retirada
+      </label>
+      @error('accepts_orders')
+        <span class="alert alert-error">{{ $message }}</span>
+      @enderror
+    </div>
   </div>
 
   <div class="form-actions">

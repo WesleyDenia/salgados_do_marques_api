@@ -25,6 +25,36 @@ class SettingSeeder extends Seeder
                 'type' => 'string',
                 'editable' => true,
             ],
+                    [
+                'key' => 'order_start_time',
+                'value' => '12:00',
+                'type' => 'string',
+                'editable' => true,
+            ],
+            [
+                'key' => 'order_end_time',
+                'value' => '20:00',
+                'type' => 'string',
+                'editable' => true,
+            ],
+            [
+                'key' => 'order_minimum_minutes',
+                'value' => '30',
+                'type' => 'integer',
+                'editable' => true,
+            ],
+            [
+                'key' => 'order_cancel_minutes',
+                'value' => '60',
+                'type' => 'integer',
+                'editable' => true,
+            ],
+            [
+                'key' => 'order_timezone',
+                'value' => 'Europe/Lisbon',
+                'type' => 'string',
+                'editable' => true,
+            ],
         ];
 
         foreach ($defaults as $setting) {

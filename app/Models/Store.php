@@ -15,11 +15,13 @@ class Store extends Model
         'phone',
         'type',
         'is_active',
+        'accepts_orders',
     ];
 
     protected $casts = [
         'latitude' => 'float',
         'longitude' => 'float',
         'is_active' => 'boolean',
+        'accepts_orders' => 'boolean',
     ];
 }

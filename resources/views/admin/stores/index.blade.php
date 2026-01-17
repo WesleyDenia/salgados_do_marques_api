@@ -58,6 +58,7 @@
           <th>Tipo</th>
           <th>Telefone</th>
           <th>Status</th>
+          <th>Pedidos</th>
           <th>Atualizado em</th>
           <th style="width:170px;">Ações</th>
         </tr>
@@ -77,6 +78,13 @@
                 <span class="badge badge-muted">Inativa</span>
               @endif
             </td>
+            <td>
+              @if ($store->accepts_orders)
+                <span class="badge badge-success">Aceita</span>
+              @else
+                <span class="badge badge-muted">Não</span>
+              @endif
+            </td>
             <td>{{ $store->updated_at?->format('d/m/Y H:i') ?? '—' }}</td>
             <td>
               <a class="btn btn-secondary" href="{{ route('admin.stores.edit', $store) }}">Editar</a>
@@ -94,7 +102,7 @@
           </tr>
         @empty
           <tr>
-            <td colspan="8" style="text-align:center; padding:32px 0; color:#6b7280;">
+            <td colspan="9" style="text-align:center; padding:32px 0; color:#6b7280;">
               Nenhuma loja encontrada.
             </td>
           </tr>

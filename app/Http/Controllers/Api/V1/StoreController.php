@@ -18,6 +18,7 @@ class StoreController extends Controller
             'type' => ['nullable', 'in:principal,revenda'],
             'lat' => ['nullable', 'numeric', 'between:-90,90'],
             'lng' => ['nullable', 'numeric', 'between:-180,180'],
+            'accepts_orders' => ['nullable', 'boolean'],
         ]);
 
         $validator->validate();
@@ -36,6 +37,13 @@ class StoreController extends Controller
 
         if ($type) {
             $query->where('type', $type);
+        }
+
+        if ($request->filled('accepts_orders')) {
+            $acceptsOrders = $request->boolean('accepts_orders', null);
+            if ($acceptsOrders !== null) {
+                $query->where('accepts_orders', $acceptsOrders);
+            }
         }
 
         if ($lat !== null && $lng !== null) {

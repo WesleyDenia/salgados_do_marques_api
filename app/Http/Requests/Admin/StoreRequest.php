@@ -30,6 +30,7 @@ class StoreRequest extends FormRequest
             'phone' => ['nullable', 'string', 'max:30'],
             'type' => ['required', Rule::in(['principal', 'revenda'])],
             'is_active' => ['nullable', 'boolean'],
+            'accepts_orders' => ['nullable', 'boolean'],
         ];
     }
 }

@@ -223,6 +223,7 @@
         <a href="{{ route('admin.stores.index') }}">Lojas</a>
         <a href="{{ route('admin.categories.index') }}">Categorias</a>
         <a href="{{ route('admin.products.index') }}">Produtos</a>
+        <a href="{{ route('admin.flavors.index') }}">Sabores</a>
         <a href="{{ route('admin.coupons.index') }}">Cupons</a>
         <a href="{{ route('admin.loyalty-rewards.index') }}">Recompensas</a>
         <a href="{{ route('admin.settings.index') }}">Configurações</a>

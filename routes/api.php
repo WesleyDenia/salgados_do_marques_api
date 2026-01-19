@@ -21,7 +21,8 @@ use App\Http\Controllers\Api\V1\{
     PasswordResetController,
     StoreController,
     OrderController,
-    OrderAdminController
+    OrderAdminController,
+    FlavorController
 };
 
 Route::prefix('v1')->group(function () {
@@ -46,9 +47,11 @@ Route::prefix('v1')->group(function () {
         // Public data
         Route::get('categories', [CategoryController::class, 'index']);
         Route::get('products', [ProductController::class, 'index']);
+        Route::get('products/{product}', [ProductController::class, 'show']);
         Route::get('promotions', [PromotionController::class, 'index']);
         Route::get('coupons', [CouponController::class, 'index']);
         Route::get('content-home', [ContentHomeController::class, 'index']);
+        Route::get('flavors', [FlavorController::class, 'index']);
 
         // Admin protected
         Route::middleware('can:manage')->group(function () {

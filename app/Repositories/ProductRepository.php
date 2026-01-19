@@ -10,7 +10,7 @@ class ProductRepository extends BaseRepository
 
     public function publicList()
     {
-        return $this->paginate(['category'], function($q){
+        return $this->paginate(['category', 'variants'], function($q){
             $q->where('active', true);
             if ($cid = request('category_id')) { $q->where('category_id', $cid); }
             if ($s = request('search')) {

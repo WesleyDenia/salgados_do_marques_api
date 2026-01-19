@@ -31,6 +31,9 @@ class OrderStoreRequest extends FormRequest
                 Rule::exists('products', 'id')->where('active', true),
             ],
             'items.*.quantity' => ['required', 'integer', 'min:1', 'max:999'],
+            'items.*.variant_id' => ['nullable', 'integer', Rule::exists('product_variants', 'id')->where('active', true)],
+            'items.*.flavors' => ['nullable', 'array'],
+            'items.*.flavors.*' => ['integer', 'exists:flavors,id'],
         ];
     }
 }

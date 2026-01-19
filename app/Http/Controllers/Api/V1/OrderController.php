@@ -7,6 +7,7 @@ use App\Http\Requests\OrderStoreRequest;
 use App\Http\Resources\OrderResource;
 use App\Models\Order;
 use App\Models\Product;
+use App\Models\ProductVariant;
 use App\Services\SettingService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -54,8 +55,14 @@ class OrderController extends Controller
 
         $items = collect($data['items']);
         $productIds = $items->pluck('product_id')->unique()->values();
+        $variantIds = $items->pluck('variant_id')->filter()->unique()->values();
         $products = Product::query()
             ->whereIn('id', $productIds)
+            ->where('active', true)
+            ->get()
+            ->keyBy('id');
+        $variants = ProductVariant::query()
+            ->whereIn('id', $variantIds)
             ->where('active', true)
             ->get()
             ->keyBy('id');
@@ -66,7 +73,13 @@ class OrderController extends Controller
             ]);
         }
 
-        $order = DB::transaction(function () use ($request, $data, $items, $products, $scheduled) {
+        if ($variants->count() !== $variantIds->count()) {
+            throw ValidationException::withMessages([
+                'items' => 'Uma ou mais opções de pack não estão disponíveis.',
+            ]);
+        }
+
+        $order = DB::transaction(function () use ($request, $data, $items, $products, $variants, $scheduled) {
             $order = Order::create([
                 'user_id' => $request->user()->id,
                 'store_id' => $data['store_id'],
@@ -80,15 +93,42 @@ class OrderController extends Controller
 
             foreach ($items as $item) {
                 $product = $products->get($item['product_id']);
+                $variant = $item['variant_id'] ? $variants->get($item['variant_id']) : null;
                 $quantity = (int) $item['quantity'];
-                $price = (float) $product->price;
+
+                if ($variant && $variant->product_id !== $product->id) {
+                    throw ValidationException::withMessages([
+                        'items' => 'A opção selecionada não pertence ao produto escolhido.',
+                    ]);
+                }
+
+                $flavors = isset($item['flavors']) && is_array($item['flavors']) ? $item['flavors'] : [];
+
+                if (!$variant && !empty($flavors)) {
+                    throw ValidationException::withMessages([
+                        'items' => 'Os sabores só podem ser informados para packs.',
+                    ]);
+                }
+
+                if ($variant) {
+                    $maxFlavors = (int) $variant->max_flavors;
+                    if ($maxFlavors > 0 && count($flavors) > $maxFlavors) {
+                        throw ValidationException::withMessages([
+                            'items' => 'Você selecionou mais sabores do que o permitido para este pack.',
+                        ]);
+                    }
+                }
+
+                $price = $variant ? (float) $variant->price : (float) $product->price;
                 $lineTotal = $price * $quantity;
 
                 $order->items()->create([
                     'product_id' => $product->id,
-                    'name_snapshot' => $product->name,
+                    'variant_id' => $variant?->id,
+                    'name_snapshot' => $variant ? $variant->name : $product->name,
                     'price_snapshot' => $price,
                     'quantity' => $quantity,
+                    'options' => !empty($flavors) ? ['flavors' => $flavors] : null,
                     'total' => $lineTotal,
                 ]);
 

@@ -26,6 +26,15 @@ class ProductController extends Controller
         return ProductResource::collection($this->repo->publicList());
     }
 
+    public function show($id)
+    {
+        $product = $this->repo->find($id, ['category', 'variants']);
+        if (!$product->active) {
+            abort(404);
+        }
+        return new ProductResource($product);
+    }
+
     public function store(ProductStoreRequest $request)
     {
         $data = $request->validated();

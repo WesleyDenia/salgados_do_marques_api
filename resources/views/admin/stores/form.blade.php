@@ -138,6 +138,21 @@
         <span class="alert alert-error">{{ $message }}</span>
       @enderror
     </div>
+
+    <div class="form-group">
+      <label class="checkbox-row">
+        <input
+          type="checkbox"
+          name="default_store"
+          value="1"
+          {{ old('default_store', $store->default_store) ? 'checked' : '' }}
+        />
+        Loja padrão para retirada
+      </label>
+      @error('default_store')
+        <span class="alert alert-error">{{ $message }}</span>
+      @enderror
+    </div>
   </div>
 
   <div class="form-actions">

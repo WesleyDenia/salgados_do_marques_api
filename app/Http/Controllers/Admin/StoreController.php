@@ -91,6 +91,7 @@ class StoreController extends Controller
         $data = $request->validated();
         $data['is_active'] = $request->boolean('is_active');
         $data['accepts_orders'] = $request->boolean('accepts_orders');
+        $data['default_store'] = $request->boolean('default_store');
         $data['latitude'] = (float) $data['latitude'];
         $data['longitude'] = (float) $data['longitude'];
 

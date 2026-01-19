@@ -31,6 +31,7 @@ class StoreRequest extends FormRequest
             'type' => ['required', Rule::in(['principal', 'revenda'])],
             'is_active' => ['nullable', 'boolean'],
             'accepts_orders' => ['nullable', 'boolean'],
+            'default_store' => ['nullable', 'boolean'],
         ];
     }
 }

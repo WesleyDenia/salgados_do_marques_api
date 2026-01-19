@@ -22,6 +22,7 @@ class StoreResource extends JsonResource
             'phone' => $this->phone,
             'type' => $this->type,
             'accepts_orders' => $this->accepts_orders,
+            'default_store' => $this->default_store,
             'distance_km' => $this->when(isset($this->distance_km), round((float) $this->distance_km, 1)),
         ];
     }

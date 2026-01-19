@@ -16,6 +16,7 @@ class Store extends Model
         'type',
         'is_active',
         'accepts_orders',
+        'default_store',
     ];
 
     protected $casts = [
@@ -23,5 +24,6 @@ class Store extends Model
         'longitude' => 'float',
         'is_active' => 'boolean',
         'accepts_orders' => 'boolean',
+        'default_store' => 'boolean',
     ];
 }

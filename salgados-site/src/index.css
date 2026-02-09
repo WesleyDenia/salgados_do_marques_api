@@ -1,0 +1,217 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+
+@layer base {
+  :root {
+    /* Warm, sophisticated palette for a premium food brand */
+    --background: 40 30% 97%;
+    --foreground: 30 10% 15%;
+
+    --card: 40 25% 99%;
+    --card-foreground: 30 10% 15%;
+
+    --popover: 40 25% 99%;
+    --popover-foreground: 30 10% 15%;
+
+    /* Deep amber gold - premium, appetizing */
+    --primary: 38 70% 45%;
+    --primary-foreground: 40 30% 98%;
+
+    /* Warm cream */
+    --secondary: 40 25% 94%;
+    --secondary-foreground: 30 10% 20%;
+
+    --muted: 40 20% 92%;
+    --muted-foreground: 30 10% 45%;
+
+    /* Terracotta accent for CTAs */
+    --accent: 18 70% 50%;
+    --accent-foreground: 40 30% 98%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 40 20% 88%;
+    --input: 40 20% 88%;
+    --ring: 38 70% 45%;
+
+    --radius: 0.5rem;
+
+    /* Custom tokens */
+    --hero-gradient: linear-gradient(135deg, hsl(40 30% 97%) 0%, hsl(38 40% 92%) 100%);
+    --card-shadow: 0 4px 20px -4px hsl(30 20% 20% / 0.08);
+    --card-shadow-hover: 0 8px 30px -4px hsl(30 20% 20% / 0.12);
+    --text-gradient: linear-gradient(135deg, hsl(38 70% 35%) 0%, hsl(18 70% 45%) 100%);
+    
+    /* Spacing */
+    --section-padding: 5rem;
+    --container-max: 1200px;
+  }
+
+  .dark {
+    --background: 30 15% 10%;
+    --foreground: 40 20% 95%;
+
+    --card: 30 15% 12%;
+    --card-foreground: 40 20% 95%;
+
+    --popover: 30 15% 12%;
+    --popover-foreground: 40 20% 95%;
+
+    --primary: 38 65% 55%;
+    --primary-foreground: 30 15% 10%;
+
+    --secondary: 30 15% 18%;
+    --secondary-foreground: 40 20% 90%;
+
+    --muted: 30 15% 20%;
+    --muted-foreground: 40 15% 60%;
+
+    --accent: 18 65% 55%;
+    --accent-foreground: 30 15% 10%;
+
+    --destructive: 0 62.8% 50%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 30 15% 20%;
+    --input: 30 15% 20%;
+    --ring: 38 65% 55%;
+
+    --hero-gradient: linear-gradient(135deg, hsl(30 15% 10%) 0%, hsl(30 20% 15%) 100%);
+    --card-shadow: 0 4px 20px -4px hsl(0 0% 0% / 0.3);
+    --card-shadow-hover: 0 8px 30px -4px hsl(0 0% 0% / 0.4);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Playfair Display', serif;
+    @apply font-semibold tracking-tight;
+  }
+}
+
+@layer components {
+  .section-container {
+    @apply mx-auto max-w-[1200px] px-6;
+  }
+
+  .section-padding {
+    @apply py-16 md:py-24;
+  }
+
+  .heading-display {
+    @apply text-4xl md:text-5xl lg:text-6xl leading-tight;
+  }
+
+  .heading-section {
+    @apply text-3xl md:text-4xl leading-tight;
+  }
+
+  .heading-card {
+    @apply text-xl md:text-2xl;
+  }
+
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .gradient-text {
+    background: var(--text-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .card-elevated {
+    @apply bg-card rounded-xl;
+    box-shadow: var(--card-shadow);
+    transition: box-shadow 0.3s ease, transform 0.3s ease;
+  }
+
+  .card-elevated:hover {
+    box-shadow: var(--card-shadow-hover);
+    transform: translateY(-2px);
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 px-8 py-4 bg-accent text-accent-foreground font-semibold rounded-lg transition-all duration-300;
+  }
+
+  .btn-primary:hover {
+    @apply bg-accent/90 scale-[1.02];
+    box-shadow: 0 8px 20px -4px hsl(18 70% 50% / 0.3);
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 px-8 py-4 bg-secondary text-secondary-foreground font-semibold rounded-lg border border-border transition-all duration-300;
+  }
+
+  .btn-secondary:hover {
+    @apply bg-secondary/80 border-primary/30;
+  }
+
+  .highlight-badge {
+    @apply inline-flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary font-medium rounded-full text-sm;
+  }
+}
+
+@layer utilities {
+  .animate-fade-up {
+    animation: fadeUp 0.6s ease-out forwards;
+  }
+
+  .animate-fade-in {
+    animation: fadeIn 0.5s ease-out forwards;
+  }
+
+  .animate-scale-in {
+    animation: scaleIn 0.5s ease-out forwards;
+  }
+
+  @keyframes fadeUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes scaleIn {
+    from {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+}

@@ -88,9 +88,8 @@ deploy_api() {
 echo "Qual deploy deseja executar?"
 echo "1) Site"
 echo "2) API"
-echo "3) Site + API"
-echo "4) Sair"
-read -r -p "Escolha uma opção [1-4]: " DEPLOY_OPTION
+echo "3) Sair"
+read -r -p "Escolha uma opção [1-3]: " DEPLOY_OPTION
 
 DEPLOY_OPTION="$(echo "$DEPLOY_OPTION" | tr '[:upper:]' '[:lower:]' | xargs)"
 
@@ -101,11 +100,7 @@ case "$DEPLOY_OPTION" in
   2|api|a)
     deploy_api
     ;;
-  3|site+api|site+api|both|ambos)
-    deploy_site
-    deploy_api
-    ;;
-  4|sair|exit|q)
+  3|sair|exit|q)
     echo "Saindo."
     exit 0
     ;;

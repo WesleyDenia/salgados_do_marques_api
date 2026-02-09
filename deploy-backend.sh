@@ -15,22 +15,11 @@ deploy_site() {
   echo "Build do site..."
   if [ -d "$SITE_DIR" ]; then
     cd "$SITE_DIR"
-    if command -v npm >/dev/null 2>&1; then
-      if [ -f package-lock.json ] || [ -f npm-shrinkwrap.json ]; then
-        npm ci
-      else
-        npm install
-      fi
-      npm run build
-    elif command -v bun >/dev/null 2>&1; then
+    if command -v bun >/dev/null 2>&1; then
       bun install
       bun run build
-    elif command -v pnpm >/dev/null 2>&1; then
-      pnpm install --frozen-lockfile
-      pnpm run build
     else
-      echo "Nenhum gerenciador de pacotes encontrado (npm, bun ou pnpm)."
-      echo "Instale o npm (Node.js) ou use bun/pnpm antes de rodar o deploy do site."
+      echo "bun não encontrado. Instale o bun antes de rodar o deploy do site."
       exit 1
     fi
     cd "$REPO_DIR"

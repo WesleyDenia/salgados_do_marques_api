@@ -15,8 +15,24 @@ deploy_site() {
   echo "Build do site..."
   if [ -d "$SITE_DIR" ]; then
     cd "$SITE_DIR"
-    npm ci
-    npm run build
+    if command -v npm >/dev/null 2>&1; then
+      if [ -f package-lock.json ] || [ -f npm-shrinkwrap.json ]; then
+        npm ci
+      else
+        npm install
+      fi
+      npm run build
+    elif command -v bun >/dev/null 2>&1; then
+      bun install
+      bun run build
+    elif command -v pnpm >/dev/null 2>&1; then
+      pnpm install --frozen-lockfile
+      pnpm run build
+    else
+      echo "Nenhum gerenciador de pacotes encontrado (npm, bun ou pnpm)."
+      echo "Instale o npm (Node.js) ou use bun/pnpm antes de rodar o deploy do site."
+      exit 1
+    fi
     cd "$REPO_DIR"
 
     rm -rf "$REPO_DIR/public/site/salgados-site-build"
@@ -57,18 +73,20 @@ echo "3) Site + API"
 echo "4) Sair"
 read -r -p "Escolha uma opção [1-4]: " DEPLOY_OPTION
 
+DEPLOY_OPTION="$(echo "$DEPLOY_OPTION" | tr '[:upper:]' '[:lower:]' | xargs)"
+
 case "$DEPLOY_OPTION" in
-  1)
+  1|site|s)
     deploy_site
     ;;
-  2)
+  2|api|a)
     deploy_api
     ;;
-  3)
+  3|site+api|site+api|both|ambos)
     deploy_site
     deploy_api
     ;;
-  4)
+  4|sair|exit|q)
     echo "Saindo."
     exit 0
     ;;

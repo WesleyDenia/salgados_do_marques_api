@@ -40,6 +40,8 @@ deploy_site() {
       BUILD_DIR="$SITE_DIR/dist"
     elif [ -d "$SITE_DIR/public/build" ]; then
       BUILD_DIR="$SITE_DIR/public/build"
+    elif [ -d "$REPO_DIR/public/build" ]; then
+      BUILD_DIR="$REPO_DIR/public/build"
     fi
 
     if [ -z "$BUILD_DIR" ]; then

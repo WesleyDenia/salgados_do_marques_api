@@ -53,6 +53,16 @@ deploy_site() {
 }
 
 deploy_api() {
+  read -r -p "Executar limpeza do Docker (imagens/cache não usados)? [s/N]: " CLEAN_DOCKER
+  CLEAN_DOCKER="$(echo "$CLEAN_DOCKER" | tr '[:upper:]' '[:lower:]' | xargs)"
+  if [ "$CLEAN_DOCKER" = "s" ] || [ "$CLEAN_DOCKER" = "sim" ] || [ "$CLEAN_DOCKER" = "y" ] || [ "$CLEAN_DOCKER" = "yes" ]; then
+    echo "Limpando cache do Docker (imagens e build cache não usados)..."
+    docker system prune -af || true
+    docker builder prune -af || true
+  else
+    echo "Pulando limpeza do Docker."
+  fi
+
   echo "Parando containers existentes..."
   docker-compose down
 

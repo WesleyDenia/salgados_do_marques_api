@@ -35,9 +35,26 @@ deploy_site() {
     fi
     cd "$REPO_DIR"
 
+    BUILD_DIR=""
+    if [ -d "$SITE_DIR/dist" ]; then
+      BUILD_DIR="$SITE_DIR/dist"
+    elif [ -d "$SITE_DIR/public/build" ]; then
+      BUILD_DIR="$SITE_DIR/public/build"
+    fi
+
+    if [ -z "$BUILD_DIR" ]; then
+      echo "Diretório de build não encontrado (dist ou public/build)."
+      exit 1
+    fi
+
+    if [ ! -f "$BUILD_DIR/index.html" ]; then
+      echo "index.html não encontrado em $BUILD_DIR"
+      exit 1
+    fi
+
     rm -rf "$REPO_DIR/public/site/salgados-site-build"
     mkdir -p "$REPO_DIR/public/site/salgados-site-build"
-    cp -a "$SITE_DIR/dist/." "$REPO_DIR/public/site/salgados-site-build/"
+    cp -a "$BUILD_DIR/." "$REPO_DIR/public/site/salgados-site-build/"
   else
     echo "Diretório do site não encontrado em $SITE_DIR"
     exit 1

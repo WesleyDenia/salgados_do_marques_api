@@ -9,7 +9,7 @@ git fetch --all --prune
 git checkout main
 git pull --ff-only origin main
 
-SITE_DIR="$REPO_DIR/../site/salgados-site"
+SITE_DIR="$REPO_DIR/salgados-site"
 
 deploy_site() {
   echo "Build do site..."
@@ -19,9 +19,9 @@ deploy_site() {
     npm run build
     cd "$REPO_DIR"
 
-    rm -rf "$REPO_DIR/public/site"
-    mkdir -p "$REPO_DIR/public/site"
-    cp -a "$SITE_DIR/dist/." "$REPO_DIR/public/site/"
+    rm -rf "$REPO_DIR/public/site/salgados-site-build"
+    mkdir -p "$REPO_DIR/public/site/salgados-site-build"
+    cp -a "$SITE_DIR/dist/." "$REPO_DIR/public/site/salgados-site-build/"
   else
     echo "Diretório do site não encontrado em $SITE_DIR"
     exit 1

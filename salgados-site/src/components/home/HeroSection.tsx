@@ -4,7 +4,7 @@ import heroImage from "@/assets/hero-salgados.jpg";
 
 export function HeroSection() {
   return (
-    <section className="relative min-h-screen flex items-center pt-20">
+    <section className="relative min-h-[85vh] sm:min-h-screen flex items-center pt-20 pb-10 sm:pb-0">
       {/* Background Image */}
       <div 
         className="absolute inset-0 bg-cover bg-center bg-no-repeat"
@@ -32,7 +32,7 @@ export function HeroSection() {
               <span className="text-primary">Pombal e região</span>
             </h1>
 
-            <p className="text-lg text-white/80 leading-relaxed max-w-xl">
+            <p className="text-base sm:text-lg text-white/80 leading-relaxed max-w-xl">
               Diante da tempestade severa, estamos a disponibilizar apoio com 
               arca congeladora, cowork solidário e carregamento de eletrónicos.
               Atendimento mediante agendamento, de segunda a sábado, 10h às 20h.
@@ -59,17 +59,17 @@ export function HeroSection() {
             </div>
 
             {/* Trust indicators */}
-            <div className="flex items-center gap-8 pt-4">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-6 sm:gap-8 pt-4">
               <div className="text-center">
                 <p className="text-2xl font-display font-bold text-white">10h–20h</p>
                 <p className="text-sm text-white/70">Seg a Sáb</p>
               </div>
-              <div className="w-px h-12 bg-white/20" />
+              <div className="hidden sm:block w-px h-12 bg-white/20" />
               <div className="text-center">
                 <p className="text-2xl font-display font-bold text-white">Agendamento</p>
                 <p className="text-sm text-white/70">Obrigatório</p>
               </div>
-              <div className="w-px h-12 bg-white/20" />
+              <div className="hidden sm:block w-px h-12 bg-white/20" />
               <div className="text-center">
                 <p className="text-2xl font-display font-bold text-white">Disponível</p>
                 <p className="text-sm text-white/70">Conforme capacidade</p>

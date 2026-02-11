@@ -14,6 +14,14 @@ const products = [
     description:
       "Versão maior e mais substancial dos nossos salgados. Perfeitos para lanches ou refeições ligeiras.",
     uses: ["Lanche", "Refeição ligeira", "Eventos"],
+    flavors: [
+      "Coxinha de Frango",
+      "Coxinha de Fiambre e Queijo",
+      "Coxinha de Leitão",
+      "Coxinha de Bacalhau",
+      "Kibe",
+      "Floheados (Consulte disponibilidade)",
+    ],
     image: salgados70gImage,
   },
   {
@@ -22,6 +30,14 @@ const products = [
     description:
       "Tamanho ideal para festas e eventos. Variedade de sabores para agradar a todos os paladares.",
     uses: ["Festas", "Eventos empresariais", "Celebrações"],
+    flavors: [
+      "Coxinha de Frango",
+      "Enroladinho de Salsicha",
+      "Bolinha de Queijo",
+      "Travesseirinho de Carne",
+      "Pack Mix (Todos os sabores acima)",
+      "Mini Kibe",
+    ],
     image: miniSalgadosImage,
   },
   {
@@ -30,6 +46,7 @@ const products = [
     description:
       "Crocantes e cobertos com açúcar e canela. A sobremesa perfeita para fechar qualquer evento.",
     uses: ["Sobremesa", "Complemento doce", "Festas infantis"],
+    flavors: ["Doce de Leite", "Creme de avelã"],
     image: miniChurrosImage,
   },
   {
@@ -38,6 +55,7 @@ const products = [
     description:
       "Quentinho, macio por dentro e com crosta dourada. Um clássico que agrada sempre.",
     uses: ["Pequeno-almoço", "Lanche", "Acompanhamento"],
+    flavors: ["Tradicional", "Recheado com chourisso (calabresa)"],
     image: paoQueijoImage,
   },
 ];
@@ -153,6 +171,19 @@ const Produtos = () => {
                           </span>
                         ))}
                       </div>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-foreground mb-3">
+                        Sabores:
+                      </p>
+                      <ul className="grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
+                        {product.flavors.map((flavor) => (
+                          <li key={flavor} className="flex items-start gap-2">
+                            <span className="mt-1 text-primary">•</span>
+                            <span>{flavor}</span>
+                          </li>
+                        ))}
+                      </ul>
                     </div>
                     <Button variant="cta" size="lg" asChild>
                       <a

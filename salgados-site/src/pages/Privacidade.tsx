@@ -5,8 +5,8 @@ const Privacidade = () => {
   return (
     <main>
       <Seo
-        title="Politica de Privacidade | Salgados do Marques"
-        description="Saiba como a Salgados do Marques trata os seus dados pessoais e privacidade."
+        title="Política de Privacidade | Salgados do Marquês"
+        description="Saiba como a Salgados do Marquês trata os seus dados pessoais e privacidade."
         canonical={`${SITE_URL}/privacidade`}
         ogImage={OG_IMAGES.privacidade}
         schema={[
@@ -17,13 +17,13 @@ const Privacidade = () => {
               {
                 "@type": "ListItem",
                 position: 1,
-                name: "Inicio",
+                name: "Início",
                 item: `${SITE_URL}/`,
               },
               {
                 "@type": "ListItem",
                 position: 2,
-                name: "Politica de Privacidade",
+                name: "Política de Privacidade",
                 item: `${SITE_URL}/privacidade`,
               },
             ],
@@ -33,10 +33,10 @@ const Privacidade = () => {
       <section className="section-padding bg-gradient-to-b from-secondary/50 to-background">
           <div className="section-container text-center">
             <span className="highlight-badge mb-4 inline-block">
-              Politica de Privacidade
+              Política de Privacidade
             </span>
             <h1 className="heading-display text-foreground mb-6">
-              Politica de Privacidade
+              Política de Privacidade
             </h1>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
               Esta politica explica como tratamos os seus dados pessoais ao
@@ -51,8 +51,8 @@ const Privacidade = () => {
               <h2 className="heading-card text-foreground">1. Dados recolhidos</h2>
               <p>
                 Podemos recolher dados de contacto fornecidos por si, como nome,
-                telefone e email, quando entra em contacto ou solicita
-                orcamento.
+                telefone e e-mail, quando entra em contacto ou solicita
+                orçamento.
               </p>
             </div>
 
@@ -60,14 +60,14 @@ const Privacidade = () => {
               <h2 className="heading-card text-foreground">2. Finalidade</h2>
               <p>
                 Utilizamos os dados apenas para responder a pedidos, preparar
-                orcamentos e melhorar o atendimento.
+                orçamentos e melhorar o atendimento.
               </p>
             </div>
 
             <div className="space-y-3">
               <h2 className="heading-card text-foreground">3. Partilha</h2>
               <p>
-                Nao partilhamos dados pessoais com terceiros, exceto quando
+                Não partilhamos dados pessoais com terceiros, exceto quando
                 exigido por lei.
               </p>
             </div>
@@ -83,7 +83,7 @@ const Privacidade = () => {
             <div className="space-y-3">
               <h2 className="heading-card text-foreground">5. Direitos</h2>
               <p>
-                Pode solicitar acesso, correcao ou eliminacao dos seus dados
+                Pode solicitar acesso, correção ou eliminação dos seus dados
                 pessoais a qualquer momento.
               </p>
             </div>

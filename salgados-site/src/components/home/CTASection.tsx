@@ -50,7 +50,7 @@ export function CTASection() {
           </div>
 
           <p className="mt-8 text-sm text-background/50">
-            Atendimento: segunda a sábado, das 10h às 20h
+            Atendimento: terça a sábado, das 12h às 20h
           </p>
         </div>
       </div>

@@ -55,7 +55,7 @@ const products = [
     description:
       "Quentinho, macio por dentro e com crosta dourada. Um clássico que agrada sempre.",
     uses: ["Pequeno-almoço", "Lanche", "Acompanhamento"],
-    flavors: ["Tradicional", "Recheado com chourisso (calabresa)"],
+    flavors: ["Tradicional", "Recheado com chouriço (calabresa)"],
     image: paoQueijoImage,
   },
 ];
@@ -91,7 +91,7 @@ const Produtos = () => {
               {
                 "@type": "ListItem",
                 position: 1,
-                name: "Inicio",
+                name: "Início",
                 item: `${SITE_URL}/`,
               },
               {

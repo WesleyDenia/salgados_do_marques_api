@@ -35,7 +35,7 @@ export function HeroSection() {
             <p className="text-base sm:text-lg text-white/80 leading-relaxed max-w-xl">
               Diante da tempestade severa, estamos a disponibilizar apoio com 
               arca congeladora, cowork solidário e carregamento de eletrónicos.
-              Atendimento mediante agendamento, de segunda a sábado, 10h às 20h.
+              Atendimento mediante agendamento, de terça a sábado, 12h às 20h.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4">
@@ -61,8 +61,8 @@ export function HeroSection() {
             {/* Trust indicators */}
             <div className="flex flex-col sm:flex-row sm:items-center gap-6 sm:gap-8 pt-4">
               <div className="text-center">
-                <p className="text-2xl font-display font-bold text-white">10h–20h</p>
-                <p className="text-sm text-white/70">Seg a Sáb</p>
+                <p className="text-2xl font-display font-bold text-white">12h–20h</p>
+                <p className="text-sm text-white/70">Ter a Sáb</p>
               </div>
               <div className="hidden sm:block w-px h-12 bg-white/20" />
               <div className="text-center">

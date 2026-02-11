@@ -34,8 +34,8 @@ export function EmergencySupportSection() {
             Estamos juntos com a comunidade
           </h2>
           <p className="text-lg text-muted-foreground">
-            Atendimento mediante agendamento. Horário de segunda a sábado, das
-            10h às 20h.
+            Atendimento mediante agendamento. Horário de terça a sábado, das
+            12h às 20h.
           </p>
         </div>
 

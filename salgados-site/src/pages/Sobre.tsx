@@ -45,13 +45,13 @@ const Sobre = () => {
               {
                 "@type": "ListItem",
                 position: 1,
-                name: "Inicio",
+                name: "Início",
                 item: `${SITE_URL}/`,
               },
               {
                 "@type": "ListItem",
                 position: 2,
-                name: "Sobre Nos",
+                name: "Sobre Nós",
                 item: `${SITE_URL}/sobre`,
               },
             ],

@@ -8,7 +8,7 @@ const Contactos = () => {
     <main>
       <Seo
         title={`${SITE_NAME} | Contactos`}
-        description="Fale connosco pelo WhatsApp, telefone ou email. Atendimento e encomendas em Pombal e região."
+        description="Fale connosco pelo WhatsApp, telefone ou e-mail. Atendimento e encomendas em Pombal e região."
         canonical={`${SITE_URL}/contactos`}
         ogImage={OG_IMAGES.contactos}
         schema={[
@@ -19,7 +19,7 @@ const Contactos = () => {
               {
                 "@type": "ListItem",
                 position: 1,
-                name: "Inicio",
+                name: "Início",
                 item: `${SITE_URL}/`,
               },
               {
@@ -111,7 +111,7 @@ const Contactos = () => {
                       <Mail className="w-5 h-5 text-primary" />
                     </div>
                     <div>
-                      <p className="text-sm text-muted-foreground">Email</p>
+                      <p className="text-sm text-muted-foreground">E-mail</p>
                       <a
                         href="mailto:info@salgadosdomarques.pt"
                         className="font-medium text-foreground hover:text-primary transition-colors"
@@ -141,7 +141,7 @@ const Contactos = () => {
                       <Clock className="w-5 h-5 text-primary" />
                     </div>
                     <div>
-                      <p className="text-sm text-muted-foreground">Horário de Funcionamento</p>
+                      <p className="text-sm text-muted-foreground">Horário de funcionamento</p>
                       <div className="space-y-1">
                         <p className="font-medium text-foreground">
                           Terça a Sábado: 12h - 20h

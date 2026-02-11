@@ -33,7 +33,7 @@ const Festas = () => {
               {
                 "@type": "ListItem",
                 position: 1,
-                name: "Inicio",
+                name: "Início",
                 item: `${SITE_URL}/`,
               },
               {
@@ -173,15 +173,15 @@ const Festas = () => {
                   </li>
                   <li className="flex items-start gap-2 text-md">
                     <span className="text-primary mt-1">•</span>
-                    <span className="text-foreground">Enroladinhos de Salsicha</span>
+                    <span className="text-foreground">Enroladinhos de salsicha</span>
                   </li>
                   <li className="flex items-start gap-2 text-md">
                     <span className="text-primary mt-1">•</span>
-                    <span className="text-foreground">Travesseirinho de Carne</span>
+                    <span className="text-foreground">Travesseirinho de carne</span>
                   </li>
                   <li className="flex items-start gap-2 text-md">
                     <span className="text-primary mt-1">•</span>
-                    <span className="text-foreground">Bolinhas de Queijo</span>
+                    <span className="text-foreground">Bolinhas de queijo</span>
                   </li>
                   <li className="flex items-start gap-2 text-md">
                     <span className="text-primary mt-1">•</span>
@@ -205,15 +205,15 @@ const Festas = () => {
                   </li>
                   <li className="flex items-start gap-2 text-md">
                     <span className="text-primary mt-1">•</span>
-                    <span className="text-foreground">Churros de Creme de Avelã**</span>
+                    <span className="text-foreground">Churros de creme de avelã**</span>
                   </li>
                 </ul>
               </div>
             </div>
 
             <p className="text-md text-muted-foreground mt-6 text-center">
-              * O Pack Mix por todos os sabores exceto o kibe<br />
-              ** Entre em contato para consultar valores.
+              * O Pack Mix inclui todos os sabores, exceto o kibe<br />
+              ** Entre em contacto para consultar valores.
             </p>
           </div>
         </section>

@@ -1,14 +1,9 @@
-import { Header } from "@/components/Header";
-import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { MessageCircle, Phone, Mail, MapPin, Clock } from "lucide-react";
 
 const Contactos = () => {
   return (
-    <div className="min-h-screen bg-background">
-      <Header />
-
-      <main className="pt-20">
+    <main>
         {/* Hero */}
         <section className="section-padding bg-gradient-to-b from-secondary/50 to-background">
           <div className="section-container text-center">
@@ -159,10 +154,7 @@ const Contactos = () => {
             </div>
           </div>
         </section>
-      </main>
-
-      <Footer />
-    </div>
+    </main>
   );
 };
 

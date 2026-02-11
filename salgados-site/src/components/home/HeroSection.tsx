@@ -4,7 +4,7 @@ import heroImage from "@/assets/hero-salgados.jpg";
 
 export function HeroSection() {
   return (
-    <section className="relative min-h-[85vh] sm:min-h-screen flex items-center pt-20 pb-10 sm:pb-0">
+    <section className="relative min-h-[85vh] sm:min-h-screen flex items-center pt-10 pb-10 sm:pb-0">
       {/* Background Image */}
       <div 
         className="absolute inset-0 bg-cover bg-center bg-no-repeat"

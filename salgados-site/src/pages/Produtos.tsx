@@ -1,5 +1,3 @@
-import { Header } from "@/components/Header";
-import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { MessageCircle } from "lucide-react";
 import salgados70gImage from "@/assets/salgados-70g.jpg";
@@ -44,10 +42,7 @@ const products = [
 
 const Produtos = () => {
   return (
-    <div className="min-h-screen bg-background">
-      <Header />
-
-      <main className="pt-20">
+    <main>
         {/* Hero */}
         <section className="section-padding bg-gradient-to-b from-secondary/50 to-background">
           <div className="section-container text-center">
@@ -160,10 +155,7 @@ const Produtos = () => {
             </div>
           </div>
         </section>
-      </main>
-
-      <Footer />
-    </div>
+    </main>
   );
 };
 

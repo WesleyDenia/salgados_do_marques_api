@@ -1,5 +1,3 @@
-import { Header } from "@/components/Header";
-import { Footer } from "@/components/Footer";
 import { Shield, Award, Leaf, Clock } from "lucide-react";
 
 const values = [
@@ -31,10 +29,7 @@ const values = [
 
 const Sobre = () => {
   return (
-    <div className="min-h-screen bg-background">
-      <Header />
-
-      <main className="pt-20">
+    <main>
         {/* Hero */}
         <section className="section-padding bg-gradient-to-b from-secondary/50 to-background">
           <div className="section-container">
@@ -162,10 +157,7 @@ const Sobre = () => {
             </div>
           </div>
         </section>
-      </main>
-
-      <Footer />
-    </div>
+    </main>
   );
 };
 

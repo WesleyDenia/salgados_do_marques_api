@@ -7,8 +7,8 @@
   </defs>
   <rect width="1200" height="630" fill="url(#bg)" />
   <rect x="80" y="80" width="1040" height="470" rx="28" fill="#ffffff" opacity="0.9" />
-  <text x="140" y="235" font-family="Playfair Display, serif" font-size="68" fill="#3b2f23">Salgados do Marques</text>
-  <text x="140" y="315" font-family="Inter, sans-serif" font-size="32" fill="#6b5a49">Salgados e doces para festas e eventos</text>
+  <text x="140" y="235" font-family="Playfair Display, serif" font-size="68" fill="#3b2f23">Produtos</text>
+  <text x="140" y="315" font-family="Inter, sans-serif" font-size="32" fill="#6b5a49">Coxinhas, mini salgados, mini churros e pao de queijo</text>
   <text x="140" y="385" font-family="Inter, sans-serif" font-size="28" fill="#8a6a4b">Pombal, Portugal</text>
   <rect x="140" y="425" width="140" height="8" fill="#b8860b" rx="4" />
 </svg>

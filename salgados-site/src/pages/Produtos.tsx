@@ -35,7 +35,7 @@ const products = [
       "Enroladinho de Salsicha",
       "Bolinha de Queijo",
       "Travesseirinho de Carne",
-      "Pack Mix (Todos os sabores acima)",
+      "Pack Mix (Todos os sabores, exceto o kibe)",
       "Mini Kibe",
     ],
     image: miniSalgadosImage,

@@ -20,7 +20,7 @@ const products = [
       "Coxinha de Leitão",
       "Coxinha de Bacalhau",
       "Kibe",
-      "Floheados (Consulte disponibilidade)",
+      "Folheados (Consulte disponibilidade)",
     ],
     image: salgados70gImage,
   },
@@ -173,10 +173,10 @@ const Produtos = () => {
                       </div>
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-foreground mb-3">
+                      <p className="text-lg font-medium text-foreground mb-3">
                         Sabores:
                       </p>
-                      <ul className="grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
+                      <ul className="grid gap-2 text-lg text-muted-foreground sm:grid-cols-2">
                         {product.flavors.map((flavor) => (
                           <li key={flavor} className="flex items-start gap-2">
                             <span className="mt-1 text-primary">•</span>

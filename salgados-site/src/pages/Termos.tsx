@@ -1,7 +1,36 @@
+import { Seo } from "@/components/Seo";
+import { OG_IMAGES, SITE_URL } from "@/lib/site";
+
 const Termos = () => {
   return (
     <main>
-        <section className="section-padding bg-gradient-to-b from-secondary/50 to-background">
+      <Seo
+        title="Termos e Condicoes | Salgados do Marques"
+        description="Termos e condicoes de utilizacao do site e encomendas da Salgados do Marques."
+        canonical={`${SITE_URL}/termos`}
+        ogImage={OG_IMAGES.termos}
+        schema={[
+          {
+            "@context": "https://schema.org",
+            "@type": "BreadcrumbList",
+            itemListElement: [
+              {
+                "@type": "ListItem",
+                position: 1,
+                name: "Inicio",
+                item: `${SITE_URL}/`,
+              },
+              {
+                "@type": "ListItem",
+                position: 2,
+                name: "Termos e Condicoes",
+                item: `${SITE_URL}/termos`,
+              },
+            ],
+          },
+        ]}
+      />
+      <section className="section-padding bg-gradient-to-b from-secondary/50 to-background">
           <div className="section-container text-center">
             <span className="highlight-badge mb-4 inline-block">
               Termos e Condicoes

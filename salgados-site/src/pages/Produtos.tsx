@@ -4,6 +4,8 @@ import salgados70gImage from "@/assets/salgados-70g.jpg";
 import miniSalgadosImage from "@/assets/mini-salgados.jpg";
 import miniChurrosImage from "@/assets/churros.webp";
 import paoQueijoImage from "@/assets/pao-queijo.jpg";
+import { Seo } from "@/components/Seo";
+import { OG_IMAGES, SITE_NAME, SITE_URL } from "@/lib/site";
 
 const products = [
   {
@@ -41,9 +43,50 @@ const products = [
 ];
 
 const Produtos = () => {
+  const productSchema = {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    itemListElement: products.map((product, index) => ({
+      "@type": "ListItem",
+      position: index + 1,
+      item: {
+        "@type": "Product",
+        name: product.name,
+        description: product.description,
+      },
+    })),
+  };
+
   return (
     <main>
-        {/* Hero */}
+      <Seo
+        title={`${SITE_NAME} | Produtos`}
+        description="Conheça os nossos produtos: salgados 70g, mini salgados, mini churros e pão de queijo. Produção própria e qualidade consistente."
+        canonical={`${SITE_URL}/produtos`}
+        ogImage={OG_IMAGES.produtos}
+        schema={[
+          productSchema,
+          {
+            "@context": "https://schema.org",
+            "@type": "BreadcrumbList",
+            itemListElement: [
+              {
+                "@type": "ListItem",
+                position: 1,
+                name: "Inicio",
+                item: `${SITE_URL}/`,
+              },
+              {
+                "@type": "ListItem",
+                position: 2,
+                name: "Produtos",
+                item: `${SITE_URL}/produtos`,
+              },
+            ],
+          },
+        ]}
+      />
+      {/* Hero */}
         <section className="section-padding bg-gradient-to-b from-secondary/50 to-background">
           <div className="section-container text-center">
             <span className="highlight-badge mb-4 inline-block">

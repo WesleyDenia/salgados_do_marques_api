@@ -3,11 +3,50 @@ import { MessageCircle, Package, Sparkles, Users, ArrowRight } from "lucide-reac
 import festasImage from "@/assets/festas-catering.png";
 import packsQuantidadeImage from "@/assets/mini-salgados.jpg";
 import packsSaboresImage from "@/assets/hero-salgados.jpg";
+import { Seo } from "@/components/Seo";
+import { OG_IMAGES, SITE_NAME, SITE_URL } from "@/lib/site";
 
 const Festas = () => {
   return (
     <main>
-        {/* Hero */}
+      <Seo
+        title={`${SITE_NAME} | Festas e Encomendas`}
+        description="Soluções para festas e eventos: packs de salgados, staff, decoração e delivery. Encomendas personalizadas em Pombal e região."
+        canonical={`${SITE_URL}/festas`}
+        ogImage={OG_IMAGES.festas}
+        schema={[
+          {
+            "@context": "https://schema.org",
+            "@type": "Service",
+            name: "Festas e Encomendas",
+            areaServed: "Pombal, Leiria, Portugal",
+            provider: {
+              "@type": "Organization",
+              name: SITE_NAME,
+              url: SITE_URL,
+            },
+          },
+          {
+            "@context": "https://schema.org",
+            "@type": "BreadcrumbList",
+            itemListElement: [
+              {
+                "@type": "ListItem",
+                position: 1,
+                name: "Inicio",
+                item: `${SITE_URL}/`,
+              },
+              {
+                "@type": "ListItem",
+                position: 2,
+                name: "Festas e Encomendas",
+                item: `${SITE_URL}/festas`,
+              },
+            ],
+          },
+        ]}
+      />
+      {/* Hero */}
         <section className="section-padding bg-gradient-to-b from-secondary/50 to-background">
           <div className="section-container">
             <div className="grid lg:grid-cols-2 gap-12 items-center">

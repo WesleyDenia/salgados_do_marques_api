@@ -1,10 +1,38 @@
 import { Button } from "@/components/ui/button";
 import { MessageCircle, Phone, Mail, MapPin, Clock } from "lucide-react";
+import { Seo } from "@/components/Seo";
+import { OG_IMAGES, SITE_NAME, SITE_URL } from "@/lib/site";
 
 const Contactos = () => {
   return (
     <main>
-        {/* Hero */}
+      <Seo
+        title={`${SITE_NAME} | Contactos`}
+        description="Fale connosco pelo WhatsApp, telefone ou email. Atendimento e encomendas em Pombal e região."
+        canonical={`${SITE_URL}/contactos`}
+        ogImage={OG_IMAGES.contactos}
+        schema={[
+          {
+            "@context": "https://schema.org",
+            "@type": "BreadcrumbList",
+            itemListElement: [
+              {
+                "@type": "ListItem",
+                position: 1,
+                name: "Inicio",
+                item: `${SITE_URL}/`,
+              },
+              {
+                "@type": "ListItem",
+                position: 2,
+                name: "Contactos",
+                item: `${SITE_URL}/contactos`,
+              },
+            ],
+          },
+        ]}
+      />
+      {/* Hero */}
         <section className="section-padding bg-gradient-to-b from-secondary/50 to-background">
           <div className="section-container text-center">
             <span className="highlight-badge mb-4 inline-block">

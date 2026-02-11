@@ -1,5 +1,7 @@
 import { useLocation } from "react-router-dom";
 import { useEffect } from "react";
+import { Seo } from "@/components/Seo";
+import { OG_IMAGES, SITE_URL } from "@/lib/site";
 
 const NotFound = () => {
   const location = useLocation();
@@ -10,6 +12,13 @@ const NotFound = () => {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted">
+      <Seo
+        title="Pagina nao encontrada | Salgados do Marques"
+        description="A pagina que tentou aceder nao existe."
+        canonical={`${SITE_URL}/404`}
+        ogImage={OG_IMAGES.home}
+        noIndex
+      />
       <div className="text-center">
         <h1 className="mb-4 text-4xl font-bold">404</h1>
         <p className="mb-4 text-xl text-muted-foreground">Oops! Page not found</p>

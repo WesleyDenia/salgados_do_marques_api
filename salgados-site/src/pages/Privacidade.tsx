@@ -1,7 +1,36 @@
+import { Seo } from "@/components/Seo";
+import { OG_IMAGES, SITE_URL } from "@/lib/site";
+
 const Privacidade = () => {
   return (
     <main>
-        <section className="section-padding bg-gradient-to-b from-secondary/50 to-background">
+      <Seo
+        title="Politica de Privacidade | Salgados do Marques"
+        description="Saiba como a Salgados do Marques trata os seus dados pessoais e privacidade."
+        canonical={`${SITE_URL}/privacidade`}
+        ogImage={OG_IMAGES.privacidade}
+        schema={[
+          {
+            "@context": "https://schema.org",
+            "@type": "BreadcrumbList",
+            itemListElement: [
+              {
+                "@type": "ListItem",
+                position: 1,
+                name: "Inicio",
+                item: `${SITE_URL}/`,
+              },
+              {
+                "@type": "ListItem",
+                position: 2,
+                name: "Politica de Privacidade",
+                item: `${SITE_URL}/privacidade`,
+              },
+            ],
+          },
+        ]}
+      />
+      <section className="section-padding bg-gradient-to-b from-secondary/50 to-background">
           <div className="section-container text-center">
             <span className="highlight-badge mb-4 inline-block">
               Politica de Privacidade

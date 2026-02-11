@@ -1,4 +1,6 @@
 import { Shield, Award, Leaf, Clock } from "lucide-react";
+import { Seo } from "@/components/Seo";
+import { OG_IMAGES, SITE_NAME, SITE_URL } from "@/lib/site";
 
 const values = [
   {
@@ -30,7 +32,33 @@ const values = [
 const Sobre = () => {
   return (
     <main>
-        {/* Hero */}
+      <Seo
+        title={`${SITE_NAME} | Sobre Nós`}
+        description="Conheça a Salgados do Marquês: qualidade, higiene, pontualidade e ingredientes selecionados para festas e eventos."
+        canonical={`${SITE_URL}/sobre`}
+        ogImage={OG_IMAGES.sobre}
+        schema={[
+          {
+            "@context": "https://schema.org",
+            "@type": "BreadcrumbList",
+            itemListElement: [
+              {
+                "@type": "ListItem",
+                position: 1,
+                name: "Inicio",
+                item: `${SITE_URL}/`,
+              },
+              {
+                "@type": "ListItem",
+                position: 2,
+                name: "Sobre Nos",
+                item: `${SITE_URL}/sobre`,
+              },
+            ],
+          },
+        ]}
+      />
+      {/* Hero */}
         <section className="section-padding bg-gradient-to-b from-secondary/50 to-background">
           <div className="section-container">
             <div className="max-w-3xl mx-auto text-center">

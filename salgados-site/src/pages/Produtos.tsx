@@ -61,6 +61,129 @@ const products = [
 ];
 
 const Produtos = () => {
+  const miniSalgadosFritos = [
+    { quantity: "25 un", price: "9,00€" },
+    { quantity: "50 un", price: "16,80€" },
+    { quantity: "75 un", price: "25,20€" },
+    { quantity: "100 un", price: "30,00€" },
+  ];
+
+  const miniSalgadosCongelados = [
+    { quantity: "25 un", price: "7,50€" },
+    { quantity: "50 un", price: "14,00€" },
+    { quantity: "75 un", price: "21,50€" },
+    { quantity: "100 un", price: "25,00€" },
+  ];
+
+  const miniChurrosPrices = [
+    { quantity: "5 un", price: "1,80€" },
+    { quantity: "10 un", price: "3,60€" },
+    { quantity: "15 un", price: "5,40€" },
+    { quantity: "20 un", price: "7,20€" },
+    { quantity: "25 un", price: "9,00€" },
+  ];
+
+  const renderPricing = (productId: string) => {
+    if (productId === "salgados-70g") {
+      return (
+        <div className="rounded-xl border border-border bg-secondary/20 p-4">
+          <p className="text-sm font-medium text-foreground mb-1">Valor:</p>
+          <p className="text-lg font-semibold text-foreground">1€ a unidade</p>
+        </div>
+      );
+    }
+
+    if (productId === "mini-salgados") {
+      return (
+        <div className="space-y-4">
+          <p className="text-lg font-medium text-foreground">Mini Salgados - Tabela de preços</p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="rounded-xl border border-border overflow-hidden">
+              <div className="bg-secondary/40 px-4 py-2 text-sm font-semibold text-foreground">Fritos</div>
+              <table className="w-full text-sm">
+                <tbody>
+                  {miniSalgadosFritos.map((row) => (
+                    <tr key={`fritos-${row.quantity}`} className="border-t border-border">
+                      <td className="px-4 py-2 text-muted-foreground">{row.quantity}</td>
+                      <td className="px-4 py-2 text-right font-medium text-foreground">{row.price}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="rounded-xl border border-border overflow-hidden">
+              <div className="bg-secondary/40 px-4 py-2 text-sm font-semibold text-foreground">Congelados</div>
+              <table className="w-full text-sm">
+                <tbody>
+                  {miniSalgadosCongelados.map((row) => (
+                    <tr key={`congelados-${row.quantity}`} className="border-t border-border">
+                      <td className="px-4 py-2 text-muted-foreground">{row.quantity}</td>
+                      <td className="px-4 py-2 text-right font-medium text-foreground">{row.price}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    if (productId === "mini-churros") {
+      return (
+        <div className="space-y-3">
+          <p className="text-lg font-medium text-foreground">Valores</p>
+          <div className="rounded-xl border border-border overflow-hidden">
+            <table className="w-full text-sm">
+              <tbody>
+                {miniChurrosPrices.map((row) => (
+                  <tr key={`churros-${row.quantity}`} className="border-t border-border">
+                    <td className="px-4 py-2 text-muted-foreground">{row.quantity}</td>
+                    <td className="px-4 py-2 text-right font-medium text-foreground">{row.price}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      );
+    }
+
+    if (productId === "pao-queijo") {
+      return (
+        <div className="space-y-4">
+          <p className="text-lg font-medium text-foreground">Tabela de preços</p>
+          <div className="rounded-xl border border-border overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-secondary/40">
+                  <th className="px-4 py-2 text-left font-semibold text-foreground">Produto</th>
+                  <th className="px-4 py-2 text-right font-semibold text-foreground">Congelados</th>
+                  <th className="px-4 py-2 text-right font-semibold text-foreground">Assados</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="border-t border-border">
+                  <td className="px-4 py-2 text-muted-foreground">Pão de Queijo Tradicional (25 un)</td>
+                  <td className="px-4 py-2 text-right font-medium text-foreground">8,50€</td>
+                  <td className="px-4 py-2 text-right font-medium text-foreground">10,00€</td>
+                </tr>
+                <tr className="border-t border-border">
+                  <td className="px-4 py-2 text-muted-foreground">Pão de Queijo Recheado com Chouriço (25 un)</td>
+                  <td className="px-4 py-2 text-right font-medium text-foreground">9,50€</td>
+                  <td className="px-4 py-2 text-right font-medium text-foreground">11,00€</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      );
+    }
+
+    return null;
+  };
+
   const productSchema = {
     "@context": "https://schema.org",
     "@type": "ItemList",
@@ -185,17 +308,7 @@ const Produtos = () => {
                         ))}
                       </ul>
                     </div>
-                    <Button variant="cta" size="lg" asChild>
-                      <a
-                        href="https://wa.me/351939197110"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-2"
-                      >
-                        <MessageCircle className="w-5 h-5" />
-                        Pedir Orçamento
-                      </a>
-                    </Button>
+                    {renderPricing(product.id)}
                   </div>
                 </div>
               ))}
@@ -208,12 +321,11 @@ const Produtos = () => {
           <div className="section-container">
             <div className="max-w-2xl mx-auto text-center">
               <h3 className="heading-card text-foreground mb-4">
-                Preços sob consulta
+                Fale connosco para encomendas
               </h3>
               <p className="text-muted-foreground mb-6">
-                Os valores variam de acordo com a quantidade, tipo de evento e 
-                personalização pretendida. Contacte-nos para receber um 
-                orçamento detalhado e sem compromisso.
+                Para quantidades maiores, personalização ou eventos, peça um
+                orçamento rápido sem compromisso.
               </p>
               <Button variant="hero" size="lg" asChild>
                 <a

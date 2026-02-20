@@ -1,7 +1,10 @@
 import { Link } from "react-router-dom";
 import { Phone, Mail, MapPin, Clock } from "lucide-react";
+import { useCookieConsent } from "@/components/CookieConsentProvider";
 
 export function Footer() {
+  const { openPreferences } = useCookieConsent();
+
   return (
     <footer className="bg-foreground text-background">
       <div className="section-container py-16">
@@ -96,6 +99,13 @@ export function Footer() {
               <Link to="/privacidade" className="text-background/50 hover:text-background transition-colors text-sm">
                 Privacidade e LGPD
               </Link>
+              <button
+                type="button"
+                onClick={openPreferences}
+                className="text-background/50 hover:text-background transition-colors text-sm"
+              >
+                Preferências de Cookies
+              </button>
             </div>
           </div>
         </div>

@@ -2,8 +2,11 @@ import { Button } from "@/components/ui/button";
 import { MessageCircle, Phone, Mail, MapPin, Clock } from "lucide-react";
 import { Seo } from "@/components/Seo";
 import { OG_IMAGES, SITE_NAME, SITE_URL } from "@/lib/site";
+import { useCookieConsent } from "@/components/CookieConsentProvider";
 
 const Contactos = () => {
+  const { hasFunctionalConsent, openPreferences } = useCookieConsent();
+
   return (
     <main>
       <Seo
@@ -165,17 +168,33 @@ const Contactos = () => {
                     A nossa localização
                   </h3>
                   <div className="rounded-xl overflow-hidden h-[500px]">
-                    <iframe
-                      src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3046.123456789!2d-8.6338712!3d39.9130005!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0xd22676dff9e3169%3A0xcb6b0c464394f4ce!2sSalgados%20Do%20Marqu%C3%AAs!5e0!3m2!1spt-PT!2spt!4v1700000000000!5m2!1spt-PT!2spt"
-                      width="100%"
-                      height="100%"
-                      style={{ border: 0 }}
-                      allowFullScreen
-                      loading="lazy"
-                      referrerPolicy="no-referrer-when-downgrade"
-                      title="Localização Salgados do Marquês"
-                      className="w-full h-full"
-                    />
+                    {hasFunctionalConsent ? (
+                      <iframe
+                        src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3046.123456789!2d-8.6338712!3d39.9130005!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0xd22676dff9e3169%3A0xcb6b0c464394f4ce!2sSalgados%20Do%20Marqu%C3%AAs!5e0!3m2!1spt-PT!2spt!4v1700000000000!5m2!1spt-PT!2spt"
+                        width="100%"
+                        height="100%"
+                        style={{ border: 0 }}
+                        allowFullScreen
+                        loading="lazy"
+                        referrerPolicy="no-referrer-when-downgrade"
+                        title="Localização Salgados do Marquês"
+                        className="w-full h-full"
+                      />
+                    ) : (
+                      <div className="w-full h-full grid place-items-center bg-secondary/30 px-6 text-center">
+                        <div>
+                          <p className="text-foreground font-medium mb-2">
+                            Mapa desativado por preferências de cookies
+                          </p>
+                          <p className="text-sm text-muted-foreground mb-4">
+                            Para visualizar o Google Maps, ative cookies funcionais.
+                          </p>
+                          <Button variant="outline" size="sm" onClick={openPreferences}>
+                            Gerir preferências
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

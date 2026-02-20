@@ -115,7 +115,8 @@ const Privacidade = () => {
                 Podemos utilizar cookies e tecnologias equivalentes para
                 funcionamento do site, segurança, medição de desempenho e
                 melhoria de navegação. Pode gerir as preferências de cookies no
-                seu navegador.
+                banner de consentimento e na opção "Preferências de Cookies" no
+                rodapé do site, além das configurações do seu navegador.
               </p>
             </div>
 

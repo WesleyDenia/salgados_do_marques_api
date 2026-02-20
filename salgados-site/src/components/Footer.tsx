@@ -94,7 +94,7 @@ export function Footer() {
                 Termos e Condições
               </Link>
               <Link to="/privacidade" className="text-background/50 hover:text-background transition-colors text-sm">
-                Política de Privacidade
+                Privacidade e LGPD
               </Link>
             </div>
           </div>

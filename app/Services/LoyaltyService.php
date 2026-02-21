@@ -20,8 +20,13 @@ class LoyaltyService
             return 0;
         }
 
-        $bonus = Setting::where('key', 'welcome_bonus_points')->value('value');
-        $bonusPoints = $bonus ? (int) $bonus : 100;
+        $bonus = Setting::where('key', 'WELCOME_BONUS_POINTS')->value('value');
+
+        if ($bonus === null) {
+            $bonus = Setting::where('key', 'welcome_bonus_points')->value('value');
+        }
+
+        $bonusPoints = is_numeric($bonus) ? (int) $bonus : 100;
 
         DB::transaction(function () use ($user, $bonusPoints) {
             $account = $this->repository->getOrCreateAccount($user);

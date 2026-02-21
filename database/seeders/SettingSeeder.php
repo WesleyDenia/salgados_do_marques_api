@@ -13,6 +13,8 @@ class SettingSeeder extends Seeder
             ['key' => 'LOYALTY_POINTS_PER_EURO', 'value' => '10', 'type' => 'integer'],
             ['key' => 'LOYALTY_MAX_POINTS_PER_SALE', 'value' => '500', 'type' => 'integer'],
             ['key' => 'LOYALTY_SOURCE', 'value' => 'vendus', 'type' => 'string'],
+            ['key' => 'LOYALTY_EXPIRATION', 'value' => '30', 'type' => 'integer'],
+            ['key' => 'WELCOME_BONUS_POINTS', 'value' => '200', 'type' => 'integer'],
             [
                 'key' => 'ASSET_BASE_URL',
                 'value' => config('app.url'),
@@ -25,32 +27,32 @@ class SettingSeeder extends Seeder
                 'type' => 'string',
                 'editable' => true,
             ],
-                    [
-                'key' => 'order_start_time',
+            [
+                'key' => 'ORDER_START_TIME',
                 'value' => '12:00',
                 'type' => 'string',
                 'editable' => true,
             ],
             [
-                'key' => 'order_end_time',
+                'key' => 'ORDER_END_TIME',
                 'value' => '20:00',
                 'type' => 'string',
                 'editable' => true,
             ],
             [
-                'key' => 'order_minimum_minutes',
+                'key' => 'ORDER_MINIMUM_MINUTES',
                 'value' => '30',
                 'type' => 'integer',
                 'editable' => true,
             ],
             [
-                'key' => 'order_cancel_minutes',
+                'key' => 'ORDER_CANCEL_MINUTES',
                 'value' => '60',
                 'type' => 'integer',
                 'editable' => true,
             ],
             [
-                'key' => 'order_timezone',
+                'key' => 'ORDER_TIMEZONE',
                 'value' => 'Europe/Lisbon',
                 'type' => 'string',
                 'editable' => true,

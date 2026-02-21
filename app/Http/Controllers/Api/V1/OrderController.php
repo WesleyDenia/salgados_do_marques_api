@@ -188,11 +188,26 @@ class OrderController extends Controller
     protected function resolveOrderSettings(): array
     {
         return [
-            'start_time' => $this->settings->get('order_start_time', '12:00'),
-            'end_time' => $this->settings->get('order_end_time', '20:00'),
-            'minimum_minutes' => (int) $this->settings->get('order_minimum_minutes', 30),
-            'cancel_minutes' => (int) $this->settings->get('order_cancel_minutes', 60),
-            'timezone' => $this->settings->get('order_timezone', 'Europe/Lisbon'),
+            'start_time' => $this->settings->get(
+                'ORDER_START_TIME',
+                $this->settings->get('order_start_time', '12:00')
+            ),
+            'end_time' => $this->settings->get(
+                'ORDER_END_TIME',
+                $this->settings->get('order_end_time', '20:00')
+            ),
+            'minimum_minutes' => (int) $this->settings->get(
+                'ORDER_MINIMUM_MINUTES',
+                $this->settings->get('order_minimum_minutes', 30)
+            ),
+            'cancel_minutes' => (int) $this->settings->get(
+                'ORDER_CANCEL_MINUTES',
+                $this->settings->get('order_cancel_minutes', 60)
+            ),
+            'timezone' => $this->settings->get(
+                'ORDER_TIMEZONE',
+                $this->settings->get('order_timezone', 'Europe/Lisbon')
+            ),
         ];
     }
 

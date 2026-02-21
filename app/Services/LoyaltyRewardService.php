@@ -170,8 +170,14 @@ class LoyaltyRewardService
     protected function resolveExpirationDate(): ?Carbon
     {
         $value = Setting::query()
-            ->where('key', 'LOYLATY_EXPIRATION')
+            ->where('key', 'LOYALTY_EXPIRATION')
             ->value('value');
+
+        if ($value === null) {
+            $value = Setting::query()
+                ->where('key', 'LOYLATY_EXPIRATION')
+                ->value('value');
+        }
 
         $days = is_numeric($value) ? (int) $value : null;
 

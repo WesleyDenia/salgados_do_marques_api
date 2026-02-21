@@ -10,8 +10,8 @@ const Contactos = () => {
   return (
     <main>
       <Seo
-        title={`${SITE_NAME} | Contactos`}
-        description="Fale connosco pelo WhatsApp, telefone ou e-mail. Atendimento e encomendas em Pombal e região."
+        title={`${SITE_NAME} | Contactos para Encomendar Salgados em Portugal`}
+        description="Contacte-nos para encomendar salgados em Portugal: WhatsApp, telefone e e-mail. Atendimento para festas e eventos em Pombal e região."
         canonical={`${SITE_URL}/contactos`}
         ogImage={OG_IMAGES.contactos}
         schema={[

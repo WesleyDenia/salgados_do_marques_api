@@ -10,8 +10,8 @@ const Festas = () => {
   return (
     <main>
       <Seo
-        title={`${SITE_NAME} | Festas e Encomendas`}
-        description="Soluções para festas e eventos: packs de salgados, staff, decoração e delivery. Encomendas personalizadas em Pombal e região."
+        title={`${SITE_NAME} | Salgados para Festas em Portugal`}
+        description="Encomendas de salgados para festas em Portugal: packs por quantidade, sabores variados e apoio para eventos. Atendimento em Pombal e região."
         canonical={`${SITE_URL}/festas`}
         ogImage={OG_IMAGES.festas}
         schema={[

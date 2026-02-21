@@ -201,8 +201,8 @@ const Produtos = () => {
   return (
     <main>
       <Seo
-        title={`${SITE_NAME} | Produtos`}
-        description="Conheça os nossos produtos: salgados 70g, mini salgados, mini churros e pão de queijo. Produção própria e qualidade consistente."
+        title={`${SITE_NAME} | Salgadinhos para Festa em Portugal`}
+        description="Salgadinhos para festa em Portugal com preços claros: salgados 70g, mini salgados fritos e congelados, mini churros e pão de queijo. Encomendas para festas e eventos."
         canonical={`${SITE_URL}/produtos`}
         ogImage={OG_IMAGES.produtos}
         schema={[
@@ -225,6 +225,28 @@ const Produtos = () => {
               },
             ],
           },
+          {
+            "@context": "https://schema.org",
+            "@type": "FAQPage",
+            mainEntity: [
+              {
+                "@type": "Question",
+                name: "Quais são os preços dos salgadinhos para festa?",
+                acceptedAnswer: {
+                  "@type": "Answer",
+                  text: "Os preços variam por produto e quantidade. Nesta página encontra valores de salgados 70g, mini salgados, mini churros e pão de queijo.",
+                },
+              },
+              {
+                "@type": "Question",
+                name: "Fazem encomendas de salgados em Portugal?",
+                acceptedAnswer: {
+                  "@type": "Answer",
+                  text: "Sim. Fazemos encomendas de salgados para festas e eventos em Portugal, com atendimento em Pombal e região.",
+                },
+              },
+            ],
+          },
         ]}
       />
       {/* Hero */}
@@ -234,12 +256,13 @@ const Produtos = () => {
               Os Nossos Produtos
             </span>
             <h1 className="heading-display text-foreground mb-6 max-w-3xl mx-auto">
-              Qualidade e sabor em{" "}
-              <span className="gradient-text">cada mordida</span>
+              Salgadinhos para festa em{" "}
+              <span className="gradient-text">Portugal</span>
             </h1>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Produção própria com ingredientes selecionados. Cada produto é 
-              preparado com cuidado para garantir a melhor experiência.
+              Produção própria com ingredientes selecionados. Se procura
+              salgados em Portugal para eventos, aniversários e celebrações,
+              aqui encontra opções com preço por quantidade.
             </p>
           </div>
         </section>

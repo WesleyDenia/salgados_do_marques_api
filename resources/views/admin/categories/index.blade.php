@@ -71,10 +71,10 @@
     </table>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+  <script src="{{ asset('vendor/sortablejs/sortable.min.js') }}"></script>
   <script>
     const el = document.getElementById('sortable-categories');
-    if (el) {
+    if (el && typeof Sortable !== 'undefined') {
       Sortable.create(el, {
         handle: 'td:first-child',
         animation: 150,
@@ -85,7 +85,7 @@
           }));
 
           try {
-            await fetch("{{ route('admin.categories.reorder') }}", {
+            const response = await fetch("{{ route('admin.categories.reorder') }}", {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
@@ -94,12 +94,19 @@
               },
               body: JSON.stringify({ order }),
             });
+
+            if (!response.ok) {
+              throw new Error(`Falha ao salvar ordem (${response.status})`);
+            }
           } catch (error) {
             console.error('Falha ao reordenar categorias', error);
             alert('Não foi possível salvar a nova ordem. Tente novamente.');
           }
         },
       });
+    } else if (el) {
+      console.error('SortableJS indisponível.');
+      alert('A funcionalidade de reordenação não está disponível no momento.');
     }
   </script>
 @endsection

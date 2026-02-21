@@ -11,6 +11,14 @@ class AdminAuthController extends Controller
     public function showLoginForm()
     {
         if (Auth::check()) {
+            if (!request()->user()?->can('manage')) {
+                Auth::logout();
+                request()->session()->invalidate();
+                request()->session()->regenerateToken();
+
+                return view('admin.login');
+            }
+
             return redirect()->route('admin.dashboard');
         }
 
@@ -28,6 +36,18 @@ class AdminAuthController extends Controller
 
         if (Auth::attempt($credentials, $remember)) {
             $request->session()->regenerate();
+
+            if (!$request->user()?->can('manage')) {
+                Auth::logout();
+                $request->session()->invalidate();
+                $request->session()->regenerateToken();
+
+                return back()
+                    ->withErrors([
+                        'email' => 'A sua conta não tem acesso ao painel administrativo.',
+                    ])
+                    ->onlyInput('email');
+            }
 
             return redirect()->intended(route('admin.dashboard'));
         }

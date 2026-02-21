@@ -24,6 +24,8 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
+        gap: 16px;
+        flex-wrap: wrap;
       }
 
       header h1 {
@@ -31,12 +33,19 @@
         font-size: 1.3rem;
       }
 
+      header nav {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 10px;
+      }
+
       header nav a,
       header nav form button {
         color: #ffffff;
         text-decoration: none;
         font-weight: 600;
-        margin-left: 16px;
         background: transparent;
         border: none;
         cursor: pointer;
@@ -210,6 +219,21 @@
       .badge-muted {
         background: rgba(107, 114, 128, 0.15);
         color: #4b5563;
+      }
+
+      @media (max-width: 860px) {
+        header {
+          padding: 14px 16px;
+          align-items: flex-start;
+        }
+
+        header nav {
+          justify-content: flex-start;
+        }
+
+        main {
+          padding: 18px 14px;
+        }
       }
     </style>
     @yield('styles')

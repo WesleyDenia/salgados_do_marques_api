@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Admin\AdminAuthController;
+use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\ContentHomeController;
 use App\Http\Controllers\Admin\CouponController;
@@ -25,11 +26,11 @@ Route::post('/admin/login', [AdminAuthController::class, 'login'])
     ->middleware('guest')
     ->name('admin.login.post');
 
-Route::middleware('auth')
+Route::middleware(['auth', 'can:manage'])
     ->prefix('admin')
     ->name('admin.')
     ->group(function () {
-        Route::get('/', [AdminAuthController::class, 'dashboard'])->name('dashboard');
+        Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
         Route::post('/logout', [AdminAuthController::class, 'logout'])->name('logout');
 
         Route::resource('content-home', ContentHomeController::class)->except('show');

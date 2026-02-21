@@ -8,7 +8,7 @@
       <div>
         <h2 style="margin:0;font-size:1.4rem;">Lojas cadastradas</h2>
         <p style="margin:6px 0 0; color:#6b7280; font-size:0.95rem;">
-          Gerencie pontos de venda e revendedores do Coinxinhas.
+          Gerencie pontos de venda e revendedores da Salgados do Marquês.
         </p>
       </div>
       <a class="btn btn-primary" href="{{ route('admin.stores.create') }}">Nova loja</a>

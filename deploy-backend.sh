@@ -26,6 +26,18 @@ confirm_dangerous_action() {
   esac
 }
 
+recreate_service_without_db() {
+  local service="$1"
+
+  echo "Recriando serviço ${service} sem dependências (preserva mariadb)..."
+
+  # Workaround para docker-compose v1.29.x: --force-recreate pode falhar com
+  # KeyError 'ContainerConfig' em algumas combinações de engine/imagem.
+  docker-compose stop "$service" || true
+  docker-compose rm -f "$service" || true
+  docker-compose up -d --no-deps "$service"
+}
+
 deploy_site() {
   echo "Build do site..."
   if [ -d "$SITE_DIR" ]; then
@@ -83,11 +95,10 @@ deploy_api() {
   echo "Construindo imagem da aplicação (app)..."
   docker-compose build --pull app
 
-  echo "Recriando serviço app sem dependências (preserva mariadb)..."
-  docker-compose up -d --no-deps --force-recreate app
+  recreate_service_without_db app
 
   echo "Recriando serviço nginx sem rebuild de imagem (preserva mariadb)..."
-  docker-compose up -d --no-deps --force-recreate nginx
+  recreate_service_without_db nginx
 
   echo "Ajustando permissões no container app..."
   docker-compose exec app chown -R www-data:www-data storage bootstrap/cache

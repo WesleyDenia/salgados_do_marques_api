@@ -24,13 +24,13 @@ confirm_dangerous_action() {
 }
 
 detect_compose_command() {
-  if command -v docker-compose >/dev/null 2>&1; then
-    COMPOSE_CMD=(docker-compose)
+  if docker compose version >/dev/null 2>&1; then
+    COMPOSE_CMD=(docker compose)
     return
   fi
 
-  if docker compose version >/dev/null 2>&1; then
-    COMPOSE_CMD=(docker compose)
+  if command -v docker-compose >/dev/null 2>&1; then
+    COMPOSE_CMD=(docker-compose)
     return
   fi
 

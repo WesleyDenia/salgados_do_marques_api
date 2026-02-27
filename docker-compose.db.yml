@@ -9,6 +9,7 @@ services:
       MARIADB_ROOT_PASSWORD: rootpass
       MARIADB_DATABASE: salgados
       MARIADB_USER: laravel
+      MARIADB_PASSWORD_FILE: /run/secrets/db_password
     secrets:
       - db_password
     volumes:

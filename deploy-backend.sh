@@ -154,7 +154,7 @@ deploy_api() {
   compose_app exec app chmod -R 775 storage bootstrap/cache
 
   echo "Executando migrations..."
-  run_artisan_with_secrets "migrate"
+  run_artisan_with_secrets "migrate --force --no-interaction"
 
   echo "Iniciando serviços de sincronização com o Vendus..."
   compose_app exec app php artisan vendus:sync-coupons
@@ -178,12 +178,12 @@ db_operations_menu() {
   case "$db_option" in
     1|migrate)
       require_app_running
-      run_artisan_with_secrets "migrate"
+      run_artisan_with_secrets "migrate --force --no-interaction"
       echo "Migrate concluído com sucesso."
       ;;
     2|seeder|seed)
       require_app_running
-      run_artisan_with_secrets "db:seed"
+      run_artisan_with_secrets "db:seed --force --no-interaction"
       echo "Seeder concluído com sucesso."
       ;;
     3|refresh|refresh-seed|refresh_seed)
@@ -193,7 +193,7 @@ db_operations_menu() {
         echo "Refresh Seed cancelado."
         return 0
       fi
-      run_artisan_with_secrets "migrate:refresh --seed"
+      run_artisan_with_secrets "migrate:refresh --seed --force --no-interaction"
       echo "Refresh Seed concluído com sucesso."
       ;;
     4|voltar|sair|exit|q)

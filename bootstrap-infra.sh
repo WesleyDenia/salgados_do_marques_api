@@ -9,15 +9,20 @@ DB_DATA_DIR="${DB_DATA_DIR:-/srv/salgados/mariadb_data}"
 DB_COMPOSE_FILE="${DB_COMPOSE_FILE:-docker-compose.db.yml}"
 APP_COMPOSE_FILE="${APP_COMPOSE_FILE:-docker-compose.app.yml}"
 DB_SERVICE_NAME="${DB_SERVICE_NAME:-mariadb}"
+DB_CONTAINER_NAME="${DB_CONTAINER_NAME:-salgados-mariadb}"
 APP_SERVICE_NAME="${APP_SERVICE_NAME:-app}"
 NGINX_SERVICE_NAME="${NGINX_SERVICE_NAME:-nginx}"
 APP_CONTAINER_NAME="${APP_CONTAINER_NAME:-salgados-app}"
+DB_ROOT_PASSWORD="${DB_ROOT_PASSWORD:-rootpass}"
+DB_APP_USER="${DB_APP_USER:-laravel}"
+DB_APP_NAME="${DB_APP_NAME:-salgados}"
 DB_UID="${DB_UID:-999}"
 DB_GID="${DB_GID:-999}"
 
 START_DB=true
 START_APP=false
 RUN_MIGRATIONS=false
+RECONCILE_DB_USER=false
 
 usage() {
   cat <<'EOF'
@@ -27,7 +32,10 @@ Uso:
 Opções:
   --with-app          Sobe app + nginx após subir o DB
   --with-migrate      Sobe app + nginx e executa php artisan migrate
+  --reconcile-db-user Alinha usuário/senha do app no MariaDB usando Docker secret
   --no-db-up          Não sobe o DB (apenas prepara rede e diretório)
+  --helper            Lista comandos de uso rápido
+  --list-commands     Alias de --helper
   --help              Exibe esta ajuda
 
 Variáveis de ambiente para reutilização em outros projetos:
@@ -36,11 +44,35 @@ Variáveis de ambiente para reutilização em outros projetos:
   DB_COMPOSE_FILE     (default: docker-compose.db.yml)
   APP_COMPOSE_FILE    (default: docker-compose.app.yml)
   DB_SERVICE_NAME     (default: mariadb)
+  DB_CONTAINER_NAME   (default: salgados-mariadb)
+  DB_ROOT_PASSWORD    (default: rootpass)
+  DB_APP_USER         (default: laravel)
+  DB_APP_NAME         (default: salgados)
   APP_SERVICE_NAME    (default: app)
   NGINX_SERVICE_NAME  (default: nginx)
   APP_CONTAINER_NAME  (default: salgados-app)
   DB_UID              (default: 999)
   DB_GID              (default: 999)
+EOF
+}
+
+helper_commands() {
+  cat <<'EOF'
+Comandos disponíveis:
+  ./bootstrap-infra.sh
+    Prepara rede + diretório e sobe apenas o DB
+
+  ./bootstrap-infra.sh --with-app
+    Prepara infra e sobe DB + app + nginx
+
+  ./bootstrap-infra.sh --with-migrate
+    Prepara infra, sobe stack e executa migrate
+
+  ./bootstrap-infra.sh --reconcile-db-user
+    Sobe DB e alinha usuário/senha do app no MariaDB
+
+  ./bootstrap-infra.sh --with-app --reconcile-db-user
+    Sobe tudo e faz reconciliação de credencial do usuário de app
 EOF
 }
 
@@ -53,8 +85,15 @@ while (($# > 0)); do
       START_APP=true
       RUN_MIGRATIONS=true
       ;;
+    --reconcile-db-user)
+      RECONCILE_DB_USER=true
+      ;;
     --no-db-up)
       START_DB=false
+      ;;
+    --helper|--list-commands)
+      helper_commands
+      exit 0
       ;;
     --help|-h)
       usage
@@ -138,7 +177,20 @@ start_app_stack() {
 
 run_migrate() {
   echo "Executando migrations no container ${APP_CONTAINER_NAME}..."
-  docker exec "$APP_CONTAINER_NAME" sh -lc '/usr/local/bin/load-secrets.sh php artisan migrate'
+  docker exec "$APP_CONTAINER_NAME" sh -lc '/usr/local/bin/load-secrets.sh php artisan migrate --force --no-interaction'
+}
+
+reconcile_db_user() {
+  echo "Alinhando usuário ${DB_APP_USER} no MariaDB com senha do secret..."
+  docker exec "$DB_CONTAINER_NAME" sh -lc "
+DB_PASS=\$(cat /run/secrets/db_password)
+mariadb -uroot -p'${DB_ROOT_PASSWORD}' <<SQL
+CREATE USER IF NOT EXISTS '${DB_APP_USER}'@'%' IDENTIFIED BY '\${DB_PASS}';
+ALTER USER '${DB_APP_USER}'@'%' IDENTIFIED BY '\${DB_PASS}';
+GRANT ALL PRIVILEGES ON ${DB_APP_NAME}.* TO '${DB_APP_USER}'@'%';
+FLUSH PRIVILEGES;
+SQL
+"
 }
 
 show_status() {
@@ -169,6 +221,10 @@ fi
 
 if [ "$RUN_MIGRATIONS" = true ]; then
   run_migrate
+fi
+
+if [ "$RECONCILE_DB_USER" = true ]; then
+  reconcile_db_user
 fi
 
 show_status

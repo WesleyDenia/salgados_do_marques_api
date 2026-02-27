@@ -70,13 +70,13 @@ while (($# > 0)); do
 done
 
 detect_compose_command() {
-  if command -v docker-compose >/dev/null 2>&1; then
-    COMPOSE_CMD=(docker-compose)
+  if docker compose version >/dev/null 2>&1; then
+    COMPOSE_CMD=(docker compose)
     return
   fi
 
-  if docker compose version >/dev/null 2>&1; then
-    COMPOSE_CMD=(docker compose)
+  if command -v docker-compose >/dev/null 2>&1; then
+    COMPOSE_CMD=(docker-compose)
     return
   fi
 
@@ -124,6 +124,10 @@ ensure_db_data_dir() {
 
 start_db() {
   echo "Subindo serviço de banco (${DB_SERVICE_NAME}) via ${DB_COMPOSE_FILE}..."
+  # Workaround para docker-compose v1.29.x:
+  # evita KeyError 'ContainerConfig' em cenários de recreate.
+  compose_db stop "$DB_SERVICE_NAME" || true
+  compose_db rm -f "$DB_SERVICE_NAME" || true
   compose_db up -d "$DB_SERVICE_NAME"
 }
 

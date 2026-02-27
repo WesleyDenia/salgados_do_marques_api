@@ -1,10 +1,4 @@
 version: "3.9"
-# LEGACY / DEPRECATED
-# Este arquivo foi mantido temporariamente para compatibilidade manual.
-# O fluxo oficial do deploy-backend.sh usa:
-# - docker-compose.app.yml (serviços app + nginx)
-# - docker-compose.db.yml (serviço mariadb)
-# Preferir os compose files separados para evitar acoplamento do ciclo API/DB.
 
 services:
   app:
@@ -13,34 +7,27 @@ services:
       dockerfile: Dockerfile
     container_name: salgados-app
     restart: unless-stopped
-    depends_on:
-      - mariadb
     expose:
       - "9000"
-
     volumes:
       - ./storage:/var/www/html/storage
       - ./bootstrap/cache:/var/www/html/bootstrap/cache
       - ./docker/conf/php/uploads.ini:/usr/local/etc/php/conf.d/uploads.ini
-
     secrets:
       - db_password
       - mail_password
       - vendus_key
       - wapify_key
-
     environment:
       APP_ENV: production
       APP_DEBUG: "false"
       APP_URL: https://api.salgadosdomarques.pt
-
       DB_PASSWORD_FILE: /run/secrets/db_password
       MAIL_PASSWORD_FILE: /run/secrets/mail_password
       VENDUS_API_KEY_FILE: /run/secrets/vendus_key
       WAPIFY_API_KEY_FILE: /run/secrets/wapify_key
-
     networks:
-      - laravel
+      - backend
 
   nginx:
     image: nginx:latest
@@ -56,25 +43,7 @@ services:
     depends_on:
       - app
     networks:
-      - laravel
-
-  mariadb:
-    image: mariadb:11.3
-    container_name: salgados-mariadb
-    restart: unless-stopped
-    environment:
-      MARIADB_ROOT_PASSWORD: rootpass
-      MARIADB_DATABASE: salgados
-      MARIADB_USER: laravel
-    secrets:
-      - db_password
-    volumes:
-      - ./mariadb_data:/var/lib/mysql
-      - ./docker/conf/mysql/custom.cnf:/etc/mysql/conf.d/custom.cnf
-    ports:
-      - "3306:3306"
-    networks:
-      - laravel
+      - backend
 
 secrets:
   db_password:
@@ -87,5 +56,6 @@ secrets:
     file: ./docker/secrets/wapify_key.txt
 
 networks:
-  laravel:
-    driver: bridge
+  backend:
+    external: true
+    name: salgados_backend_net

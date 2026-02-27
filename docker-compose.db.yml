@@ -1,0 +1,29 @@
+version: "3.9"
+
+services:
+  mariadb:
+    image: mariadb:11.3
+    container_name: salgados-mariadb
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: rootpass
+      MARIADB_DATABASE: salgados
+      MARIADB_USER: laravel
+    secrets:
+      - db_password
+    volumes:
+      - /srv/salgados/mariadb_data:/var/lib/mysql
+      - ./docker/conf/mysql/custom.cnf:/etc/mysql/conf.d/custom.cnf
+    networks:
+      backend:
+        aliases:
+          - mariadb
+
+secrets:
+  db_password:
+    file: ./docker/secrets/db_password.txt
+
+networks:
+  backend:
+    external: true
+    name: salgados_backend_net

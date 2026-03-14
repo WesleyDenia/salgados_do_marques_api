@@ -1,0 +1,21 @@
+version: "3.9"
+
+services:
+  phpmyadmin:
+    image: phpmyadmin:5.2-apache
+    container_name: salgados-phpmyadmin
+    restart: unless-stopped
+    environment:
+      PMA_HOST: mariadb
+      PMA_PORT: 3306
+      PMA_ARBITRARY: "0"
+      UPLOAD_LIMIT: 64M
+    ports:
+      - "127.0.0.1:8081:80"
+    networks:
+      - backend
+
+networks:
+  backend:
+    external: true
+    name: salgados_backend_net

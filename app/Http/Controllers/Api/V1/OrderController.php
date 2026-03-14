@@ -57,6 +57,7 @@ class OrderController extends Controller
         $productIds = $items->pluck('product_id')->unique()->values();
         $variantIds = $items->pluck('variant_id')->filter()->unique()->values();
         $products = Product::query()
+            ->with('allowedFlavors')
             ->whereIn('id', $productIds)
             ->where('active', true)
             ->get()
@@ -103,6 +104,7 @@ class OrderController extends Controller
                 }
 
                 $flavors = isset($item['flavors']) && is_array($item['flavors']) ? $item['flavors'] : [];
+                $allowedFlavorIds = $product->allowedFlavors->pluck('id');
 
                 if (!$variant && !empty($flavors)) {
                     throw ValidationException::withMessages([
@@ -111,10 +113,32 @@ class OrderController extends Controller
                 }
 
                 if ($variant) {
+                    if (count($flavors) < 1) {
+                        throw ValidationException::withMessages([
+                            'items' => 'Selecione pelo menos 1 sabor para o pack escolhido.',
+                        ]);
+                    }
+
                     $maxFlavors = (int) $variant->max_flavors;
-                    if ($maxFlavors > 0 && count($flavors) > $maxFlavors) {
+                    if ($maxFlavors < 1) {
+                        throw ValidationException::withMessages([
+                            'items' => 'O pack selecionado não aceita sabores no momento.',
+                        ]);
+                    }
+
+                    if (count($flavors) > $maxFlavors) {
                         throw ValidationException::withMessages([
                             'items' => 'Você selecionou mais sabores do que o permitido para este pack.',
+                        ]);
+                    }
+
+                    $hasInvalidFlavor = collect($flavors)->contains(
+                        fn ($flavorId) => !$allowedFlavorIds->contains((int) $flavorId)
+                    );
+
+                    if ($hasInvalidFlavor) {
+                        throw ValidationException::withMessages([
+                            'items' => 'Um ou mais sabores informados não são permitidos para este artigo.',
                         ]);
                     }
                 }

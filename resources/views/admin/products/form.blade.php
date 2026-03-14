@@ -13,6 +13,11 @@
       'remove' => false,
     ])->toArray() ?? [];
   }
+  $selectedFlavorIds = collect(old('flavor_ids', $product->flavors?->pluck('id')->all() ?? []))
+    ->map(fn ($id) => (int) $id)
+    ->unique()
+    ->values()
+    ->all();
 @endphp
 
 <form
@@ -225,6 +230,35 @@
         <span class="alert alert-error">{{ $message }}</span>
       @enderror
     </div>
+
+    <div class="form-group" style="grid-column:1/-1; display:none;" id="allowed-flavors-section">
+      <label>Sabores permitidos</label>
+      <p style="margin:6px 0 12px; color:#6b7280; font-size:0.95rem;">
+        Estes sabores são usados nos packs deste artigo e serão mostrados no app apenas quando houver variações ativas.
+      </p>
+
+      <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end;">
+        <div style="min-width:240px; flex:1;">
+          <label for="flavor-picker" style="display:block; margin-bottom:6px;">Adicionar sabor</label>
+          <select id="flavor-picker">
+            <option value="">Selecionar sabor</option>
+            @foreach ($flavors as $flavor)
+              <option value="{{ $flavor->id }}">{{ $flavor->name }}</option>
+            @endforeach
+          </select>
+        </div>
+        <button type="button" class="btn btn-secondary" id="add-flavor">Adicionar sabor</button>
+      </div>
+
+      <div id="selected-flavors" style="margin-top:12px; display:grid; gap:8px;"></div>
+
+      @error('flavor_ids')
+        <span class="alert alert-error">{{ $message }}</span>
+      @enderror
+      @error('flavor_ids.*')
+        <span class="alert alert-error">{{ $message }}</span>
+      @enderror
+    </div>
   </div>
 
   <div class="form-actions">
@@ -239,9 +273,65 @@
   (function () {
     const body = document.getElementById('variants-body');
     const addButton = document.getElementById('add-variant');
-    if (!body || !addButton) return;
+    const flavorSection = document.getElementById('allowed-flavors-section');
+    const flavorPicker = document.getElementById('flavor-picker');
+    const addFlavorButton = document.getElementById('add-flavor');
+    const selectedFlavors = document.getElementById('selected-flavors');
+    if (!body || !addButton || !flavorSection || !flavorPicker || !addFlavorButton || !selectedFlavors) return;
 
     let index = body.querySelectorAll('tr').length;
+    const flavorOptions = @json($flavors->map(fn ($flavor) => ['id' => $flavor->id, 'name' => $flavor->name])->values());
+    const state = {
+      selectedFlavorIds: @json($selectedFlavorIds),
+    };
+
+    const renderSelectedFlavors = () => {
+      selectedFlavors.innerHTML = '';
+
+      if (!state.selectedFlavorIds.length) {
+        const empty = document.createElement('p');
+        empty.style.margin = '0';
+        empty.style.color = '#6b7280';
+        empty.textContent = 'Nenhum sabor associado.';
+        selectedFlavors.appendChild(empty);
+        return;
+      }
+
+      state.selectedFlavorIds.forEach((flavorId) => {
+        const flavor = flavorOptions.find((item) => Number(item.id) === Number(flavorId));
+        if (!flavor) return;
+
+        const row = document.createElement('div');
+        row.style.display = 'flex';
+        row.style.alignItems = 'center';
+        row.style.justifyContent = 'space-between';
+        row.style.gap = '12px';
+        row.style.padding = '10px 12px';
+        row.style.border = '1px solid #e5e7eb';
+        row.style.borderRadius = '12px';
+
+        row.innerHTML = `
+          <span>${flavor.name}</span>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <input type="hidden" name="flavor_ids[]" value="${flavor.id}" />
+            <button type="button" class="btn btn-secondary" data-remove-flavor="${flavor.id}">Remover</button>
+          </div>
+        `;
+
+        selectedFlavors.appendChild(row);
+      });
+    };
+
+    const hasVisibleActiveVariant = () =>
+      Array.from(body.querySelectorAll('tr')).some((row) => {
+        const activeInput = row.querySelector('input[name$="[active]"]');
+        const removeInput = row.querySelector('input[name$="[remove]"]');
+        return activeInput?.checked && !removeInput?.checked;
+      });
+
+    const syncFlavorSectionVisibility = () => {
+      flavorSection.style.display = hasVisibleActiveVariant() ? 'block' : 'none';
+    };
 
     addButton.addEventListener('click', () => {
       const row = document.createElement('tr');
@@ -277,6 +367,47 @@
       `;
       body.appendChild(row);
       index += 1;
+      syncFlavorSectionVisibility();
     });
+
+    addFlavorButton.addEventListener('click', () => {
+      const selectedId = Number(flavorPicker.value);
+      if (!selectedId || state.selectedFlavorIds.includes(selectedId)) {
+        return;
+      }
+
+      state.selectedFlavorIds.push(selectedId);
+      renderSelectedFlavors();
+      flavorPicker.value = '';
+    });
+
+    selectedFlavors.addEventListener('click', (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLElement)) {
+        return;
+      }
+
+      const removeFlavorId = Number(target.getAttribute('data-remove-flavor'));
+      if (!removeFlavorId) {
+        return;
+      }
+
+      state.selectedFlavorIds = state.selectedFlavorIds.filter((id) => id !== removeFlavorId);
+      renderSelectedFlavors();
+    });
+
+    body.addEventListener('change', (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLInputElement)) {
+        return;
+      }
+
+      if (target.name.endsWith('[active]') || target.name.endsWith('[remove]')) {
+        syncFlavorSectionVisibility();
+      }
+    });
+
+    renderSelectedFlavors();
+    syncFlavorSectionVisibility();
   })();
 </script>

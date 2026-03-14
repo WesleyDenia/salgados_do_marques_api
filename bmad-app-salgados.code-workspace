@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": "../bmad-app-salgados"
+		},
+		{
+			"path": "."
+		},
+		{
+			"path": "../salgados-app"
+		}
+	],
+	"settings": {}
+}

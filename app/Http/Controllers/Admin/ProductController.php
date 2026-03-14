@@ -4,10 +4,12 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Category;
+use App\Models\Flavor;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Services\ImageUploadService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
@@ -32,6 +34,7 @@ class ProductController extends Controller
                 'active' => true,
             ]),
             'categories' => $this->categoriesOptions(),
+            'flavors' => $this->flavorsOptions(),
         ]);
     }
 
@@ -39,7 +42,8 @@ class ProductController extends Controller
     {
         $data = $this->validateData($request);
         $variants = $data['variants'] ?? [];
-        unset($data['image'], $data['variants']);
+        $flavorIds = $data['flavor_ids'] ?? [];
+        unset($data['image'], $data['variants'], $data['flavor_ids']);
 
         $data['active'] = $request->boolean('active');
         $data['price'] = (float) $data['price'];
@@ -50,6 +54,7 @@ class ProductController extends Controller
 
         $product = Product::create($data);
         $this->syncVariants($product, $variants);
+        $this->syncFlavors($product, $flavorIds, true);
 
         return redirect()
             ->route('admin.products.index')
@@ -58,11 +63,12 @@ class ProductController extends Controller
 
     public function edit(Product $product)
     {
-        $product->load('variants');
+        $product->load(['variants', 'flavors']);
 
         return view('admin.products.edit', [
             'product' => $product,
             'categories' => $this->categoriesOptions(),
+            'flavors' => $this->flavorsOptions(),
         ]);
     }
 
@@ -70,7 +76,8 @@ class ProductController extends Controller
     {
         $data = $this->validateData($request, $product->id);
         $variants = $data['variants'] ?? [];
-        unset($data['image'], $data['variants']);
+        $flavorIds = $data['flavor_ids'] ?? [];
+        unset($data['image'], $data['variants'], $data['flavor_ids']);
 
         $data['active'] = $request->boolean('active');
         $data['price'] = (float) $data['price'];
@@ -87,6 +94,7 @@ class ProductController extends Controller
 
         $product->update($data);
         $this->syncVariants($product, $variants);
+        $this->syncFlavors($product, $flavorIds, $this->hasActiveVariants($variants));
 
         return redirect()
             ->route('admin.products.index')
@@ -125,9 +133,18 @@ class ProductController extends Controller
             'variants.*.active' => ['nullable', 'boolean'],
             'variants.*.display_order' => ['nullable', 'integer', 'min:0'],
             'variants.*.remove' => ['nullable', 'boolean'],
+            'flavor_ids' => ['nullable', 'array'],
+            'flavor_ids.*' => ['integer', 'distinct', 'exists:flavors,id'],
         ]);
 
         $data['variants'] = $this->normalizeVariants($data['variants'] ?? []);
+        $data['flavor_ids'] = collect($data['flavor_ids'] ?? [])
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+
+        $this->validateVariantFlavorRules($data['variants'], $data['flavor_ids']);
 
         return $data;
     }
@@ -168,11 +185,62 @@ class ProductController extends Controller
         return $normalized;
     }
 
+    protected function validateVariantFlavorRules(array $variants, array $flavorIds): void
+    {
+        $activeVariants = collect($variants)
+            ->reject(fn (array $variant) => $variant['remove'])
+            ->filter(fn (array $variant) => $variant['active'])
+            ->values();
+
+        foreach ($variants as $index => $variant) {
+            if ($variant['remove']) {
+                continue;
+            }
+
+            if ((int) $variant['max_flavors'] < 1) {
+                throw ValidationException::withMessages([
+                    "variants.$index.max_flavors" => 'Cada variação deve permitir pelo menos 1 sabor.',
+                ]);
+            }
+        }
+
+        if ($activeVariants->isEmpty()) {
+            return;
+        }
+
+        if (count($flavorIds) < 1) {
+            throw ValidationException::withMessages([
+                'flavor_ids' => 'Selecione pelo menos 1 sabor permitido para artigos com variações ativas.',
+            ]);
+        }
+
+        foreach ($variants as $index => $variant) {
+            if ($variant['remove'] || !$variant['active']) {
+                continue;
+            }
+
+            if ((int) $variant['max_flavors'] > count($flavorIds)) {
+                throw ValidationException::withMessages([
+                    "variants.$index.max_flavors" => 'O limite de sabores da variação não pode exceder os sabores permitidos do artigo.',
+                ]);
+            }
+        }
+    }
+
     protected function categoriesOptions()
     {
         return Category::orderBy('display_order')
             ->orderBy('name')
             ->pluck('name', 'id');
+    }
+
+    protected function flavorsOptions(): Collection
+    {
+        return Flavor::query()
+            ->where('active', true)
+            ->orderBy('display_order')
+            ->orderBy('name')
+            ->get(['id', 'name']);
     }
 
     protected function deleteImage(?string $url): void
@@ -220,5 +288,20 @@ class ProductController extends Controller
             }
         }
     }
-}
 
+    protected function syncFlavors(Product $product, array $flavorIds, bool $shouldSync): void
+    {
+        if (!$shouldSync) {
+            return;
+        }
+
+        $product->flavors()->sync($flavorIds);
+    }
+
+    protected function hasActiveVariants(array $variants): bool
+    {
+        return collect($variants)
+            ->reject(fn (array $variant) => $variant['remove'])
+            ->contains(fn (array $variant) => $variant['active']);
+    }
+}

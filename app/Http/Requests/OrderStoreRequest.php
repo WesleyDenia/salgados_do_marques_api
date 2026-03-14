@@ -36,4 +36,13 @@ class OrderStoreRequest extends FormRequest
             'items.*.flavors.*' => ['integer', 'exists:flavors,id'],
         ];
     }
+
+    public function messages(): array
+    {
+        return [
+            'items.*.flavors.array' => 'Os sabores do item devem ser enviados como uma lista de IDs.',
+            'items.*.flavors.*.integer' => 'Cada sabor informado deve ser um ID numérico válido.',
+            'items.*.flavors.*.exists' => 'Um dos sabores informados não existe.',
+        ];
+    }
 }

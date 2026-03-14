@@ -20,6 +20,7 @@ class ProductResource extends JsonResource
                 'name'  => $this->category->name ?? null,
                 'order' => $this->category->display_order ?? null,
             ],
+            'allowed_flavors' => FlavorResource::collection($this->whenLoaded('allowedFlavors')),
             'variants' => ProductVariantResource::collection($this->whenLoaded('variants')),
         ];
     }

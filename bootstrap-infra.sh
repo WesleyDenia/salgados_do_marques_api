@@ -8,11 +8,13 @@ NETWORK_NAME="${NETWORK_NAME:-salgados_backend_net}"
 DB_DATA_DIR="${DB_DATA_DIR:-/srv/salgados/mariadb_data}"
 DB_COMPOSE_FILE="${DB_COMPOSE_FILE:-docker-compose.db.yml}"
 APP_COMPOSE_FILE="${APP_COMPOSE_FILE:-docker-compose.app.yml}"
+ADMIN_COMPOSE_FILE="${ADMIN_COMPOSE_FILE:-docker-compose.admin.yml}"
 DB_SERVICE_NAME="${DB_SERVICE_NAME:-mariadb}"
 DB_CONTAINER_NAME="${DB_CONTAINER_NAME:-salgados-mariadb}"
 APP_SERVICE_NAME="${APP_SERVICE_NAME:-app}"
 NGINX_SERVICE_NAME="${NGINX_SERVICE_NAME:-nginx}"
 APP_CONTAINER_NAME="${APP_CONTAINER_NAME:-salgados-app}"
+ADMIN_SERVICE_NAME="${ADMIN_SERVICE_NAME:-phpmyadmin}"
 DB_ROOT_PASSWORD="${DB_ROOT_PASSWORD:-rootpass}"
 DB_APP_USER="${DB_APP_USER:-laravel}"
 DB_APP_NAME="${DB_APP_NAME:-salgados}"
@@ -23,6 +25,8 @@ START_DB=true
 START_APP=false
 RUN_MIGRATIONS=false
 RECONCILE_DB_USER=false
+START_PHPMYADMIN=false
+STOP_PHPMYADMIN=false
 
 usage() {
   cat <<'EOF'
@@ -32,6 +36,8 @@ Uso:
 Opções:
   --with-app          Sobe app + nginx após subir o DB
   --with-migrate      Sobe app + nginx e executa php artisan migrate
+  --with-phpmyadmin   Sobe phpMyAdmin (admin web) em 127.0.0.1:8081
+  --stop-phpmyadmin   Para e remove phpMyAdmin
   --reconcile-db-user Alinha usuário/senha do app no MariaDB usando Docker secret
   --no-db-up          Não sobe o DB (apenas prepara rede e diretório)
   --helper            Lista comandos de uso rápido
@@ -43,6 +49,7 @@ Variáveis de ambiente para reutilização em outros projetos:
   DB_DATA_DIR         (default: /srv/salgados/mariadb_data)
   DB_COMPOSE_FILE     (default: docker-compose.db.yml)
   APP_COMPOSE_FILE    (default: docker-compose.app.yml)
+  ADMIN_COMPOSE_FILE  (default: docker-compose.admin.yml)
   DB_SERVICE_NAME     (default: mariadb)
   DB_CONTAINER_NAME   (default: salgados-mariadb)
   DB_ROOT_PASSWORD    (default: rootpass)
@@ -51,6 +58,7 @@ Variáveis de ambiente para reutilização em outros projetos:
   APP_SERVICE_NAME    (default: app)
   NGINX_SERVICE_NAME  (default: nginx)
   APP_CONTAINER_NAME  (default: salgados-app)
+  ADMIN_SERVICE_NAME  (default: phpmyadmin)
   DB_UID              (default: 999)
   DB_GID              (default: 999)
 EOF
@@ -73,6 +81,16 @@ Comandos disponíveis:
 
   ./bootstrap-infra.sh --with-app --reconcile-db-user
     Sobe tudo e faz reconciliação de credencial do usuário de app
+
+  ./bootstrap-infra.sh --with-phpmyadmin
+    Sobe phpMyAdmin para administração do banco
+
+  ./bootstrap-infra.sh --stop-phpmyadmin
+    Para/remove phpMyAdmin
+
+  Acesso remoto ao phpMyAdmin (via SSH tunnel):
+    ssh -L 8081:127.0.0.1:8081 usuario@servidor
+    abrir: http://127.0.0.1:8081
 EOF
 }
 
@@ -84,6 +102,12 @@ while (($# > 0)); do
     --with-migrate)
       START_APP=true
       RUN_MIGRATIONS=true
+      ;;
+    --with-phpmyadmin)
+      START_PHPMYADMIN=true
+      ;;
+    --stop-phpmyadmin)
+      STOP_PHPMYADMIN=true
       ;;
     --reconcile-db-user)
       RECONCILE_DB_USER=true
@@ -145,6 +169,10 @@ compose_app() {
   "${COMPOSE_CMD[@]}" -f "$APP_COMPOSE_FILE" "$@"
 }
 
+compose_admin() {
+  "${COMPOSE_CMD[@]}" -f "$ADMIN_COMPOSE_FILE" "$@"
+}
+
 ensure_network() {
   if ! docker network inspect "$NETWORK_NAME" >/dev/null 2>&1; then
     echo "Criando rede Docker: $NETWORK_NAME"
@@ -175,6 +203,18 @@ start_app_stack() {
   compose_app up -d "$APP_SERVICE_NAME" "$NGINX_SERVICE_NAME"
 }
 
+start_phpmyadmin() {
+  echo "Subindo ${ADMIN_SERVICE_NAME} via ${ADMIN_COMPOSE_FILE}..."
+  compose_admin up -d "$ADMIN_SERVICE_NAME"
+  echo "phpMyAdmin disponível em: http://127.0.0.1:8081"
+}
+
+stop_phpmyadmin() {
+  echo "Parando ${ADMIN_SERVICE_NAME} via ${ADMIN_COMPOSE_FILE}..."
+  compose_admin stop "$ADMIN_SERVICE_NAME" || true
+  compose_admin rm -f "$ADMIN_SERVICE_NAME" || true
+}
+
 run_migrate() {
   echo "Executando migrations no container ${APP_CONTAINER_NAME}..."
   docker exec "$APP_CONTAINER_NAME" sh -lc '/usr/local/bin/load-secrets.sh php artisan migrate --force --no-interaction'
@@ -203,6 +243,12 @@ show_status() {
     echo "Status app/nginx:"
     compose_app ps "$APP_SERVICE_NAME" "$NGINX_SERVICE_NAME" || true
   fi
+
+  if [ "$START_PHPMYADMIN" = true ] || [ "$STOP_PHPMYADMIN" = true ]; then
+    echo ""
+    echo "Status admin:"
+    compose_admin ps "$ADMIN_SERVICE_NAME" || true
+  fi
 }
 
 detect_compose_command
@@ -225,6 +271,14 @@ fi
 
 if [ "$RECONCILE_DB_USER" = true ]; then
   reconcile_db_user
+fi
+
+if [ "$START_PHPMYADMIN" = true ]; then
+  start_phpmyadmin
+fi
+
+if [ "$STOP_PHPMYADMIN" = true ]; then
+  stop_phpmyadmin
 fi
 
 show_status

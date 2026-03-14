@@ -28,7 +28,7 @@ class ProductController extends Controller
 
     public function show($id)
     {
-        $product = $this->repo->find($id, ['category', 'variants']);
+        $product = $this->repo->find($id, ['category', 'variants', 'allowedFlavors']);
         if (!$product->active) {
             abort(404);
         }

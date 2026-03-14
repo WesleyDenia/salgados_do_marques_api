@@ -33,7 +33,7 @@ class Product extends Model
 
     public function flavors(): BelongsToMany
     {
-        return $this->belongsToMany(Flavor::class)
+        return $this->belongsToMany(Flavor::class, 'product_flavor')
             ->withTimestamps();
     }
 

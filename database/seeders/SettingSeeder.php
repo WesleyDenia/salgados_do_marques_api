@@ -57,6 +57,12 @@ class SettingSeeder extends Seeder
                 'type' => 'string',
                 'editable' => true,
             ],
+            [
+                'key' => 'ORDER_SCHEDULING_WINDOW_DAYS',
+                'value' => '14',
+                'type' => 'integer',
+                'editable' => true,
+            ],
         ];
 
         foreach ($defaults as $setting) {

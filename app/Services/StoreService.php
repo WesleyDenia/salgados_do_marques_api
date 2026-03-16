@@ -216,6 +216,45 @@ class StoreService
         }
     }
 
+    public function availablePickupDates(Store $store, array $settings, ?Carbon $now = null): array
+    {
+        $timezone = $settings['timezone'] ?? 'Europe/Lisbon';
+        $windowDays = max(1, (int) ($settings['scheduling_window_days'] ?? 1));
+        $startDate = ($now ?? Carbon::now($timezone))->copy()->timezone($timezone)->startOfDay();
+        $dates = [];
+
+        for ($offset = 0; $offset < $windowDays; $offset += 1) {
+            $date = $startDate->copy()->addDays($offset);
+
+            if ($this->availablePickupHours($store, $date, $settings, $now) === []) {
+                continue;
+            }
+
+            $dates[] = $date->format('Y-m-d');
+        }
+
+        return $dates;
+    }
+
+    public function availablePickupHours(Store $store, Carbon $date, array $settings, ?Carbon $now = null): array
+    {
+        return collect($this->availablePickupMinuteOptions($store, $date, $settings, $now))
+            ->map(fn (string $slot): string => substr($slot, 0, 2) . ':00')
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    public function availablePickupMinutes(Store $store, Carbon $date, string $hour, array $settings, ?Carbon $now = null): array
+    {
+        $hourPrefix = substr($this->normalizeTime($hour) ?? $hour, 0, 2) . ':';
+
+        return collect($this->availablePickupMinuteOptions($store, $date, $settings, $now))
+            ->filter(fn (string $slot): bool => str_starts_with($slot, $hourPrefix))
+            ->values()
+            ->all();
+    }
+
     protected function hasValidWeeklySchedule(Store $store): bool
     {
         $schedule = $this->normalizeWeeklySchedule($store->pickup_weekly_schedule);
@@ -254,6 +293,56 @@ class StoreService
         [$hour, $minute] = array_pad(explode(':', $value), 2, '00');
 
         return sprintf('%02d:%02d', (int) $hour, (int) $minute);
+    }
+
+    protected function availablePickupMinuteOptions(Store $store, Carbon $date, array $settings, ?Carbon $now = null): array
+    {
+        if (!$this->isEligibleForPickup($store)) {
+            return [];
+        }
+
+        $timezone = $settings['timezone'] ?? 'Europe/Lisbon';
+        $date = $date->copy()->timezone($timezone);
+        $window = $this->pickupWindowForDate($store, $date);
+
+        if ($window === null) {
+            return [];
+        }
+
+        $startTime = $this->normalizeTime($window['start_time'] ?? null);
+        $endTime = $this->normalizeTime($window['end_time'] ?? null);
+
+        if (!$this->isValidWindow($startTime, $endTime)) {
+            return [];
+        }
+
+        [$startHour, $startMinute] = array_map('intval', explode(':', $startTime));
+        [$endHour, $endMinute] = array_map('intval', explode(':', $endTime));
+        $startTotal = $startHour * 60 + $startMinute;
+        $endTotal = $endHour * 60 + $endMinute;
+        $minimumTotal = $startTotal;
+        $now = ($now ?? Carbon::now($timezone))->copy()->timezone($timezone);
+
+        if ($date->isSameDay($now)) {
+            $minimumAllowed = $now->copy()->addMinutes(max(0, (int) ($settings['minimum_minutes'] ?? 0)));
+            $minimumTotal = max(
+                $minimumTotal,
+                ($minimumAllowed->hour * 60) + $minimumAllowed->minute
+            );
+        }
+
+        $firstSlot = (int) (ceil($minimumTotal / 5) * 5);
+
+        if ($firstSlot > $endTotal) {
+            return [];
+        }
+
+        $slots = [];
+        for ($total = $firstSlot; $total <= $endTotal; $total += 5) {
+            $slots[] = sprintf('%02d:%02d', intdiv($total, 60), $total % 60);
+        }
+
+        return $slots;
     }
 
     protected function labelForDay(string $day): string

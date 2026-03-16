@@ -38,6 +38,9 @@ Route::prefix('v1')->group(function () {
 
     Route::middleware('auth:sanctum')->group(function () {
         Route::get('orders/settings', [OrderController::class, 'settings']);
+        Route::get('orders/availability/dates', [OrderController::class, 'availabilityDates']);
+        Route::get('orders/availability/hours', [OrderController::class, 'availabilityHours']);
+        Route::get('orders/availability/minutes', [OrderController::class, 'availabilityMinutes']);
         Route::post('logout', [AuthController::class, 'logout']);
         Route::get('me', [AuthController::class, 'me']);
         Route::post('auth/refresh', [AuthController::class, 'refresh']);

@@ -3,6 +3,9 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\OrderAvailabilityDatesRequest;
+use App\Http\Requests\OrderAvailabilityHoursRequest;
+use App\Http\Requests\OrderAvailabilityMinutesRequest;
 use App\Http\Requests\OrderStoreRequest;
 use App\Http\Resources\OrderResource;
 use App\Models\Order;
@@ -17,6 +20,27 @@ class OrderController extends Controller
     {
         return response()->json([
             'data' => $this->orders->orderSettings(),
+        ]);
+    }
+
+    public function availabilityDates(OrderAvailabilityDatesRequest $request)
+    {
+        return response()->json([
+            'data' => $this->orders->availabilityDates($request->validated()),
+        ]);
+    }
+
+    public function availabilityHours(OrderAvailabilityHoursRequest $request)
+    {
+        return response()->json([
+            'data' => $this->orders->availabilityHours($request->validated()),
+        ]);
+    }
+
+    public function availabilityMinutes(OrderAvailabilityMinutesRequest $request)
+    {
+        return response()->json([
+            'data' => $this->orders->availabilityMinutes($request->validated()),
         ]);
     }
 

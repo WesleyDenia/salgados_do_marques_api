@@ -124,6 +124,47 @@ class OrderService
         );
     }
 
+    public function availabilityDates(array $data): array
+    {
+        $settings = $this->orderSettings();
+        $store = $this->findAvailableStore((int) $data['store_id']);
+
+        return [
+            'store_id' => $store->id,
+            'timezone' => $settings['timezone'],
+            'dates' => $this->stores->availablePickupDates($store, $settings),
+        ];
+    }
+
+    public function availabilityHours(array $data): array
+    {
+        $settings = $this->orderSettings();
+        $store = $this->findAvailableStore((int) $data['store_id']);
+        $date = Carbon::createFromFormat('Y-m-d', $data['date'], $settings['timezone']);
+
+        return [
+            'store_id' => $store->id,
+            'date' => $date->format('Y-m-d'),
+            'timezone' => $settings['timezone'],
+            'hours' => $this->stores->availablePickupHours($store, $date, $settings),
+        ];
+    }
+
+    public function availabilityMinutes(array $data): array
+    {
+        $settings = $this->orderSettings();
+        $store = $this->findAvailableStore((int) $data['store_id']);
+        $date = Carbon::createFromFormat('Y-m-d', $data['date'], $settings['timezone']);
+
+        return [
+            'store_id' => $store->id,
+            'date' => $date->format('Y-m-d'),
+            'hour' => $data['hour'],
+            'timezone' => $settings['timezone'],
+            'minute_options' => $this->stores->availablePickupMinutes($store, $date, $data['hour'], $settings),
+        ];
+    }
+
     public function cancelForUser(Order $order): Order
     {
         if (!in_array($order->status, ['placed', 'accepted'], true)) {
@@ -224,6 +265,19 @@ class OrderService
     protected function parseScheduledAt(string $value, string $timezone): Carbon
     {
         return Carbon::parse($value, $timezone);
+    }
+
+    protected function findAvailableStore(int $storeId)
+    {
+        $store = $this->stores->findById($storeId);
+
+        if (!$store) {
+            throw ValidationException::withMessages([
+                'store_id' => 'A loja selecionada não existe.',
+            ]);
+        }
+
+        return $store;
     }
 
     /**

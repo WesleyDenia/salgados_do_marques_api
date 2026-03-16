@@ -88,14 +88,11 @@
               @endif
             </td>
             <td>
-              <div style="display:grid; gap:6px;">
-                <span style="font-size:0.85rem; color:#374151;">{{ $storeService->weeklyScheduleSummary($store) }}</span>
-                @if ($storeService->hasFutureExceptions($store, now('Europe/Lisbon')))
-                  <span class="badge badge-success">Exceções futuras</span>
-                @else
-                  <span class="badge badge-muted">Sem exceções futuras</span>
-                @endif
-              </div>
+              @if ($storeService->isEligibleForPickup($store))
+                <span class="badge badge-success">Sim</span>
+              @else
+                <span class="badge badge-muted">Não</span>
+              @endif
             </td>
             <td>
               @if ($store->default_store)

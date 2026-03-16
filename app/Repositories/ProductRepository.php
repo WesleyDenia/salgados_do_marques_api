@@ -3,6 +3,8 @@
 namespace App\Repositories;
 
 use App\Models\Product;
+use App\Models\ProductVariant;
+use Illuminate\Database\Eloquent\Collection;
 
 class ProductRepository extends BaseRepository
 {
@@ -19,5 +21,32 @@ class ProductRepository extends BaseRepository
                 });
             }
         });
+    }
+
+    public function findActiveForOrder(array $productIds): Collection
+    {
+        if ($productIds === []) {
+            return new Collection();
+        }
+
+        return Product::query()
+            ->with('allowedFlavors')
+            ->whereIn('id', $productIds)
+            ->where('active', true)
+            ->get()
+            ->keyBy('id');
+    }
+
+    public function findActiveVariantsForOrder(array $variantIds): Collection
+    {
+        if ($variantIds === []) {
+            return new Collection();
+        }
+
+        return ProductVariant::query()
+            ->whereIn('id', $variantIds)
+            ->where('active', true)
+            ->get()
+            ->keyBy('id');
     }
 }

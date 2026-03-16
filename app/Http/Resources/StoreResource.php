@@ -23,6 +23,11 @@ class StoreResource extends JsonResource
             'type' => $this->type,
             'accepts_orders' => $this->accepts_orders,
             'default_store' => $this->default_store,
+            'pickup_weekly_schedule' => $this->pickup_weekly_schedule ?? [],
+            'pickup_date_exceptions' => collect($this->pickup_date_exceptions ?? [])
+                ->sortBy('date')
+                ->values()
+                ->all(),
             'distance_km' => $this->when(isset($this->distance_km), round((float) $this->distance_km, 1)),
         ];
     }

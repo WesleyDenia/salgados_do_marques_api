@@ -51,18 +51,19 @@
 
     <table>
       <thead>
-        <tr>
-          <th>#</th>
-          <th>Nome</th>
-          <th>Cidade</th>
-          <th>Tipo</th>
-          <th>Telefone</th>
-          <th>Status</th>
-          <th>Pedidos</th>
-          <th>Padrão</th>
-          <th>Atualizado em</th>
-          <th style="width:170px;">Ações</th>
-        </tr>
+          <tr>
+            <th>#</th>
+            <th>Nome</th>
+            <th>Cidade</th>
+            <th>Tipo</th>
+            <th>Telefone</th>
+            <th>Status</th>
+            <th>Pedidos</th>
+            <th>Agenda</th>
+            <th>Padrão</th>
+            <th>Atualizado em</th>
+            <th style="width:170px;">Ações</th>
+          </tr>
       </thead>
       <tbody>
         @forelse ($stores as $store)
@@ -85,6 +86,16 @@
               @else
                 <span class="badge badge-muted">Não</span>
               @endif
+            </td>
+            <td>
+              <div style="display:grid; gap:6px;">
+                <span style="font-size:0.85rem; color:#374151;">{{ $storeService->weeklyScheduleSummary($store) }}</span>
+                @if ($storeService->hasFutureExceptions($store, now('Europe/Lisbon')))
+                  <span class="badge badge-success">Exceções futuras</span>
+                @else
+                  <span class="badge badge-muted">Sem exceções futuras</span>
+                @endif
+              </div>
             </td>
             <td>
               @if ($store->default_store)
@@ -110,7 +121,7 @@
           </tr>
         @empty
           <tr>
-            <td colspan="10" style="text-align:center; padding:32px 0; color:#6b7280;">
+            <td colspan="11" style="text-align:center; padding:32px 0; color:#6b7280;">
               Nenhuma loja encontrada.
             </td>
           </tr>

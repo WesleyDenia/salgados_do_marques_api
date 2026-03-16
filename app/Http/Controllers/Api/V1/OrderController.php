@@ -9,6 +9,7 @@ use App\Models\Order;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Services\SettingService;
+use App\Services\StoreService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -16,7 +17,10 @@ use Illuminate\Validation\ValidationException;
 
 class OrderController extends Controller
 {
-    public function __construct(protected SettingService $settings) {}
+    public function __construct(
+        protected SettingService $settings,
+        protected StoreService $stores,
+    ) {}
 
     public function settings()
     {
@@ -50,8 +54,15 @@ class OrderController extends Controller
         $data = $request->validated();
         $orderSettings = $this->resolveOrderSettings();
         $scheduled = $this->parseScheduledAt($data['scheduled_at'], $orderSettings['timezone']);
+        $store = $this->stores->findById((int) $data['store_id']);
 
-        $this->validateScheduledAt($scheduled, $orderSettings);
+        if (!$store) {
+            throw ValidationException::withMessages([
+                'store_id' => 'A loja selecionada não existe.',
+            ]);
+        }
+
+        $this->stores->validateScheduledPickup($store, $scheduled, $orderSettings);
 
         $items = collect($data['items']);
         $productIds = $items->pluck('product_id')->unique()->values();
@@ -240,32 +251,4 @@ class OrderController extends Controller
         return Carbon::parse($value, $timezone);
     }
 
-    protected function validateScheduledAt(Carbon $scheduled, array $settings): void
-    {
-        $timezone = $settings['timezone'];
-        $now = Carbon::now($timezone);
-        $minimumMinutes = max(0, (int) $settings['minimum_minutes']);
-        $minimumAllowed = $now->copy()->addMinutes($minimumMinutes);
-
-        if ($scheduled->lessThan($minimumAllowed)) {
-            throw ValidationException::withMessages([
-                'scheduled_at' => 'O horário escolhido precisa respeitar o tempo mínimo de preparação.',
-            ]);
-        }
-
-        $startTime = $settings['start_time'];
-        $endTime = $settings['end_time'];
-
-        if ($startTime && $endTime) {
-            $date = $scheduled->format('Y-m-d');
-            $start = Carbon::createFromFormat('Y-m-d H:i', $date . ' ' . $startTime, $timezone);
-            $end = Carbon::createFromFormat('Y-m-d H:i', $date . ' ' . $endTime, $timezone);
-
-            if ($scheduled->lessThan($start) || $scheduled->greaterThan($end)) {
-                throw ValidationException::withMessages([
-                    'scheduled_at' => 'O horário precisa estar dentro do período de atendimento.',
-                ]);
-            }
-        }
-    }
 }

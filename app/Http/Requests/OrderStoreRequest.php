@@ -43,6 +43,8 @@ class OrderStoreRequest extends FormRequest
             'items.*.flavors.array' => 'Os sabores do item devem ser enviados como uma lista de IDs.',
             'items.*.flavors.*.integer' => 'Cada sabor informado deve ser um ID numérico válido.',
             'items.*.flavors.*.exists' => 'Um dos sabores informados não existe.',
+            'scheduled_at.required' => 'Informe a data e hora de retirada.',
+            'scheduled_at.date' => 'A data e hora de retirada devem ser válidas.',
         ];
     }
 }

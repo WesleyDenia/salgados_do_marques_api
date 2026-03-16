@@ -17,6 +17,8 @@ class Store extends Model
         'is_active',
         'accepts_orders',
         'default_store',
+        'pickup_weekly_schedule',
+        'pickup_date_exceptions',
     ];
 
     protected $casts = [
@@ -25,5 +27,7 @@ class Store extends Model
         'is_active' => 'boolean',
         'accepts_orders' => 'boolean',
         'default_store' => 'boolean',
+        'pickup_weekly_schedule' => 'array',
+        'pickup_date_exceptions' => 'array',
     ];
 }

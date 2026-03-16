@@ -5,38 +5,21 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreRequest;
 use App\Models\Store;
+use App\Services\StoreService;
 use Illuminate\Http\Request;
 
 class StoreController extends Controller
 {
+    public function __construct(protected StoreService $stores) {}
+
     public function index(Request $request)
     {
-        $query = Store::query();
-
-        if ($request->filled('city')) {
-            $query->where('city', 'like', '%' . $request->input('city') . '%');
-        }
-
-        if ($request->filled('type')) {
-            $query->where('type', $request->input('type'));
-        }
-
-        if ($request->filled('is_active')) {
-            $isActive = $request->boolean('is_active', null);
-            if ($isActive !== null) {
-                $query->where('is_active', $isActive);
-            }
-        }
-
-        $stores = $query
-            ->orderBy('is_active', 'desc')
-            ->orderBy('name')
-            ->paginate(15)
-            ->appends($request->query());
+        $stores = $this->stores->paginateForAdmin($request->only(['city', 'type', 'is_active']));
 
         return view('admin.stores.index', [
             'stores' => $stores,
             'filters' => $request->only(['city', 'type', 'is_active']),
+            'storeService' => $this->stores,
         ]);
     }
 
@@ -47,14 +30,16 @@ class StoreController extends Controller
             'type' => 'principal',
         ]);
 
-        return view('admin.stores.create', compact('store'));
+        return view('admin.stores.create', [
+            'store' => $store,
+            'scheduleDays' => $this->stores->defaultWeeklySchedule(),
+            'dateExceptions' => [],
+        ]);
     }
 
     public function store(StoreRequest $request)
     {
-        $data = $this->normalizeData($request);
-
-        Store::create($data);
+        $this->stores->create($request->validated());
 
         return redirect()
             ->route('admin.stores.index')
@@ -63,14 +48,16 @@ class StoreController extends Controller
 
     public function edit(Store $store)
     {
-        return view('admin.stores.edit', compact('store'));
+        return view('admin.stores.edit', [
+            'store' => $store,
+            'scheduleDays' => $this->stores->normalizeWeeklySchedule($store->pickup_weekly_schedule),
+            'dateExceptions' => $this->stores->normalizeDateExceptions($store->pickup_date_exceptions),
+        ]);
     }
 
     public function update(StoreRequest $request, Store $store)
     {
-        $data = $this->normalizeData($request);
-
-        $store->update($data);
+        $this->stores->update($store, $request->validated());
 
         return redirect()
             ->route('admin.stores.index')
@@ -84,17 +71,5 @@ class StoreController extends Controller
         return redirect()
             ->route('admin.stores.index')
             ->with('status', 'Loja removida com sucesso.');
-    }
-
-    protected function normalizeData(StoreRequest $request): array
-    {
-        $data = $request->validated();
-        $data['is_active'] = $request->boolean('is_active');
-        $data['accepts_orders'] = $request->boolean('accepts_orders');
-        $data['default_store'] = $request->boolean('default_store');
-        $data['latitude'] = (float) $data['latitude'];
-        $data['longitude'] = (float) $data['longitude'];
-
-        return $data;
     }
 }

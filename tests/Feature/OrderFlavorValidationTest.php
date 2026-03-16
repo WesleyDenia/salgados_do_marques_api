@@ -127,6 +127,16 @@ class OrderFlavorValidationTest extends TestCase
             'is_active' => true,
             'accepts_orders' => true,
             'default_store' => true,
+            'pickup_weekly_schedule' => [
+                'monday' => ['is_open' => true, 'start_time' => '09:00', 'end_time' => '18:00'],
+                'tuesday' => ['is_open' => true, 'start_time' => '09:00', 'end_time' => '18:00'],
+                'wednesday' => ['is_open' => true, 'start_time' => '09:00', 'end_time' => '18:00'],
+                'thursday' => ['is_open' => true, 'start_time' => '09:00', 'end_time' => '18:00'],
+                'friday' => ['is_open' => true, 'start_time' => '09:00', 'end_time' => '18:00'],
+                'saturday' => ['is_open' => true, 'start_time' => '09:00', 'end_time' => '18:00'],
+                'sunday' => ['is_open' => true, 'start_time' => '09:00', 'end_time' => '18:00'],
+            ],
+            'pickup_date_exceptions' => [],
         ]);
         $product = Product::create([
             'name' => 'Pack Festa',

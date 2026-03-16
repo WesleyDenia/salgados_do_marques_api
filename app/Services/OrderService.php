@@ -66,7 +66,7 @@ class OrderService
             ),
             'scheduling_window_days' => max(1, (int) $this->settings->get(
                 'ORDER_SCHEDULING_WINDOW_DAYS',
-                30
+                40
             )),
         ];
     }

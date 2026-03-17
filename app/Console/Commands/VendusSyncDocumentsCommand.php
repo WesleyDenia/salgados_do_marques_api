@@ -4,7 +4,6 @@ namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 use App\Services\Erp\Vendus\VendusLoyaltyDocumentsService;
-use Illuminate\Support\Facades\Log;
 
 class VendusSyncDocumentsCommand extends Command
 {

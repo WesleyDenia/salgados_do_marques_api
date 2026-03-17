@@ -34,15 +34,8 @@ class SendResetLinkJob implements ShouldQueue
         try {
             Mail::to($this->email)->send(new ResetPasswordMail($resetUrl));
 
-            Log::info('[SendResetLinkJob] Link enviado com sucesso', [
-                'email' => $this->email,
-                'reset_url' => $resetUrl,
-            ]);
         } catch (\Throwable $exception) {
-            Log::error('[SendResetLinkJob] Erro ao enviar link de redefinição', [
-                'email' => $this->email,
-                'error' => $exception->getMessage(),
-            ]);
+       
 
             throw $exception;
         }

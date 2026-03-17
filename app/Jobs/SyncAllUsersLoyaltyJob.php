@@ -25,8 +25,7 @@ class SyncAllUsersLoyaltyJob implements ShouldQueue
         // Filtra apenas usuários com vendus_client_id definido
         $users = User::whereNotNull('external_id')->get();
 
-        if ($users->isEmpty()) {
-            Log::warning('[GlobalLoyaltySync] Nenhum usuário com external_id encontrado.');
+        if ($users->isEmpty()) {            
             return;
         }        
 
@@ -41,13 +40,12 @@ class SyncAllUsersLoyaltyJob implements ShouldQueue
                     // Silencia "sem dados" para evitar spam
                     if (stripos($message, 'sem dados') !== false) {
                         continue;
-                    }
-                    Log::warning("[GlobalLoyaltySync] Erro ao sincronizar {$user->name}: {$message}");
+                    }                    
                     continue;
                 }
 
             } catch (\Throwable $e) {
-                Log::error("[GlobalLoyaltySync] Exceção para {$user->name}: {$e->getMessage()}");
+                //
             }
         }        
     }

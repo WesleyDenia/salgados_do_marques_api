@@ -32,16 +32,8 @@ class SendWhatsAppOtpJob implements ShouldQueue
         $maskedToken = substr($this->token, 0, 2) . str_repeat('*', max(strlen($this->token) - 2, 0));
 
         if ($sent) {
-            Log::info('[SendWhatsAppOtpJob] OTP enviado com sucesso', [
-                'phone' => $this->phone,
-                'token' => $maskedToken,
-            ]);
-
+           
             return;
         }
-
-        Log::warning('[SendWhatsAppOtpJob] Falha ao enviar OTP', [
-            'phone' => $this->phone,
-        ]);
     }
 }

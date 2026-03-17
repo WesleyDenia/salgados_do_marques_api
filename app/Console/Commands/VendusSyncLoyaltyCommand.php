@@ -13,7 +13,6 @@ class VendusSyncLoyaltyCommand extends Command
     public function handle()
     {
         $days = (int) $this->argument('days');
-        dispatch((new SyncAllUsersLoyaltyJob($days))->onQueue('sync-loyalty'));
-        $this->info("✅ Job SyncAllUsersLoyaltyJob({$days}) enviado para a fila loyalty.");
+        dispatch((new SyncAllUsersLoyaltyJob($days))->onQueue('sync-loyalty'));        
     }
 }

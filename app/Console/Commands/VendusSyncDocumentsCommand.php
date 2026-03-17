@@ -28,15 +28,10 @@ class VendusSyncDocumentsCommand extends Command
      */
     public function handle(): int
     {
-        $this->info('🔄 Iniciando sincronização de documentos do Vendus...');
-        Log::info('[VendusSyncDocuments] Execução manual iniciada');
-
         try {
             $result = $this->service->sync();
 
             if ($result['status'] === 'error') {
-                $this->error('❌ ' . $result['message']);
-                Log::error('[VendusSyncDocuments] Falha: ' . $result['message']);
                 return self::FAILURE;
             }
 
@@ -44,23 +39,17 @@ class VendusSyncDocumentsCommand extends Command
             $count = count($processed);
 
             if ($count === 0) {
-                $this->info('⚠️ Nenhum novo documento processado.');
+                
             } else {
-                $this->info("✅ {$count} documento(s) processado(s):");
+                
                 foreach ($processed as $item) {
                     $this->line("   • #{$item['invoice_id']} - {$item['client']} (+{$item['points']} pontos)");
                 }
-            }
-
-            $this->info('✨ Sincronização concluída com sucesso!');
-            Log::info("[VendusSyncDocuments] Concluído: {$count} documentos processados");
+            }            
+            
             return self::SUCCESS;
 
-        } catch (\Throwable $e) {
-            $this->error('💥 Erro durante a sincronização: ' . $e->getMessage());
-            Log::error('[VendusSyncDocuments] Exception: ' . $e->getMessage(), [
-                'trace' => $e->getTraceAsString(),
-            ]);
+        } catch (\Throwable $e) {            
             return self::FAILURE;
         }
     }

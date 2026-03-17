@@ -13,15 +13,11 @@ class SyncCustomersCommand extends Command
 
     public function handle(CustomerSyncInterface $erp): int
     {
-        if ($this->option('now')) {
-            $this->info('🔄 Executando sincronização imediata...');
+        if ($this->option('now')) {            
             (new SyncPendingCustomersJob())->handle($erp);
-        } else {
-            $this->info('📦 Job enfileirado para execução...');
+        } else {            
             SyncPendingCustomersJob::dispatch();
-        }
-
-        $this->info('✅ Sincronização concluída ou agendada com sucesso.');
+        }        
         return self::SUCCESS;
     }
 }

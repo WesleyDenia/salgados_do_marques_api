@@ -25,9 +25,7 @@ class SyncVendusCategories extends Command
      * Execute the console command.
      */
     public function handle(VendusCategorySyncService $service)
-    {
-        $this->info('🔁 Sincronizando categorias do Vendus...');
-        $service->sync();
-        $this->info('✅ Sincronização concluída!');
+    {        
+        $service->sync();     
     }
 }

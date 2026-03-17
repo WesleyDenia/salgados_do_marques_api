@@ -64,12 +64,22 @@ class SettingController extends Controller
         }
 
         $data = $request->validate([
-            'value' => ['required'],
+            'key' => ['required', 'string', 'max:255', 'regex:/^[A-Z0-9_]+$/', 'unique:settings,key,' . $setting->id],
+            'type' => ['required', 'in:string,integer,boolean,json'],
+            'value' => ['nullable'],
+            'editable' => ['nullable', 'boolean'],
         ]);
 
-        $this->validateValueByType($data['value'], $setting->type, true);
-        $value = $this->castValue($data['value'], $setting->type);
+        $value = $data['value'] ?? null;
 
+        if ($value !== null) {
+            $this->validateValueByType($value, $data['type'], false);
+            $value = $this->castValue($value, $data['type']);
+        }
+
+        $setting->key = $data['key'];
+        $setting->type = $data['type'];
+        $setting->editable = $request->boolean('editable', false);
         $setting->value = $value;
         $setting->save();
 

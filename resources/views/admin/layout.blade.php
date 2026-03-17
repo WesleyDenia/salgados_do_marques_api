@@ -10,6 +10,12 @@
         font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       }
 
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+
       body {
         margin: 0;
         min-height: 100vh;
@@ -17,49 +23,106 @@
         color: #1f2937;
       }
 
-      header {
+      .admin-shell {
+        min-height: 100vh;
+        display: grid;
+        grid-template-columns: 280px minmax(0, 1fr);
+      }
+
+      .admin-sidebar {
         background: #910202;
         color: #ffffff;
-        padding: 18px 28px;
+        padding: 28px 20px;
         display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 16px;
-        flex-wrap: wrap;
+        flex-direction: column;
+        gap: 24px;
+        position: sticky;
+        top: 0;
+        min-height: 100vh;
       }
 
-      header h1 {
+      .admin-brand h1 {
         margin: 0;
-        font-size: 1.3rem;
+        font-size: 1.35rem;
       }
 
-      header nav {
+      .admin-brand p {
+        margin: 8px 0 0;
+        color: rgba(255, 232, 232, 0.82);
+        font-size: 0.95rem;
+        line-height: 1.5;
+      }
+
+      .admin-nav {
+        display: grid;
+        gap: 18px;
+      }
+
+      .nav-section {
+        display: grid;
+        gap: 8px;
+      }
+
+      .nav-section-label {
+        font-size: 0.74rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: rgba(255, 220, 220, 0.68);
+        padding: 0 10px;
+      }
+
+      .nav-link,
+      .nav-link-button {
         display: flex;
-        flex-wrap: wrap;
         align-items: center;
-        justify-content: flex-end;
-        gap: 10px;
-      }
-
-      header nav a,
-      header nav form button {
-        color: #ffffff;
+        width: 100%;
+        min-height: 42px;
+        padding: 10px 12px;
+        border-radius: 12px;
+        color: #fff7f7;
         text-decoration: none;
         font-weight: 600;
         background: transparent;
-        border: none;
-        cursor: pointer;
-        font-size: 0.95rem;
+        border: 1px solid transparent;
+        transition: background-color 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
       }
 
-      header nav form {
-        display: inline;
+      .nav-link:hover,
+      .nav-link-button:hover {
+        background: rgba(255, 255, 255, 0.12);
+        border-color: rgba(255, 255, 255, 0.18);
+        transform: translateX(2px);
+      }
+
+      .nav-link.active,
+      .nav-link-button.active {
+        background: rgba(255, 247, 247, 0.18);
+        border-color: rgba(255, 255, 255, 0.22);
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+      }
+
+      .nav-link-button {
+        appearance: none;
+        text-align: left;
+        cursor: pointer;
+      }
+
+      .sidebar-footer {
+        margin-top: auto;
+        padding-top: 8px;
+        border-top: 1px solid rgba(255, 255, 255, 0.12);
+      }
+
+      .admin-content {
+        min-width: 0;
       }
 
       main {
-        padding: 32px;
-        max-width: 1100px;
+        padding: 32px 36px;
+        max-width: 1320px;
         margin: 0 auto;
+        width: 100%;
       }
 
       .card {
@@ -149,6 +212,11 @@
         gap: 18px;
       }
 
+      .form-grid-product {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        align-items: start;
+      }
+
       .filter-grid {
         display: grid;
         gap: 16px;
@@ -169,14 +237,17 @@
 
       input[type="text"],
       input[type="number"],
+      input[type="file"],
       input[type="url"],
       input[type="datetime-local"],
       textarea,
       select {
+        width: 100%;
         padding: 12px;
         border-radius: 10px;
         border: 1px solid #d1d5db;
         font-size: 1rem;
+        background: #ffffff;
       }
 
       textarea {
@@ -221,57 +292,182 @@
         color: #4b5563;
       }
 
+      .form-section {
+        display: grid;
+        gap: 16px;
+        padding: 20px;
+        border: 1px solid #e5e7eb;
+        border-radius: 16px;
+        background: #fcfcfe;
+      }
+
+      .form-section-title {
+        margin: 0;
+        font-size: 1rem;
+      }
+
+      .form-section-description {
+        margin: -8px 0 0;
+        color: #6b7280;
+        font-size: 0.95rem;
+        line-height: 1.5;
+      }
+
+      .form-span-full {
+        grid-column: 1 / -1;
+      }
+
+      .variant-table-wrap {
+        overflow: auto;
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        background: #ffffff;
+      }
+
+      .variant-table {
+        width: 100%;
+        min-width: 720px;
+        border-collapse: collapse;
+      }
+
+      .stack-table-label {
+        display: none;
+        font-size: 0.78rem;
+        font-weight: 700;
+        color: #6b7280;
+        margin-bottom: 6px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+
+      .inline-note {
+        margin: 6px 0 12px;
+        color: #6b7280;
+        font-size: 0.95rem;
+      }
+
       @media (max-width: 860px) {
-        header {
-          padding: 14px 16px;
-          align-items: flex-start;
+        .admin-shell {
+          grid-template-columns: 1fr;
         }
 
-        header nav {
-          justify-content: flex-start;
+        .admin-sidebar {
+          position: static;
+          min-height: auto;
+          padding: 20px 16px;
         }
 
         main {
           padding: 18px 14px;
+        }
+
+        .form-grid-product {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (max-width: 1100px) {
+        .variant-table,
+        .variant-table thead,
+        .variant-table tbody,
+        .variant-table tr,
+        .variant-table th,
+        .variant-table td {
+          display: block;
+          width: 100%;
+        }
+
+        .variant-table {
+          min-width: 0;
+        }
+
+        .variant-table thead {
+          display: none;
+        }
+
+        .variant-table tbody {
+          padding: 12px;
+        }
+
+        .variant-table tr {
+          border: 1px solid #e5e7eb;
+          border-radius: 14px;
+          padding: 14px;
+          background: #ffffff;
+        }
+
+        .variant-table tr + tr {
+          margin-top: 12px;
+        }
+
+        .variant-table td {
+          padding: 0;
+          border: none;
+        }
+
+        .variant-table td + td {
+          margin-top: 12px;
+        }
+
+        .stack-table-label {
+          display: block;
         }
       }
     </style>
     @yield('styles')
   </head>
   <body>
-    <header>
-      <h1>Painel Administrativo</h1>
-      <nav>
-        <a href="{{ route('admin.dashboard') }}">Dashboard</a>
-        <a href="{{ route('admin.content-home.index') }}">ContentHome</a>
-        <a href="{{ route('admin.stores.index') }}">Lojas</a>
-        <a href="{{ route('admin.categories.index') }}">Categorias</a>
-        <a href="{{ route('admin.products.index') }}">Produtos</a>
-        <a href="{{ route('admin.flavors.index') }}">Sabores</a>
-        <a href="{{ route('admin.orders.index') }}">Encomendas</a>
-        <a href="{{ route('admin.coupons.index') }}">Cupons</a>
-        <a href="{{ route('admin.loyalty-rewards.index') }}">Recompensas</a>
-        <a href="{{ route('admin.settings.index') }}">Configurações</a>
-        <form action="{{ route('admin.logout') }}" method="POST">
-          @csrf
-          <button type="submit">Sair</button>
-        </form>
-      </nav>
-    </header>
-
-    <main>
-      @if (session('status'))
-        <div class="alert alert-success">
-          {{ session('status') }}
+    <div class="admin-shell">
+      <aside class="admin-sidebar">
+        <div class="admin-brand">
+          <h1>Painel Administrativo</h1>
+          <p>Operação direta para gerir catálogo, pedidos e conteúdos sem desperdício de espaço.</p>
         </div>
-      @endif
-      @if (session('error'))
-        <div class="alert alert-error">
-          {{ session('error') }}
-        </div>
-      @endif
 
-      @yield('content')
-    </main>
+        <nav class="admin-nav" aria-label="Navegação principal do painel">
+          <div class="nav-section">
+            <span class="nav-section-label">Principal</span>
+            <a class="nav-link {{ request()->routeIs('admin.dashboard') ? 'active' : '' }}" href="{{ route('admin.dashboard') }}">Dashboard</a>
+            <a class="nav-link {{ request()->routeIs('admin.orders.*') ? 'active' : '' }}" href="{{ route('admin.orders.index') }}">Encomendas</a>
+            <a class="nav-link {{ request()->routeIs('admin.products.*') ? 'active' : '' }}" href="{{ route('admin.products.index') }}">Produtos</a>
+            <a class="nav-link {{ request()->routeIs('admin.categories.*') ? 'active' : '' }}" href="{{ route('admin.categories.index') }}">Categorias</a>
+            <a class="nav-link {{ request()->routeIs('admin.flavors.*') ? 'active' : '' }}" href="{{ route('admin.flavors.index') }}">Sabores</a>
+            <a class="nav-link {{ request()->routeIs('admin.stores.*') ? 'active' : '' }}" href="{{ route('admin.stores.index') }}">Lojas</a>
+          </div>
+
+          <div class="nav-section">
+            <span class="nav-section-label">Administração</span>
+            <a class="nav-link {{ request()->routeIs('admin.coupons.*') ? 'active' : '' }}" href="{{ route('admin.coupons.index') }}">Cupons</a>
+            <a class="nav-link {{ request()->routeIs('admin.loyalty-rewards.*') ? 'active' : '' }}" href="{{ route('admin.loyalty-rewards.index') }}">Recompensas</a>
+            <a class="nav-link {{ request()->routeIs('admin.content-home.*') ? 'active' : '' }}" href="{{ route('admin.content-home.index') }}">Content Home</a>
+            <a class="nav-link {{ request()->routeIs('admin.settings.*') ? 'active' : '' }}" href="{{ route('admin.settings.index') }}">Configurações</a>
+          </div>
+        </nav>
+
+        <div class="sidebar-footer">
+          <form action="{{ route('admin.logout') }}" method="POST">
+            @csrf
+            <button type="submit" class="nav-link-button">Sair</button>
+          </form>
+        </div>
+      </aside>
+
+      <div class="admin-content">
+        <main>
+          @if (session('status'))
+            <div class="alert alert-success">
+              {{ session('status') }}
+            </div>
+          @endif
+          @if (session('error'))
+            <div class="alert alert-error">
+              {{ session('error') }}
+            </div>
+          @endif
+
+          @yield('content')
+        </main>
+      </div>
+    </div>
   </body>
 </html>

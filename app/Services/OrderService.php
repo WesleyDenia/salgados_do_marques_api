@@ -65,9 +65,8 @@ class OrderService
                 $this->settings->get('order_timezone', 'Europe/Lisbon')
             ),
             'scheduling_window_days' => max(1, (int) $this->settings->get(
-                'ORDER_SCHEDULING_WINDOW_DAYS',
-                40
-            )),
+                'ORDER_SCHEDULING_WINDOW_DAYS', 15)
+            ),
         ];
     }
 

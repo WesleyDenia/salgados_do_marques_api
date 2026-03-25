@@ -41,4 +41,9 @@ class Coupon extends Model
     {
         return $this->belongsTo(Category::class);
     }
+
+    public function partnerCampaigns()
+    {
+        return $this->hasMany(PartnerCampaign::class);
+    }
 }

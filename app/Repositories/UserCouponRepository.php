@@ -4,6 +4,7 @@ namespace App\Repositories;
 
 use Carbon\Carbon;
 use App\Models\Coupon;
+use App\Models\PartnerCampaign;
 use App\Models\UserCoupon;
 use Illuminate\Support\Facades\Log;
 
@@ -20,14 +21,16 @@ class UserCouponRepository extends BaseRepository
     public function forUser(int $userId, ?string $status = null)
     {
         $query = $this->model
-            ->with('coupon')
+            ->with(['coupon', 'partnerCampaign.partner', 'user'])
             ->where('user_id', $userId);
 
         if ($status) {
             $query->where('status', $status);
         }
 
-        return $query->get();
+        return $query
+            ->orderByDesc('created_at')
+            ->get();
     }
 
     /**
@@ -125,6 +128,41 @@ class UserCouponRepository extends BaseRepository
         }
 
         return $userCoupon->load('coupon');
+    }
+
+    public function findActivePartnerCoupon(int $userId, int $campaignId): ?UserCoupon
+    {
+        return $this->model
+            ->with(['coupon', 'partnerCampaign.partner', 'user'])
+            ->where('user_id', $userId)
+            ->where('partner_campaign_id', $campaignId)
+            ->where('status', '!=', 'done')
+            ->first();
+    }
+
+    public function createOrGetPartnerCoupon(int $userId, PartnerCampaign $campaign): UserCoupon
+    {
+        $userCoupon = $this->model->firstOrCreate(
+            [
+                'user_id' => $userId,
+                'partner_campaign_id' => $campaign->id,
+            ],
+            [
+                'coupon_id' => $campaign->coupon_id,
+                'type' => 'partner',
+                'usage_limit' => 1,
+                'usage_count' => 0,
+                'expires_at' => $campaign->coupon?->ends_at,
+                'active' => true,
+                'status' => 'pending',
+            ]
+        );
+
+        if (!$userCoupon->active && $userCoupon->status !== 'done') {
+            $userCoupon->update(['active' => true]);
+        }
+
+        return $userCoupon->load(['coupon', 'partnerCampaign.partner', 'user']);
     }
 
     /**

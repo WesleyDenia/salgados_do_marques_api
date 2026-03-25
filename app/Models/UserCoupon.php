@@ -14,6 +14,7 @@ class UserCoupon extends Model
         'coupon_id',
         'type',
         'loyalty_reward_id',
+        'partner_campaign_id',
         'external_id',
         'external_code',
         'usage_limit',
@@ -29,6 +30,7 @@ class UserCoupon extends Model
         'expires_at'=>'datetime',
         'active'=>'boolean',
         'loyalty_reward_id' => 'integer',
+        'partner_campaign_id' => 'integer',
     ];
 
     public function user()
@@ -44,5 +46,10 @@ class UserCoupon extends Model
     public function loyaltyReward()
     {
         return $this->belongsTo(LoyaltyReward::class);
+    }
+
+    public function partnerCampaign()
+    {
+        return $this->belongsTo(PartnerCampaign::class);
     }
 }

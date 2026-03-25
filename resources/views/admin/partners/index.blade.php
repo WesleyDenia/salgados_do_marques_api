@@ -1,0 +1,55 @@
+@extends('admin.layout')
+
+@section('title', 'Parceiros')
+
+@section('content')
+  <div class="card">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:22px;">
+      <div>
+        <h2 style="margin:0;font-size:1.4rem;">Parceiros</h2>
+        <p style="margin:6px 0 0; color:#6b7280; font-size:0.95rem;">
+          Gerencie os parceiros exibidos no aplicativo.
+        </p>
+      </div>
+      <a class="btn btn-primary" href="{{ route('admin.partners.create') }}">Novo parceiro</a>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Nome</th>
+          <th>Slug</th>
+          <th>Status</th>
+          <th style="width:170px;">Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        @forelse ($partners as $partner)
+          <tr>
+            <td>{{ $partner->name }}</td>
+            <td>{{ $partner->slug }}</td>
+            <td>{{ $partner->active ? 'Ativo' : 'Inativo' }}</td>
+            <td>
+              <a class="btn btn-secondary" href="{{ route('admin.partners.edit', $partner) }}">Editar</a>
+              <form action="{{ route('admin.partners.destroy', $partner) }}" method="POST" class="inline" onsubmit="return confirm('Remover este parceiro?');">
+                @csrf
+                @method('DELETE')
+                <button type="submit" class="btn btn-danger">Excluir</button>
+              </form>
+            </td>
+          </tr>
+        @empty
+          <tr>
+            <td colspan="4" style="text-align:center; padding:32px 0; color:#6b7280;">
+              Nenhum parceiro cadastrado.
+            </td>
+          </tr>
+        @endforelse
+      </tbody>
+    </table>
+
+    <div style="margin-top:18px;">
+      {{ $partners->links() }}
+    </div>
+  </div>
+@endsection

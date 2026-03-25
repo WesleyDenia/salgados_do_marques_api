@@ -12,6 +12,7 @@ class CouponRepository extends BaseRepository
     {
         return $this->query()
             ->where('is_loyalty_reward', false)
+            ->whereDoesntHave('partnerCampaigns')
             ->paginate($perPage);
     }
 

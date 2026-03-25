@@ -22,7 +22,9 @@ use App\Http\Controllers\Api\V1\{
     StoreController,
     OrderController,
     OrderAdminController,
-    FlavorController
+    FlavorController,
+    PartnerController,
+    PartnerCampaignValidationController
 };
 
 Route::prefix('v1')->group(function () {
@@ -53,6 +55,8 @@ Route::prefix('v1')->group(function () {
         Route::get('products/{product}', [ProductController::class, 'show']);
         Route::get('promotions', [PromotionController::class, 'index']);
         Route::get('coupons', [CouponController::class, 'index']);
+        Route::get('partners', [PartnerController::class, 'index']);
+        Route::get('partners/{partner}', [PartnerController::class, 'show']);
         Route::get('content-home', [ContentHomeController::class, 'index']);
         Route::get('flavors', [FlavorController::class, 'index']);
 
@@ -77,6 +81,7 @@ Route::prefix('v1')->group(function () {
         Route::get('my-coupons', [UserCouponController::class, 'index']);
         Route::post('my-coupons', [UserCouponController::class, 'store']);
         Route::delete('my-coupons/{coupon}', [UserCouponController::class, 'destroy']);
+        Route::post('partner-campaigns/validate', [PartnerCampaignValidationController::class, 'store']);
         Route::post('notifications/register', [NotificationController::class, 'registerToken']);
 
         Route::get('orders', [OrderController::class, 'index']);

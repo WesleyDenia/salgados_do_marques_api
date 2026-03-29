@@ -14,6 +14,7 @@ use App\Http\Controllers\Admin\SettingController as AdminSettingController;
 use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\Admin\StoreController;
 use App\Http\Controllers\Admin\FlavorController;
+use App\Http\Controllers\Admin\HomeComponentController;
 
 Route::get('/', function () {
     return view('welcome');
@@ -37,6 +38,7 @@ Route::middleware(['auth', 'can:manage'])
         Route::post('/logout', [AdminAuthController::class, 'logout'])->name('logout');
 
         Route::resource('content-home', ContentHomeController::class)->except('show');
+        Route::resource('home-components', HomeComponentController::class)->except('show');
         Route::post('categories/reorder', [CategoryController::class, 'reorder'])->name('categories.reorder');
         Route::resource('categories', CategoryController::class)->except('show');
         Route::resource('products', ProductController::class)->except('show');

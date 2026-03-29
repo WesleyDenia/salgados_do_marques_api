@@ -442,6 +442,7 @@
             <a class="nav-link {{ request()->routeIs('admin.coupons.*') ? 'active' : '' }}" href="{{ route('admin.coupons.index') }}">Cupons</a>
             <a class="nav-link {{ request()->routeIs('admin.loyalty-rewards.*') ? 'active' : '' }}" href="{{ route('admin.loyalty-rewards.index') }}">Recompensas</a>
             <a class="nav-link {{ request()->routeIs('admin.content-home.*') ? 'active' : '' }}" href="{{ route('admin.content-home.index') }}">Content Home</a>
+            <a class="nav-link {{ request()->routeIs('admin.home-components.*') ? 'active' : '' }}" href="{{ route('admin.home-components.index') }}">Componentes da Home</a>
             <a class="nav-link {{ request()->routeIs('admin.settings.*') ? 'active' : '' }}" href="{{ route('admin.settings.index') }}">Configurações</a>
           </div>
         </nav>

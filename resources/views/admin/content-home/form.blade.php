@@ -77,6 +77,9 @@
       <p style="font-size:0.85rem; color:#6b7280; margin-top:6px;">
         Utilize apenas quando o tipo selecionado for <strong>Componente</strong>.
       </p>
+      <p style="font-size:0.85rem; color:#6b7280; margin-top:6px;">
+        Não encontrou o componente? Registe-o em <a href="{{ route('admin.home-components.index') }}">Componentes da Home</a>.
+      </p>
     </div>
 
     <div class="form-group">

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\ContentHome;
+use App\Models\HomeComponent;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
@@ -69,7 +70,7 @@ class ContentHomeController extends Controller
     {
         return view('admin.content-home.edit', [
             'item' => $contentHome,
-            'components' => $this->availableComponents(),
+            'components' => $this->availableComponents($contentHome->component_name),
         ]);
     }
 
@@ -189,11 +190,17 @@ class ContentHomeController extends Controller
         return $data;
     }
 
-    protected function availableComponents(): array
+    protected function availableComponents(?string $selectedKey = null): array
     {
-        return [
-            'WelcomeBonusButton' => 'Botão Bônus de boas-vindas',
-            'CouponsCarousel' => 'Carrossel de cupons',
-        ];
+        return HomeComponent::query()
+            ->when($selectedKey, function ($query, $selectedKey) {
+                $query->where('is_active', true)
+                    ->orWhere('key', $selectedKey);
+            }, function ($query) {
+                $query->where('is_active', true);
+            })
+            ->orderBy('label')
+            ->pluck('label', 'key')
+            ->all();
     }
 }

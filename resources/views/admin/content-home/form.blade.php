@@ -94,6 +94,27 @@
       @error('title')
         <span class="alert alert-error">{{ $message }}</span>
       @enderror
+      <p style="font-size:0.85rem; color:#6b7280; margin-top:6px;">
+        Para componentes da Home, este campo define o título exibido no app.
+      </p>
+    </div>
+
+    <div class="form-group">
+      <label class="checkbox-row" style="margin-top:24px;">
+        <input
+          type="checkbox"
+          name="show_component_title"
+          value="1"
+          {{ old('show_component_title', $item->show_component_title ?? true) ? 'checked' : '' }}
+        />
+        Exibir título do componente
+      </label>
+      @error('show_component_title')
+        <span class="alert alert-error">{{ $message }}</span>
+      @enderror
+      <p style="font-size:0.85rem; color:#6b7280; margin-top:6px;">
+        Quando desmarcado, o componente será renderizado sem título.
+      </p>
     </div>
 
     <div class="form-group">

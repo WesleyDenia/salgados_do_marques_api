@@ -17,6 +17,7 @@ class ContentHomeResource extends JsonResource
         return [
             'id' => $this->id,
             'title' => $this->title,
+            'show_component_title' => (bool) $this->show_component_title,
             'text_body' => $this->text_body,
             'image_url' => $this->image_url,
             'type' => $this->type,

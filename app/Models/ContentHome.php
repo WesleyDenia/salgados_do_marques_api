@@ -9,6 +9,7 @@ class ContentHome extends Model
     protected $fillable = [
         'display_order',
         'title',
+        'show_component_title',
         'image_url',
         'text_body',
         'type',
@@ -27,6 +28,7 @@ class ContentHome extends Model
         'is_active' => 'boolean',
         'publish_at' => 'datetime',
         'display_order' => 'integer',
+        'show_component_title' => 'boolean',
         'component_props' => 'array',
         'cta_image_only' => 'boolean',
     ];

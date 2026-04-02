@@ -2,27 +2,17 @@
 
 namespace App\Http\Controllers\Api\V1;
 
-
-use Illuminate\Http\Request;
-use App\Services\AuthService;
-use App\Models\Setting;
-use App\Services\SettingService;
-use Illuminate\Support\Facades\Log;
 use App\Http\Controllers\Controller;
-use App\Http\Resources\UserResource;
-use Illuminate\Support\Facades\Auth;
+use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\RegisterRequest;
+use App\Http\Resources\UserResource;
+use App\Services\AuthService;
+use Illuminate\Auth\AuthenticationException;
+use Illuminate\Http\Request;
 
 class AuthController extends Controller
 {
-    protected AuthService $service;
-    protected SettingService $settings;
-
-    public function __construct(AuthService $service, SettingService $settings)
-    {
-        $this->service = $service;
-        $this->settings = $settings;
-    }
+    public function __construct(protected AuthService $service) {}
 
     public function register(RegisterRequest $request)
     {
@@ -37,49 +27,29 @@ class AuthController extends Controller
             ]
         );
 
-        // Gera token após criar o usuário
-        $token = $user->createToken('auth_token')->plainTextToken;
+        $auth = $this->service->authPayload($user);
 
         return response()->json([
             'user'  => new UserResource($user),
-            'token' => $token,
-            'config' => $this->getAppConfig(),
+            'token' => $auth['token'],
+            'config' => $auth['config'],
         ], 201);
     }
 
-    public function login(Request $request)
+    public function login(LoginRequest $request)
     {
-        $credentials = $request->only('email', 'password');
-
-        Log::info('Tentativa de login', [
-            'payload' => $credentials
-        ]);
-
-        if (!Auth::guard('web')->attempt($credentials)) {
-            Log::warning('Falha no login', [
-                'payload' => $credentials
-            ]);
+        try {
+            $auth = $this->service->login($request->validated());
+        } catch (AuthenticationException) {
             return response()->json(['message' => 'Credenciais inválidas'], 401);
         }
 
-        /** @var \App\Models\User|\Laravel\Sanctum\HasApiTokens */
-        $user = Auth::guard('web')->user();
-
-        $token = $user->createToken('auth_token')->plainTextToken;
-
-        Log::info('Login bem sucedido', [
-            'user_id' => $user->id,
-            'email'   => $user->email
-        ]);
-
         return response()->json([
-            'user'  => new UserResource($user),
-            'token' => $token,
-            'config' => $this->getAppConfig(),
+            'user'  => new UserResource($auth['user']),
+            'token' => $auth['token'],
+            'config' => $auth['config'],
         ]);
     }
-
-
 
     public function logout(Request $request)
     {
@@ -94,33 +64,12 @@ class AuthController extends Controller
 
     public function refresh(Request $request)
     {
-        /** @var \App\Models\User|\Laravel\Sanctum\HasApiTokens $user */
-        $user = $request->user();
-        $currentToken = $user->currentAccessToken();
-
-        // Gera um novo token e remove o atual para evitar multiplicação de chaves
-        $newToken = $user->createToken('auth_token')->plainTextToken;
-
-        if ($currentToken) {
-            $currentToken->delete();
-        }
+        $auth = $this->service->refresh($request->user());
 
         return response()->json([
-            'user'   => new UserResource($user),
-            'token'  => $newToken,
-            'config' => $this->getAppConfig(),
+            'user'   => new UserResource($auth['user']),
+            'token'  => $auth['token'],
+            'config' => $auth['config'],
         ]);
-    }
-
-    protected function getAppConfig(): array
-    {
-        $baseUrl = Setting::where('key', 'ASSET_BASE_URL')->value('value');
-        if (!$baseUrl) {
-            $baseUrl = $this->settings->get('ASSET_BASE_URL', config('app.url'));
-        }
-
-        return [
-            'assets_base_url' => rtrim($baseUrl ?? '', '/'),
-        ];
     }
 }

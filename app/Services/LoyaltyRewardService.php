@@ -13,6 +13,8 @@ use App\Repositories\UserCouponRepository;
 use App\Services\Erp\Vendus\VendusCouponSyncService;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -23,6 +25,7 @@ class LoyaltyRewardService
         protected LoyaltyRepository $loyaltyRepository,
         protected UserCouponRepository $userCouponRepository,
         protected VendusCouponSyncService $vendusCouponSyncService,
+        protected AdminImageService $images,
     ) {}
 
     public function list(?User $user = null)
@@ -64,6 +67,43 @@ class LoyaltyRewardService
     public function update(LoyaltyReward $reward, array $data)
     {
         return $this->repository->update($reward, $data);
+    }
+
+    public function listAdmin(): LengthAwarePaginator
+    {
+        return $this->repository->query()
+            ->orderBy('threshold')
+            ->paginate(15);
+    }
+
+    public function createAdmin(array $data, ?UploadedFile $image = null): LoyaltyReward
+    {
+        $payload = $this->normalizeAdminPayload($data);
+
+        if ($image instanceof UploadedFile) {
+            $payload['image_url'] = $this->images->store($image, 'loyalty-rewards');
+        }
+
+        return $this->create($payload);
+    }
+
+    public function updateAdmin(LoyaltyReward $reward, array $data, ?UploadedFile $image = null): LoyaltyReward
+    {
+        $payload = $this->normalizeAdminPayload($data);
+        $payload['image_url'] = $this->images->replace(
+            $reward->image_url,
+            $image,
+            'loyalty-rewards',
+            (bool) ($data['remove_image'] ?? false)
+        );
+
+        return $this->update($reward, $payload);
+    }
+
+    public function deleteAdmin(LoyaltyReward $reward): void
+    {
+        $this->images->delete($reward->image_url);
+        $this->repository->delete($reward);
     }
 
     public function redeem(User $user, LoyaltyReward $reward, int $quantity = 1): UserCoupon
@@ -165,6 +205,15 @@ class LoyaltyRewardService
     protected function generatePlaceholderCode(User $user): string
     {
         return strtoupper('LOY-' . Str::random(6) . '-' . $user->id);
+    }
+
+    protected function normalizeAdminPayload(array $data): array
+    {
+        unset($data['image'], $data['remove_image']);
+        $data['active'] = (bool) ($data['active'] ?? false);
+        $data['value'] = (float) $data['value'];
+
+        return $data;
     }
 
     protected function resolveExpirationDate(): ?Carbon

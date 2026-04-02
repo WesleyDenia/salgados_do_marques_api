@@ -5,17 +5,17 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\PartnerStoreRequest;
 use App\Models\Partner;
-use Illuminate\Support\Facades\Storage;
+use App\Services\PartnerService;
 
 class PartnerController extends Controller
 {
+    public function __construct(protected PartnerService $partners) {}
+
     public function index()
     {
-        $partners = Partner::query()
-            ->orderBy('name')
-            ->paginate(15);
-
-        return view('admin.partners.index', compact('partners'));
+        return view('admin.partners.index', [
+            'partners' => $this->partners->listAdmin(),
+        ]);
     }
 
     public function create()
@@ -29,16 +29,7 @@ class PartnerController extends Controller
 
     public function store(PartnerStoreRequest $request)
     {
-        $data = $request->validated();
-        unset($data['image']);
-
-        if ($request->hasFile('image')) {
-            $data['image_url'] = $this->storeImage($request);
-        }
-
-        $data['active'] = $request->boolean('active');
-
-        Partner::create($data);
+        $this->partners->createAdmin($request->validated(), $request->file('image'));
 
         return redirect()
             ->route('admin.partners.index')
@@ -52,22 +43,7 @@ class PartnerController extends Controller
 
     public function update(PartnerStoreRequest $request, Partner $partner)
     {
-        $data = $request->validated();
-        unset($data['image']);
-
-        if ($request->filled('remove_image')) {
-            $this->deleteImage($partner->image_url);
-            $data['image_url'] = null;
-        }
-
-        if ($request->hasFile('image')) {
-            $this->deleteImage($partner->image_url);
-            $data['image_url'] = $this->storeImage($request);
-        }
-
-        $data['active'] = $request->boolean('active');
-
-        $partner->update($data);
+        $this->partners->updateAdmin($partner, $request->validated(), $request->file('image'));
 
         return redirect()
             ->route('admin.partners.index')
@@ -76,32 +52,10 @@ class PartnerController extends Controller
 
     public function destroy(Partner $partner)
     {
-        $this->deleteImage($partner->image_url);
-        $partner->delete();
+        $this->partners->deleteAdmin($partner);
 
         return redirect()
             ->route('admin.partners.index')
             ->with('status', 'Parceiro removido com sucesso.');
-    }
-
-    protected function storeImage(PartnerStoreRequest $request): string
-    {
-        $path = $request->file('image')->store('partners', 'public');
-
-        return Storage::url($path);
-    }
-
-    protected function deleteImage(?string $url): void
-    {
-        if (!$url) {
-            return;
-        }
-
-        $disk = Storage::disk('public');
-        $path = str_replace('/storage/', '', $url);
-
-        if ($disk->exists($path)) {
-            $disk->delete($path);
-        }
     }
 }

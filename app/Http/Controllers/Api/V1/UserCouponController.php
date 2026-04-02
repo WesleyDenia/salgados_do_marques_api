@@ -2,24 +2,15 @@
 
 namespace App\Http\Controllers\Api\V1;
 
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\UserCouponActivateRequest;
 use App\Http\Resources\UserCouponResource;
-use App\Repositories\UserCouponRepository;
-use App\Services\Erp\Vendus\VendusCouponSyncService;
+use App\Services\UserCouponService;
+use Illuminate\Http\Request;
 
 class UserCouponController extends Controller
 {
-    protected UserCouponRepository $repo;
-
-    public function __construct(
-        UserCouponRepository $repo,
-        protected VendusCouponSyncService $vendusSyncService
-        )
-    {
-        $this->repo = $repo;
-    }
+    public function __construct(protected UserCouponService $service) {}
 
     /**
      * Lista cupons do usuário autenticado.
@@ -27,32 +18,19 @@ class UserCouponController extends Controller
     public function index(Request $request)
     {
         $status = $request->get('status'); // ex: ?status=pending
-        $userCoupons = $this->repo->forUser($request->user()->id, $status);
+        $userCoupons = $this->service->listForUser($request->user(), $status);
         return UserCouponResource::collection($userCoupons);
     }
 
     /**
      * Ativa (ou cria) o cupom para o usuário autenticado.
      */
-    public function store(Request $request)
+    public function store(UserCouponActivateRequest $request)
     {
-        $data = $request->validate([
-            'coupon_id' => ['required', 'integer', 'exists:coupons,id'],
-        ]);
-
-        $userCoupon = $this->repo->activateForUser(
-            $request->user()->id,
-            $data['coupon_id']
+        $userCoupon = $this->service->activateForUser(
+            $request->user(),
+            $request->validated()['coupon_id']
         );
-
-        // 1️⃣ Cria/sincroniza no Vendus
-        $couponResponse = $this->vendusSyncService->create($userCoupon);
-        Log::info('💬 [Vendus] create returned', ['response' => $couponResponse]);
-
-        // 2️⃣ Persiste localmente o retorno do ERP
-        if ($couponResponse) {
-            $userCoupon = $this->repo->syncFromErp($userCoupon, $couponResponse);
-        }
 
         return new UserCouponResource($userCoupon);
     }
@@ -63,7 +41,7 @@ class UserCouponController extends Controller
      */
     public function destroy(Request $request, int $couponId)
     {
-        $this->repo->decrementForUser($request->user()->id, $couponId);
+        $this->service->decrementForUser($request->user(), $couponId);
         return response()->json(['message' => 'Cupom desativado.']);
     }
 }

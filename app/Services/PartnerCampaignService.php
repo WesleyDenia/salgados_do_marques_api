@@ -2,11 +2,13 @@
 
 namespace App\Services;
 
+use App\Models\PartnerCampaign;
 use App\Models\User;
 use App\Models\UserCoupon;
 use App\Repositories\PartnerCampaignRepository;
 use App\Repositories\UserCouponRepository;
 use App\Services\Erp\Vendus\VendusCouponSyncService;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -51,5 +53,32 @@ class PartnerCampaignService
             return $this->userCoupons->syncFromErp($userCoupon, $response)
                 ->load(['coupon', 'partnerCampaign.partner', 'user']);
         });
+    }
+
+    public function listAdmin(): LengthAwarePaginator
+    {
+        return $this->campaigns->query()
+            ->with(['partner', 'coupon'])
+            ->orderByDesc('created_at')
+            ->paginate(15);
+    }
+
+    public function createAdmin(array $data): PartnerCampaign
+    {
+        $data['active'] = (bool) ($data['active'] ?? false);
+
+        return $this->campaigns->create($data);
+    }
+
+    public function updateAdmin(PartnerCampaign $campaign, array $data): PartnerCampaign
+    {
+        $data['active'] = (bool) ($data['active'] ?? false);
+
+        return $this->campaigns->update($campaign, $data);
+    }
+
+    public function deleteAdmin(PartnerCampaign $campaign): void
+    {
+        $this->campaigns->delete($campaign);
     }
 }

@@ -6,6 +6,7 @@ namespace App\Services;
 use App\Models\User;
 use App\Models\Setting;
 use App\Models\UserConsent;
+use Illuminate\Auth\AuthenticationException;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
@@ -14,7 +15,10 @@ use App\Mappers\CustomerMapper;
 
 class AuthService
 {
-    public function __construct(protected CustomerSyncInterface $erp) {}
+    public function __construct(
+        protected CustomerSyncInterface $erp,
+        protected SettingService $settings,
+    ) {}
 
     public function register(array $data, array $metadata = []): User
     {
@@ -117,15 +121,44 @@ class AuthService
 
     public function login(array $data): array
     {
-        if (!Auth::attempt(['email' => $data['email'], 'password' => $data['password']])) {
-            abort(401, 'Credenciais inválidas');
+        if (!Auth::guard('web')->attempt(['email' => $data['email'], 'password' => $data['password']])) {
+            throw new AuthenticationException('Credenciais inválidas');
         }
 
         /** @var \App\Models\User|\Laravel\Sanctum\HasApiTokens $user */
-        $user  = Auth::user();
+        $user = Auth::guard('web')->user();
+
+        return $this->authPayload($user);
+    }
+
+    public function refresh(User $user): array
+    {
+        return $this->authPayload($user, true);
+    }
+
+    public function appConfig(): array
+    {
+        $baseUrl = $this->settings->get('ASSET_BASE_URL', config('app.url'));
+
+        return [
+            'assets_base_url' => rtrim((string) ($baseUrl ?? ''), '/'),
+        ];
+    }
+
+    public function authPayload(User $user, bool $rotateCurrentToken = false): array
+    {
+        $currentToken = $rotateCurrentToken ? $user->currentAccessToken() : null;
         $token = $user->createToken('auth_token')->plainTextToken;
 
-        return ['token' => $token, 'user' => $user];
+        if ($currentToken) {
+            $currentToken->delete();
+        }
+
+        return [
+            'token' => $token,
+            'user' => $user,
+            'config' => $this->appConfig(),
+        ];
     }
 
     public function logout(User $user)

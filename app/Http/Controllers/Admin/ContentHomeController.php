@@ -3,24 +3,19 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\ContentHomeRequest;
 use App\Models\ContentHome;
-use App\Models\HomeComponent;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\Rule;
-use Illuminate\Validation\ValidationException;
+use App\Services\ContentHomeService;
 
 class ContentHomeController extends Controller
 {
+    public function __construct(protected ContentHomeService $contentHome) {}
+
     public function index()
     {
-        $items = ContentHome::query()
-            ->orderBy('display_order')
-            ->orderByDesc('publish_at')
-            ->paginate(12);
-
-        return view('admin.content-home.index', compact('items'));
+        return view('admin.content-home.index', [
+            'items' => $this->contentHome->listAdmin(),
+        ]);
     }
 
     public function create()
@@ -34,33 +29,13 @@ class ContentHomeController extends Controller
 
         return view('admin.content-home.create', [
             'item' => $item,
-            'components' => $this->availableComponents(),
+            'components' => $this->contentHome->componentOptions(),
         ]);
     }
 
-    public function store(Request $request)
+    public function store(ContentHomeRequest $request)
     {
-        $data = $this->prepareComponentData($this->validateData($request));
-
-        if ($request->hasFile('image')) {
-            $data['image_url'] = $this->storeImage($request);
-        }
-
-        $data['is_active'] = $request->boolean('is_active');
-        $data['cta_image_only'] = $request->boolean('cta_image_only');
-        $data['show_component_title'] = $request->boolean('show_component_title');
-
-        DB::transaction(function () use ($data) {
-            $desiredOrder = $data['display_order'];
-
-            $existing = ContentHome::where('display_order', $desiredOrder)->first();
-            if ($existing) {
-                $maxOrder = ContentHome::max('display_order') ?? 0;
-                $existing->update(['display_order' => $maxOrder + 1]);
-            }
-
-            ContentHome::create($data);
-        });
+        $this->contentHome->create($request->validated(), $request->file('image'));
 
         return redirect()
             ->route('admin.content-home.index')
@@ -71,44 +46,13 @@ class ContentHomeController extends Controller
     {
         return view('admin.content-home.edit', [
             'item' => $contentHome,
-            'components' => $this->availableComponents($contentHome->component_name),
+            'components' => $this->contentHome->componentOptions($contentHome->component_name),
         ]);
     }
 
-    public function update(Request $request, ContentHome $contentHome)
+    public function update(ContentHomeRequest $request, ContentHome $contentHome)
     {
-        $data = $this->prepareComponentData($this->validateData($request, $contentHome->id));
-
-        $data['is_active'] = $request->boolean('is_active');
-        $data['cta_image_only'] = $request->boolean('cta_image_only');
-        $data['show_component_title'] = $request->boolean('show_component_title');
-
-        if ($request->filled('remove_image')) {
-            $this->deleteImage($contentHome->image_url);
-            $data['image_url'] = null;
-        }
-
-        if ($request->hasFile('image')) {
-            $this->deleteImage($contentHome->image_url);
-            $data['image_url'] = $this->storeImage($request);
-        }
-
-        DB::transaction(function () use ($contentHome, $data) {
-            $currentOrder = $contentHome->display_order;
-            $desiredOrder = $data['display_order'];
-
-            if ($currentOrder !== $desiredOrder) {
-                $clashing = ContentHome::where('display_order', $desiredOrder)
-                    ->where('id', '!=', $contentHome->id)
-                    ->first();
-
-                if ($clashing) {
-                    $clashing->update(['display_order' => $currentOrder]);
-                }
-            }
-
-            $contentHome->update($data);
-        });
+        $this->contentHome->update($contentHome, $request->validated(), $request->file('image'));
 
         return redirect()
             ->route('admin.content-home.index')
@@ -117,93 +61,10 @@ class ContentHomeController extends Controller
 
     public function destroy(ContentHome $contentHome)
     {
-        $this->deleteImage($contentHome->image_url);
-        $contentHome->delete();
+        $this->contentHome->delete($contentHome);
 
         return redirect()
             ->route('admin.content-home.index')
             ->with('status', 'Conteúdo removido com sucesso.');
-    }
-
-    protected function validateData(Request $request, ?int $id = null): array
-    {
-        $componentKeys = array_keys($this->availableComponents());
-
-        return $request->validate([
-            'title' => ['nullable', 'string', 'max:255'],
-            'show_component_title' => ['nullable', 'boolean'],
-            'text_body' => ['nullable', 'string'],
-            'display_order' => ['required', 'integer', 'min:0'],
-            'type' => ['required', Rule::in(['text', 'image', 'only_image', 'component'])],
-            'layout' => ['required', 'string', 'max:50'],
-            'component_name' => ['nullable', 'string', 'max:100', Rule::in($componentKeys)],
-            'component_props' => ['nullable', 'json'],
-            'cta_label' => ['nullable', 'string', 'max:255'],
-            'cta_url' => ['nullable', 'string', 'max:255'],
-            'cta_image_only' => ['nullable', 'boolean'],
-            'background_color' => ['nullable', 'string', 'max:20'],
-            'publish_at' => ['nullable', 'date'],
-            'is_active' => ['nullable', 'boolean'],
-            'image' => ['nullable', 'image', 'max:3072'],
-        ]);
-    }
-
-    protected function storeImage(Request $request): string
-    {
-        $path = $request->file('image')->store('content-home', 'public');
-
-        return Storage::url($path);
-    }
-
-    protected function deleteImage(?string $url): void
-    {
-        if (!$url) {
-            return;
-        }
-
-        $disk = Storage::disk('public');
-        $path = str_replace('/storage/', '', $url);
-
-        if ($disk->exists($path)) {
-            $disk->delete($path);
-        }
-    }
-
-    protected function prepareComponentData(array $data): array
-    {
-        if (($data['type'] ?? null) === 'component') {
-            if (empty($data['component_name'])) {
-                throw ValidationException::withMessages([
-                    'component_name' => 'Selecione um componente válido.',
-                ]);
-            }
-
-            $props = $data['component_props'] ?? null;
-            if ($props === null || $props === '') {
-                $data['component_props'] = null;
-            } else {
-                $decoded = json_decode((string) $props, true);
-                $data['component_props'] = is_array($decoded) ? $decoded : null;
-            }
-        } else {
-            $data['component_name'] = null;
-            $data['component_props'] = null;
-        }
-
-        return $data;
-    }
-
-    protected function availableComponents(?string $selectedKey = null): array
-    {
-        return HomeComponent::query()
-            ->when($selectedKey, function ($query, $selectedKey) {
-                $query->where('is_active', true)
-                    ->orWhere('key', $selectedKey);
-            }, function ($query) {
-                $query->where('is_active', true);
-            })
-            ->orderBy('label')
-            ->pluck('label', 'key')
-            ->all();
     }
 }

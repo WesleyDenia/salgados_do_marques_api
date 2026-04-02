@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Setting;
 use App\Repositories\SettingRepository;
 use Illuminate\Support\Facades\Cache;
 
@@ -14,6 +15,11 @@ class SettingService
         return Cache::rememberForever("setting_{$key}", function () use ($key, $default) {
             return optional($this->repository->findByKey($key))->value ?? $default;
         });
+    }
+
+    public function findRecord(string $key): ?Setting
+    {
+        return $this->repository->findByKey($key);
     }
 
     public function set(string $key, $value)

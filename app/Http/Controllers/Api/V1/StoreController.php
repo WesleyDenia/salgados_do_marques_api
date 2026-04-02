@@ -3,37 +3,26 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreIndexRequest;
 use App\Http\Resources\StoreResource;
 use App\Services\StoreService;
-use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
-use Illuminate\Support\Facades\Validator;
 
 class StoreController extends Controller
 {
     public function __construct(protected StoreService $stores) {}
 
-    public function index(Request $request): AnonymousResourceCollection
+    public function index(StoreIndexRequest $request): AnonymousResourceCollection
     {
-        $validator = Validator::make($request->all(), [
-            'city' => ['nullable', 'string', 'max:255'],
-            'type' => ['nullable', 'in:principal,revenda'],
-            'lat' => ['nullable', 'numeric', 'between:-90,90'],
-            'lng' => ['nullable', 'numeric', 'between:-180,180'],
-            'accepts_orders' => ['nullable', 'boolean'],
-        ]);
+        $validated = $request->validated();
 
-        $validator->validate();
-
-        $lat = $request->float('lat');
-        $lng = $request->float('lng');
         $stores = $this->stores->listForApi([
-            'city' => $request->input('city'),
-            'type' => $request->input('type'),
-            'lat' => $lat,
-            'lng' => $lng,
-            'accepts_orders' => $request->filled('accepts_orders')
-                ? $request->boolean('accepts_orders')
+            'city' => $validated['city'] ?? null,
+            'type' => $validated['type'] ?? null,
+            'lat' => array_key_exists('lat', $validated) ? (float) $validated['lat'] : null,
+            'lng' => array_key_exists('lng', $validated) ? (float) $validated['lng'] : null,
+            'accepts_orders' => array_key_exists('accepts_orders', $validated)
+                ? filter_var($validated['accepts_orders'], FILTER_VALIDATE_BOOL, FILTER_NULL_ON_FAILURE)
                 : null,
         ]);
 

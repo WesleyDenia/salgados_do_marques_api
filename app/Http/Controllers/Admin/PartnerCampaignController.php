@@ -4,20 +4,24 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\PartnerCampaignStoreRequest;
-use App\Models\Coupon;
-use App\Models\Partner;
 use App\Models\PartnerCampaign;
+use App\Services\AdminCouponService;
+use App\Services\PartnerCampaignService;
+use App\Services\PartnerService;
 
 class PartnerCampaignController extends Controller
 {
+    public function __construct(
+        protected PartnerCampaignService $campaigns,
+        protected PartnerService $partners,
+        protected AdminCouponService $coupons,
+    ) {}
+
     public function index()
     {
-        $campaigns = PartnerCampaign::query()
-            ->with(['partner', 'coupon'])
-            ->orderByDesc('created_at')
-            ->paginate(15);
-
-        return view('admin.partner-campaigns.index', compact('campaigns'));
+        return view('admin.partner-campaigns.index', [
+            'campaigns' => $this->campaigns->listAdmin(),
+        ]);
     }
 
     public function create()
@@ -26,17 +30,14 @@ class PartnerCampaignController extends Controller
             'campaign' => new PartnerCampaign([
                 'active' => true,
             ]),
-            'partners' => $this->partnerOptions(),
-            'coupons' => $this->couponOptions(),
+            'partners' => $this->partners->options(),
+            'coupons' => $this->coupons->options(),
         ]);
     }
 
     public function store(PartnerCampaignStoreRequest $request)
     {
-        $data = $request->validated();
-        $data['active'] = $request->boolean('active');
-
-        PartnerCampaign::create($data);
+        $this->campaigns->createAdmin($request->validated());
 
         return redirect()
             ->route('admin.partner-campaigns.index')
@@ -47,17 +48,14 @@ class PartnerCampaignController extends Controller
     {
         return view('admin.partner-campaigns.edit', [
             'campaign' => $partnerCampaign,
-            'partners' => $this->partnerOptions(),
-            'coupons' => $this->couponOptions(),
+            'partners' => $this->partners->options(),
+            'coupons' => $this->coupons->options(),
         ]);
     }
 
     public function update(PartnerCampaignStoreRequest $request, PartnerCampaign $partnerCampaign)
     {
-        $data = $request->validated();
-        $data['active'] = $request->boolean('active');
-
-        $partnerCampaign->update($data);
+        $this->campaigns->updateAdmin($partnerCampaign, $request->validated());
 
         return redirect()
             ->route('admin.partner-campaigns.index')
@@ -66,24 +64,10 @@ class PartnerCampaignController extends Controller
 
     public function destroy(PartnerCampaign $partnerCampaign)
     {
-        $partnerCampaign->delete();
+        $this->campaigns->deleteAdmin($partnerCampaign);
 
         return redirect()
             ->route('admin.partner-campaigns.index')
             ->with('status', 'Campanha removida com sucesso.');
-    }
-
-    protected function partnerOptions()
-    {
-        return Partner::query()
-            ->orderBy('name')
-            ->pluck('name', 'id');
-    }
-
-    protected function couponOptions()
-    {
-        return Coupon::query()
-            ->orderBy('title')
-            ->pluck('title', 'id');
     }
 }

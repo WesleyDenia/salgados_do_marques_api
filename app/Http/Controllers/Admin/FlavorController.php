@@ -3,19 +3,19 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\FlavorRequest;
 use App\Models\Flavor;
-use Illuminate\Http\Request;
+use App\Services\AdminFlavorService;
 
 class FlavorController extends Controller
 {
+    public function __construct(protected AdminFlavorService $flavors) {}
+
     public function index()
     {
-        $flavors = Flavor::query()
-            ->orderBy('display_order')
-            ->orderBy('name')
-            ->get();
-
-        return view('admin.flavors.index', compact('flavors'));
+        return view('admin.flavors.index', [
+            'flavors' => $this->flavors->list(),
+        ]);
     }
 
     public function create()
@@ -27,13 +27,9 @@ class FlavorController extends Controller
         ]);
     }
 
-    public function store(Request $request)
+    public function store(FlavorRequest $request)
     {
-        $data = $this->validateData($request);
-        $data['active'] = $request->boolean('active');
-        $data['display_order'] = isset($data['display_order']) ? (int) $data['display_order'] : 0;
-
-        Flavor::create($data);
+        $this->flavors->create($request->validated());
 
         return redirect()
             ->route('admin.flavors.index')
@@ -45,13 +41,9 @@ class FlavorController extends Controller
         return view('admin.flavors.edit', compact('flavor'));
     }
 
-    public function update(Request $request, Flavor $flavor)
+    public function update(FlavorRequest $request, Flavor $flavor)
     {
-        $data = $this->validateData($request);
-        $data['active'] = $request->boolean('active');
-        $data['display_order'] = isset($data['display_order']) ? (int) $data['display_order'] : 0;
-
-        $flavor->update($data);
+        $this->flavors->update($flavor, $request->validated());
 
         return redirect()
             ->route('admin.flavors.index')
@@ -60,19 +52,10 @@ class FlavorController extends Controller
 
     public function destroy(Flavor $flavor)
     {
-        $flavor->delete();
+        $this->flavors->delete($flavor);
 
         return redirect()
             ->route('admin.flavors.index')
             ->with('status', 'Sabor removido com sucesso.');
-    }
-
-    protected function validateData(Request $request): array
-    {
-        return $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'display_order' => ['nullable', 'integer', 'min:0'],
-            'active' => ['nullable', 'boolean'],
-        ]);
     }
 }

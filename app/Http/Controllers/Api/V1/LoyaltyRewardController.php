@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\LoyaltyRewardRedeemRequest;
 use App\Http\Resources\LoyaltyRewardResource;
 use App\Http\Resources\UserCouponResource;
 use App\Models\LoyaltyReward;
@@ -22,13 +23,9 @@ class LoyaltyRewardController extends Controller
         return LoyaltyRewardResource::collection($rewards);
     }
 
-    public function redeem(Request $request, LoyaltyReward $loyaltyReward)
+    public function redeem(LoyaltyRewardRedeemRequest $request, LoyaltyReward $loyaltyReward)
     {
-        $validated = $request->validate([
-            'quantity' => ['nullable', 'integer', 'min:1'],
-        ]);
-
-        $quantity = $validated['quantity'] ?? 1;
+        $quantity = $request->validated()['quantity'] ?? 1;
 
         if (config('app.debug')) {
             Log::info('Loyalty reward redeem request', [

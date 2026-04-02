@@ -3,20 +3,20 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\CategoryReorderRequest;
+use App\Http\Requests\Admin\CategoryRequest;
 use App\Models\Category;
-use Illuminate\Http\Request;
+use App\Services\AdminCategoryService;
 
 class CategoryController extends Controller
 {
+    public function __construct(protected AdminCategoryService $categories) {}
+
     public function index()
     {
-        $categories = Category::query()
-            ->withCount('products')
-            ->orderBy('display_order')
-            ->orderBy('name')
-            ->get();
-
-        return view('admin.categories.index', compact('categories'));
+        return view('admin.categories.index', [
+            'categories' => $this->categories->list(),
+        ]);
     }
 
     public function create()
@@ -28,13 +28,9 @@ class CategoryController extends Controller
         ]);
     }
 
-    public function store(Request $request)
+    public function store(CategoryRequest $request)
     {
-        $data = $this->validateData($request);
-        $data['active'] = $request->boolean('active');
-        $data['display_order'] = isset($data['display_order']) ? (int) $data['display_order'] : 0;
-
-        Category::create($data);
+        $this->categories->create($request->validated());
 
         return redirect()
             ->route('admin.categories.index')
@@ -46,13 +42,9 @@ class CategoryController extends Controller
         return view('admin.categories.edit', compact('category'));
     }
 
-    public function update(Request $request, Category $category)
+    public function update(CategoryRequest $request, Category $category)
     {
-        $data = $this->validateData($request, $category->id);
-        $data['active'] = $request->boolean('active');
-        $data['display_order'] = isset($data['display_order']) ? (int) $data['display_order'] : 0;
-
-        $category->update($data);
+        $this->categories->update($category, $request->validated());
 
         return redirect()
             ->route('admin.categories.index')
@@ -61,44 +53,21 @@ class CategoryController extends Controller
 
     public function destroy(Category $category)
     {
-        if ($category->products()->exists()) {
+        if (!$this->categories->delete($category)) {
             return redirect()
                 ->route('admin.categories.index')
                 ->with('error', 'Não é possível remover categorias com produtos associados.');
         }
-
-        $category->delete();
 
         return redirect()
             ->route('admin.categories.index')
             ->with('status', 'Categoria removida com sucesso.');
     }
 
-    public function reorder(Request $request)
+    public function reorder(CategoryReorderRequest $request)
     {
-        $data = $request->validate([
-            'order' => ['required', 'array'],
-            'order.*.id' => ['required', 'integer', 'exists:categories,id'],
-            'order.*.position' => ['required', 'integer', 'min:1'],
-        ]);
-
-        \DB::transaction(function () use ($data) {
-            foreach ($data['order'] as $item) {
-                Category::where('id', $item['id'])->update(['display_order' => $item['position']]);
-            }
-        });
+        $this->categories->reorder($request->validated('order'));
 
         return response()->json(['status' => 'ok']);
-    }
-
-    protected function validateData(Request $request, ?int $ignoreId = null): array
-    {
-        return $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string'],
-            'external_id' => ['nullable', 'string', 'max:255'],
-            'display_order' => ['nullable', 'integer', 'min:0'],
-            'active' => ['nullable', 'boolean'],
-        ]);
     }
 }

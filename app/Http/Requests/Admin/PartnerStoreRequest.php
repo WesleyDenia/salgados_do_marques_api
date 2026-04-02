@@ -33,6 +33,7 @@ class PartnerStoreRequest extends FormRequest
             'description' => ['required', 'string'],
             'image' => ['nullable', 'image', 'max:4096'],
             'active' => ['nullable', 'boolean'],
+            'remove_image' => ['nullable', 'boolean'],
         ];
     }
 }

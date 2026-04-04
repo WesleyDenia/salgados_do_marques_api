@@ -183,6 +183,75 @@
         transform: translateY(-1px);
       }
 
+      .action-menu {
+        position: relative;
+        display: inline-block;
+      }
+
+      .action-menu summary {
+        list-style: none;
+      }
+
+      .action-menu summary::-webkit-details-marker {
+        display: none;
+      }
+
+      .action-menu-trigger {
+        width: 40px;
+        height: 40px;
+        padding: 0;
+        border-radius: 12px;
+        border: 1px solid #d1d5db;
+        background: #ffffff;
+        color: #374151;
+        box-shadow: 0 10px 25px -20px rgba(15, 23, 42, 0.5);
+      }
+
+      .action-menu-trigger:hover,
+      .action-menu[open] .action-menu-trigger {
+        background: #f9fafb;
+        border-color: #cbd5e1;
+      }
+
+      .action-menu-trigger:focus-visible {
+        outline: 2px solid #910202;
+        outline-offset: 2px;
+      }
+
+      .action-menu-panel {
+        position: absolute;
+        top: calc(100% + 8px);
+        right: 0;
+        min-width: 168px;
+        padding: 8px;
+        border-radius: 14px;
+        border: 1px solid #e5e7eb;
+        background: #ffffff;
+        box-shadow: 0 20px 45px -18px rgba(15, 23, 42, 0.28);
+        z-index: 20;
+      }
+
+      .action-menu-item {
+        width: 100%;
+        justify-content: flex-start;
+        background: transparent;
+        color: #1f2937;
+        border-radius: 10px;
+        padding: 10px 12px;
+      }
+
+      .action-menu-item:hover {
+        background: #f3f4f6;
+      }
+
+      .action-menu-item-danger {
+        color: #b91c1c;
+      }
+
+      .action-menu-item-danger:hover {
+        background: rgba(239, 68, 68, 0.12);
+      }
+
       .alert {
         padding: 14px 18px;
         border-radius: 12px;

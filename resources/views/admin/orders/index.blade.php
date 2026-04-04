@@ -73,7 +73,7 @@
           <th>Total</th>
           <th>Status</th>
           <th>Criado em</th>
-          <th style="width:150px;">Ações</th>
+          <th style="width:76px;">Ações</th>
         </tr>
       </thead>
       <tbody>
@@ -98,7 +98,19 @@
             </td>
             <td>{{ $order->created_at?->format('d/m/Y H:i') ?? '—' }}</td>
             <td>
-              <a class="btn btn-secondary" href="{{ route('admin.orders.show', $order) }}">Detalhes</a>
+              <details class="action-menu">
+                <summary class="btn action-menu-trigger" aria-label="Abrir ações da encomenda">
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                    <circle cx="8" cy="3" r="1.4" />
+                    <circle cx="8" cy="8" r="1.4" />
+                    <circle cx="8" cy="13" r="1.4" />
+                  </svg>
+                </summary>
+
+                <div class="action-menu-panel">
+                  <a class="btn action-menu-item" href="{{ route('admin.orders.show', $order) }}">Detalhes</a>
+                </div>
+              </details>
             </td>
           </tr>
         @empty

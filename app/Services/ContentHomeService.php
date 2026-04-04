@@ -4,10 +4,9 @@ namespace App\Services;
 
 use App\Models\ContentHome;
 use App\Repositories\ContentHomeRepository;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Validation\ValidationException;
 
 class ContentHomeService
@@ -23,12 +22,12 @@ class ContentHomeService
         return $this->repository->publicIndex();
     }
 
-    public function listAdmin(): LengthAwarePaginator
+    public function listAdmin(): Collection
     {
         return ContentHome::query()
             ->orderBy('display_order')
             ->orderByDesc('publish_at')
-            ->paginate(12);
+            ->get();
     }
 
     public function componentOptions(?string $selectedKey = null): array
@@ -82,6 +81,17 @@ class ContentHomeService
     {
         $this->images->delete($contentHome->image_url);
         $contentHome->delete();
+    }
+
+    public function reorder(array $order): void
+    {
+        DB::transaction(function () use ($order) {
+            foreach ($order as $item) {
+                ContentHome::query()
+                    ->whereKey($item['id'])
+                    ->update(['display_order' => (int) $item['position']]);
+            }
+        });
     }
 
     protected function preparePayload(array $data, ?UploadedFile $image = null, ?ContentHome $contentHome = null): array

@@ -21,7 +21,7 @@
           <th>Nome técnico</th>
           <th>Descrição</th>
           <th>Estado</th>
-          <th style="width:180px;">Ações</th>
+          <th style="width:76px;">Ações</th>
         </tr>
       </thead>
       <tbody>
@@ -38,14 +38,24 @@
               @endif
             </td>
             <td>
-              <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                <a class="btn btn-secondary" href="{{ route('admin.home-components.edit', $component) }}">Editar</a>
-                <form method="POST" action="{{ route('admin.home-components.destroy', $component) }}" onsubmit="return confirm('Remover este componente do catálogo?');">
-                  @csrf
-                  @method('DELETE')
-                  <button type="submit" class="btn btn-danger">Excluir</button>
-                </form>
-              </div>
+              <details class="action-menu">
+                <summary class="btn action-menu-trigger" aria-label="Abrir ações do componente">
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                    <circle cx="8" cy="3" r="1.4" />
+                    <circle cx="8" cy="8" r="1.4" />
+                    <circle cx="8" cy="13" r="1.4" />
+                  </svg>
+                </summary>
+
+                <div class="action-menu-panel">
+                  <a class="btn action-menu-item" href="{{ route('admin.home-components.edit', $component) }}">Editar</a>
+                  <form method="POST" action="{{ route('admin.home-components.destroy', $component) }}" onsubmit="return confirm('Remover este componente do catálogo?');">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" class="btn action-menu-item action-menu-item-danger">Excluir</button>
+                  </form>
+                </div>
+              </details>
             </td>
           </tr>
         @empty

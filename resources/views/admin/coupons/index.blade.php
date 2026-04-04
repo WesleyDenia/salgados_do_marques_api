@@ -25,7 +25,7 @@
           <th>Período</th>
           <th>Categoria</th>
           <th>Status</th>
-          <th style="width:170px;">Ações</th>
+          <th style="width:76px;">Ações</th>
         </tr>
       </thead>
       <tbody>
@@ -54,22 +54,33 @@
               @endif
             </td>
             <td>
-              <a class="btn btn-secondary" href="{{ route('admin.coupons.edit', $coupon) }}">Editar</a>
-              <form
-                action="{{ route('admin.coupons.destroy', $coupon) }}"
-                method="POST"
-                class="inline"
-                onsubmit="return confirm('Remover este cupom?');"
-              >
-                @csrf
-                @method('DELETE')
-                <button type="submit" class="btn btn-danger">Excluir</button>
-              </form>
+              <details class="action-menu">
+                <summary class="btn action-menu-trigger" aria-label="Abrir ações do cupom">
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                    <circle cx="8" cy="3" r="1.4" />
+                    <circle cx="8" cy="8" r="1.4" />
+                    <circle cx="8" cy="13" r="1.4" />
+                  </svg>
+                </summary>
+
+                <div class="action-menu-panel">
+                  <a class="btn action-menu-item" href="{{ route('admin.coupons.edit', $coupon) }}">Editar</a>
+                  <form
+                    action="{{ route('admin.coupons.destroy', $coupon) }}"
+                    method="POST"
+                    onsubmit="return confirm('Remover este cupom?');"
+                  >
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" class="btn action-menu-item action-menu-item-danger">Excluir</button>
+                  </form>
+                </div>
+              </details>
             </td>
           </tr>
         @empty
           <tr>
-            <td colspan="7" style="text-align:center; padding:32px 0; color:#6b7280;">
+            <td colspan="9" style="text-align:center; padding:32px 0; color:#6b7280;">
               Nenhum cupom cadastrado.
             </td>
           </tr>

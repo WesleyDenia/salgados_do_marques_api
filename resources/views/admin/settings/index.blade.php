@@ -21,7 +21,7 @@
           <th>Valor</th>
           <th>Tipo</th>
           <th>Editável</th>
-          <th style="width:140px;">Ações</th>
+          <th style="width:76px;">Ações</th>
         </tr>
       </thead>
       <tbody>
@@ -47,7 +47,19 @@
             </td>
             <td>
               @if ($setting->editable)
-                <a class="btn btn-secondary" href="{{ route('admin.settings.edit', $setting) }}">Editar</a>
+                <details class="action-menu">
+                  <summary class="btn action-menu-trigger" aria-label="Abrir ações da configuração">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                      <circle cx="8" cy="3" r="1.4" />
+                      <circle cx="8" cy="8" r="1.4" />
+                      <circle cx="8" cy="13" r="1.4" />
+                    </svg>
+                  </summary>
+
+                  <div class="action-menu-panel">
+                    <a class="btn action-menu-item" href="{{ route('admin.settings.edit', $setting) }}">Editar</a>
+                  </div>
+                </details>
               @else
                 <span style="color:#9ca3af; font-size:0.9rem;">—</span>
               @endif

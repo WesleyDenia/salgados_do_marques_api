@@ -37,6 +37,7 @@ Route::middleware(['auth', 'can:manage'])
         Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
         Route::post('/logout', [AdminAuthController::class, 'logout'])->name('logout');
 
+        Route::post('content-home/reorder', [ContentHomeController::class, 'reorder'])->name('content-home.reorder');
         Route::resource('content-home', ContentHomeController::class)->except('show');
         Route::resource('home-components', HomeComponentController::class)->except('show');
         Route::post('categories/reorder', [CategoryController::class, 'reorder'])->name('categories.reorder');

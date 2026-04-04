@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\ContentHomeReorderRequest;
 use App\Http\Requests\Admin\ContentHomeRequest;
 use App\Models\ContentHome;
 use App\Services\ContentHomeService;
@@ -66,5 +67,14 @@ class ContentHomeController extends Controller
         return redirect()
             ->route('admin.content-home.index')
             ->with('status', 'Conteúdo removido com sucesso.');
+    }
+
+    public function reorder(ContentHomeReorderRequest $request)
+    {
+        $this->contentHome->reorder($request->validated('order'));
+
+        return response()->json([
+            'success' => true,
+        ]);
     }
 }

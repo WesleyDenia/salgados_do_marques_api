@@ -23,7 +23,7 @@
           <th>Cupom base</th>
           <th>Período</th>
           <th>Status</th>
-          <th style="width:170px;">Ações</th>
+          <th style="width:76px;">Ações</th>
         </tr>
       </thead>
       <tbody>
@@ -44,12 +44,24 @@
             </td>
             <td>{{ $campaign->active ? 'Ativa' : 'Inativa' }}</td>
             <td>
-              <a class="btn btn-secondary" href="{{ route('admin.partner-campaigns.edit', $campaign) }}">Editar</a>
-              <form action="{{ route('admin.partner-campaigns.destroy', $campaign) }}" method="POST" class="inline" onsubmit="return confirm('Remover esta campanha?');">
-                @csrf
-                @method('DELETE')
-                <button type="submit" class="btn btn-danger">Excluir</button>
-              </form>
+              <details class="action-menu">
+                <summary class="btn action-menu-trigger" aria-label="Abrir ações da campanha">
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                    <circle cx="8" cy="3" r="1.4" />
+                    <circle cx="8" cy="8" r="1.4" />
+                    <circle cx="8" cy="13" r="1.4" />
+                  </svg>
+                </summary>
+
+                <div class="action-menu-panel">
+                  <a class="btn action-menu-item" href="{{ route('admin.partner-campaigns.edit', $campaign) }}">Editar</a>
+                  <form action="{{ route('admin.partner-campaigns.destroy', $campaign) }}" method="POST" onsubmit="return confirm('Remover esta campanha?');">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" class="btn action-menu-item action-menu-item-danger">Excluir</button>
+                  </form>
+                </div>
+              </details>
             </td>
           </tr>
         @empty

@@ -195,6 +195,10 @@
       @error('text_body')
         <span class="alert alert-error">{{ $message }}</span>
       @enderror
+      <p style="font-size:0.85rem; color:#6b7280; margin-top:6px;">
+        Para inserir um botão interno no texto, use o token <strong>&#123;&#123;...&#125;&#125;</strong>.
+        Exemplo para produto: <strong>&#123;&#123;details/menu/13&#125;&#125;</strong>.
+      </p>
     </div>
 
     <div class="form-group" style="grid-column:1/-1;">

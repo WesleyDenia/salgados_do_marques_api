@@ -17,6 +17,7 @@
     <table>
       <thead>
         <tr>
+          <th style="width:84px;">Imagem</th>
           <th>Produto</th>
           <th>Categoria</th>
           <th>Preço</th>
@@ -27,6 +28,23 @@
       <tbody>
         @forelse ($products as $product)
           <tr>
+            <td>
+              @if ($product->image_url)
+                <img
+                  src="{{ $product->image_url }}"
+                  alt="Imagem de {{ $product->name }}"
+                  style="width:56px; height:56px; object-fit:cover; border-radius:12px; border:1px solid #e5e7eb; background:#f8fafc;"
+                />
+              @else
+                <div
+                  aria-label="Produto sem imagem"
+                  title="Produto sem imagem"
+                  style="width:56px; height:56px; border-radius:12px; border:1px dashed #cbd5e1; background:linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); color:#64748b; display:flex; align-items:center; justify-content:center; font-size:0.72rem; font-weight:700; text-align:center; line-height:1.1; padding:6px;"
+                >
+                  Sem imagem
+                </div>
+              @endif
+            </td>
             <td>
               <strong>{{ $product->name }}</strong>
               @if ($product->description)
@@ -62,7 +80,7 @@
           </tr>
         @empty
           <tr>
-            <td colspan="5" style="text-align:center; padding:32px 0; color:#6b7280;">
+            <td colspan="6" style="text-align:center; padding:32px 0; color:#6b7280;">
               Nenhum produto cadastrado.
             </td>
           </tr>

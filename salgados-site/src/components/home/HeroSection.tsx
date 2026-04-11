@@ -1,17 +1,18 @@
-import { ArrowRight, MessageCircle, Store, Users } from "lucide-react";
+import { ArrowRight, MessageCircle, Store } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import heroImage from "@/assets/hero-salgados.jpg";
+import heroImage from "@/assets/image_home.png";
 
 export function HeroSection() {
   return (
     <section className="relative overflow-hidden pt-10 pb-14 sm:pt-14 sm:pb-20">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,hsl(var(--brand-soft)/0.35),transparent_30%),linear-gradient(135deg,hsl(var(--surface-strong))_0%,hsl(var(--accent))_45%,hsl(var(--primary))_100%)]" />
+      <div className="absolute inset-0 bg-[linear-gradient(135deg,hsl(var(--surface-strong))_0%,hsl(var(--accent))_42%,hsl(var(--primary))_100%)]" />
+      <div className="absolute inset-0 bg-black/20" />
       <div className="absolute -top-10 left-8 h-40 w-40 rounded-full bg-white/10 blur-3xl" />
       <div className="absolute bottom-0 right-8 h-52 w-52 rounded-full bg-primary/20 blur-3xl" />
 
       <div className="section-container relative z-10">
-        <div className="grid items-center gap-12 lg:grid-cols-[1.05fr_0.95fr]">
+        <div className="grid items-center gap-10 lg:grid-cols-[0.95fr_1.05fr]">
           <div className="space-y-8 animate-fade-up">
             <div className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm font-medium text-white/90 backdrop-blur-sm">
               <Store className="h-4 w-4" />
@@ -20,13 +21,13 @@ export function HeroSection() {
 
             <div className="max-w-2xl space-y-5">
               <h1 className="heading-display text-balance text-white">
-                Packs de salgados para festa feitos para partilhar
+                Packs de salgados para festa feitos para abrir o apetite
               </h1>
 
               <p className="text-base leading-relaxed text-white/80 sm:text-lg">
                 Mini salgados, salgados 70g, pão de queijo e mini churros para
-                aniversários, reuniões, eventos e celebrações. Mais variedade para
-                servir bem, com encomenda simples e atendimento rápido.
+                aniversários, reuniões, convívios e celebrações. Mais variedade
+                para partilhar bem, com encomenda simples e atendimento rápido.
               </p>
             </div>
 
@@ -51,11 +52,11 @@ export function HeroSection() {
               </Button>
             </div>
 
-            <div className="grid gap-3 md:grid-cols-3">
+            <div className="grid gap-3 sm:grid-cols-3">
               {[
-                "Quantidades ideais para partilhar",
-                "Opções para festas, reuniões e eventos",
-                "Encomenda simples com atendimento rápido",
+                "Mais quantidade para partilhar",
+                "Sabores pensados para diferentes ocasiões",
+                "Encomenda rápida e prática",
               ].map((item) => (
                 <div
                   key={item}
@@ -67,40 +68,23 @@ export function HeroSection() {
             </div>
           </div>
 
-          <div className="animate-fade-up lg:pl-4" style={{ animationDelay: "0.1s" }}>
-            <div className="overflow-hidden rounded-[32px] border border-white/10 bg-white/95 shadow-2xl">
+          <div
+            className="animate-fade-up lg:pl-4"
+            style={{ animationDelay: "0.1s" }}
+          >
+            <div className="relative overflow-hidden rounded-[32px] border border-white/10 shadow-2xl">
               <img
                 src={heroImage}
                 alt="Seleção de salgados para festa"
-                className="h-72 w-full object-cover md:h-80"
+                className="h-[420px] w-full object-cover md:h-[520px]"
               />
 
-              <div className="space-y-5 p-6 md:p-8">
-                <div className="flex items-center gap-3 text-sm font-medium text-primary">
-                  <Users className="h-4 w-4" />
-                  Soluções para festas, convívios e eventos
+              <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/10 to-transparent" />
+
+              <div className="absolute bottom-0 left-0 right-0 p-6 md:p-8">
+                <div className="inline-flex rounded-full border border-white/20 bg-black/25 px-4 py-2 text-sm font-medium text-white backdrop-blur-sm">
+                  Sabor, variedade e partilha
                 </div>
-
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="rounded-2xl bg-secondary/70 p-4">
-                    <p className="text-sm text-muted-foreground">Em destaque</p>
-                    <p className="mt-2 font-display text-2xl text-foreground">
-                      Mini salgados e 70g
-                    </p>
-                  </div>
-
-                  <div className="rounded-2xl bg-secondary/70 p-4">
-                    <p className="text-sm text-muted-foreground">Complementos</p>
-                    <p className="mt-2 font-display text-2xl text-foreground">
-                      Pão de queijo e churros
-                    </p>
-                  </div>
-                </div>
-
-                <p className="text-sm leading-relaxed text-muted-foreground">
-                  Uma seleção pensada para quem procura variedade, praticidade e sabor
-                  na hora de encomendar.
-                </p>
               </div>
             </div>
           </div>

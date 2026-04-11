@@ -4,81 +4,81 @@ const solutions = [
   {
     icon: PartyPopper,
     title: "Aniversários",
-    description: "Packs flexíveis para reunir família e amigos sem perder tempo na cozinha.",
+    description: "Packs práticos para reunir família e amigos com mais sabor e menos preocupação.",
   },
   {
     icon: Building2,
     title: "Eventos Empresariais",
-    description: "Coffee breaks, reuniões e ativações com serviço simples de encomendar.",
+    description: "Opções práticas para coffee breaks, reuniões e momentos de equipa.",
   },
   {
     icon: CalendarHeart,
     title: "Casamentos & Celebrações",
-    description: "Apoio para momentos especiais com variedade de salgados e complementos.",
+    description: "Variedade de salgados e complementos para celebrar com mais praticidade.",
   },
   {
     icon: GlassWater,
     title: "Eventos Informais",
-    description: "Soluções práticas para convívios, open days e encontros com equipas ou clientes.",
+    description: "Uma forma simples de servir bem em convívios, encontros e eventos mais descontraídos.",
   },
 ];
 
 const benefits = [
   "Atendimento rápido via WhatsApp",
-  "Opções para diferentes dimensões de evento",
-  "Portefólio com salgados, pão de queijo e doces",
-  "Produção local com foco em consistência",
-  "Apoio para escolher quantidades",
-  "Ponto de contacto único para encomenda",
+  "Opções para eventos de diferentes dimensões",
+  "Mini salgados, salgados 70g e complementos",
+  "Apoio na escolha das quantidades",
+  "Encomenda simples e sem complicação",
+  "Variedade para servir diferentes convidados",
 ];
 
 export function PartySolutionsSection() {
   return (
     <section className="section-padding bg-secondary/30">
       <div className="section-container">
-        <div className="text-center max-w-3xl mx-auto mb-16">
+        <div className="mx-auto mb-16 max-w-3xl text-center">
           <span className="highlight-badge mb-4 inline-block">Ocasiões de Uso</span>
-          <h2 className="heading-section text-foreground mb-6">
+          <h2 className="heading-section mb-6 text-foreground">
             Salgados para festa adaptados ao tipo de evento
           </h2>
           <p className="text-lg text-muted-foreground">
-            A homepage passa a explicar onde a marca se encaixa: eventos familiares,
-            empresariais e celebrações que pedem variedade, praticidade e um contacto
-            comercial simples.
+            Soluções pensadas para festas, reuniões e celebrações que pedem variedade,
+            praticidade e uma encomenda simples.
           </p>
         </div>
 
-        <div className="grid gap-8 md:grid-cols-2 xl:grid-cols-4 mb-16">
+        <div className="mb-16 grid gap-8 md:grid-cols-2 xl:grid-cols-4">
           {solutions.map((solution, index) => (
             <div
               key={solution.title}
               className="card-elevated p-8 text-center animate-fade-up"
               style={{ animationDelay: `${index * 0.1}s` }}
             >
-              <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
-                <solution.icon className="w-8 h-8 text-primary" />
+              <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10">
+                <solution.icon className="h-8 w-8 text-primary" />
               </div>
-              <h3 className="heading-card text-foreground mb-3">{solution.title}</h3>
+              <h3 className="heading-card mb-3 text-foreground">{solution.title}</h3>
               <p className="text-muted-foreground">{solution.description}</p>
             </div>
           ))}
         </div>
 
-        <div className="bg-card rounded-2xl p-8 md:p-12 border border-border">
-          <div className="grid md:grid-cols-2 gap-8 items-center">
+        <div className="rounded-2xl border border-border bg-card p-8 md:p-12">
+          <div className="grid items-center gap-8 md:grid-cols-2">
             <div>
-              <h3 className="heading-card text-foreground mb-4">
+              <h3 className="heading-card mb-4 text-foreground">
                 Por que funciona bem para quem organiza?
               </h3>
-              <p className="text-muted-foreground mb-6">
-                A promessa aqui é comercial: facilidade para avançar, variedade para
-                servir bem e clareza suficiente para decidir sem fricção.
+              <p className="mb-6 text-muted-foreground">
+                Mais praticidade para organizar a encomenda, escolher as quantidades
+                e servir diferentes convidados com confiança.
               </p>
             </div>
+
             <div className="grid grid-cols-2 gap-4">
               {benefits.map((benefit) => (
                 <div key={benefit} className="flex items-center gap-2">
-                  <CheckCircle className="w-5 h-5 text-primary flex-shrink-0" />
+                  <CheckCircle className="h-5 w-5 flex-shrink-0 text-primary" />
                   <span className="text-sm text-foreground">{benefit}</span>
                 </div>
               ))}

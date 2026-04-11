@@ -19,18 +19,17 @@ export function HeroSection() {
           <div className="space-y-8 animate-fade-up">
             <div className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm font-medium text-white/90 backdrop-blur-sm">
               <Store className="h-4 w-4" />
-              Salgados para festa, eventos e encomendas em Portugal
+              Packs de salgados para festas, eventos e celebrações
             </div>
 
             <h1 className="heading-display text-balance text-white">
-              Salgados para festa com sabor brasileiro, produção local e contacto rápido por{" "}
-              <span className="text-[#ffd7d7]">WhatsApp</span>
+              Packs de salgados para festa feitos para partilhar
             </h1>
 
             <p className="max-w-2xl text-base leading-relaxed text-white/80 sm:text-lg">
               Mini salgados, salgados 70g, pão de queijo e mini churros para aniversários,
-              casamentos, eventos empresariais e celebrações em Pombal, Leiria e região.
-              Fale connosco, ajuste quantidades e avance com a sua encomenda sem complicação.
+              reuniões, eventos e celebrações. Mais variedade para servir bem, com encomenda
+              simples e atendimento rápido.
             </p>
 
             <div className="flex flex-col gap-4 sm:flex-row">
@@ -46,8 +45,8 @@ export function HeroSection() {
                 </a>
               </Button>
               <Button variant="hero-secondary" size="lg" asChild>
-                <Link to="/parceiros" className="flex items-center gap-2">
-                  Seja um parceiro
+                <Link to="/produtos" className="flex items-center gap-2">
+                  Ver produtos
                   <ArrowRight className="w-5 h-5" />
                 </Link>
               </Button>
@@ -55,9 +54,9 @@ export function HeroSection() {
 
             <div className="grid gap-3 sm:grid-cols-3">
               {[
-                "Resposta rápida para encomendas e dúvidas",
-                "Opções para festas pequenas ou eventos maiores",
-                "Frente B2C e B2B com atendimento no mesmo canal",
+                "Quantidades ideais para partilhar",
+                "Opções para festas, reuniões e eventos",
+                "Encomenda simples com atendimento rápido",
               ].map((item) => (
                 <div
                   key={item}
@@ -79,11 +78,11 @@ export function HeroSection() {
               <div className="space-y-5 p-6 md:p-8">
                 <div className="flex items-center gap-3 text-sm font-medium text-primary">
                   <Users className="h-4 w-4" />
-                  Atendimento comercial focado em festas e eventos
+                  Soluções para festas, convívios e eventos
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="rounded-2xl bg-secondary/70 p-4">
-                    <p className="text-sm text-muted-foreground">Produtos em destaque</p>
+                    <p className="text-sm text-muted-foreground">Em destaque</p>
                     <p className="mt-2 font-display text-2xl text-foreground">Mini salgados e 70g</p>
                   </div>
                   <div className="rounded-2xl bg-secondary/70 p-4">
@@ -92,7 +91,7 @@ export function HeroSection() {
                   </div>
                 </div>
                 <p className="text-sm leading-relaxed text-muted-foreground">
-                  Use a home para descobrir a oferta, validar confiança e seguir para o WhatsApp ou para a página de parceiros.
+                  Uma seleção pensada para quem procura variedade, praticidade e sabor na hora de encomendar.
                 </p>
               </div>
             </div>

@@ -6,18 +6,23 @@ import heroImage from "@/assets/image_home.png";
 export function HeroSection() {
   return (
     <section className="relative overflow-hidden min-h-[78vh] flex items-center">
+      {/* Background Image */}
       <div
         className="absolute inset-0 bg-cover bg-center"
         style={{ backgroundImage: `url(${heroImage})` }}
       />
 
-      <div className="absolute inset-0 bg-black/45" />
+      {/* Overlay mais leve */}
+      <div className="absolute inset-0 bg-black/30" />
 
-      <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(0,0,0,0.72)_0%,rgba(0,0,0,0.48)_38%,rgba(0,0,0,0.18)_65%,rgba(0,0,0,0.10)_100%)]" />
+      {/* Gradiente lateral para leitura */}
+      <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(0,0,0,0.65)_0%,rgba(0,0,0,0.45)_35%,rgba(0,0,0,0.15)_65%,rgba(0,0,0,0.05)_100%)]" />
 
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.08),transparent_28%)]" />
+      {/* Luz suave */}
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.08),transparent_30%)]" />
 
       <div className="section-container relative z-10 py-16 sm:py-24">
+        {/* Alinhamento mais à esquerda */}
         <div className="max-w-2xl space-y-8 animate-fade-up">
           <div className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm font-medium text-white/90 backdrop-blur-sm">
             <Store className="h-4 w-4" />

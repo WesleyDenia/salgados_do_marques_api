@@ -12,11 +12,11 @@ export function CTASection() {
       <div className="section-container relative z-10">
         <div className="max-w-3xl mx-auto text-center">
           <h2 className="heading-section mb-6">
-            Pronto para fechar a próxima encomenda?
+            Pronto para encomendar para a sua próxima ocasião?
           </h2>
           <p className="text-lg text-background/70 mb-10 max-w-2xl mx-auto">
-            A ação principal do site passa a ser sempre a mesma: falar connosco no WhatsApp
-            para pedir quantidades, esclarecer disponibilidade e avançar com salgados para festa.
+            Fale connosco no WhatsApp para esclarecer dúvidas, confirmar disponibilidade
+            e encomendar salgados, pão de queijo ou doces de forma rápida e simples.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -38,14 +38,14 @@ export function CTASection() {
               asChild
             >
               <Link to="/parceiros" className="flex items-center gap-2">
-                Seja um parceiro
+                Ver parcerias
                 <ArrowRight className="w-5 h-5" />
               </Link>
             </Button>
           </div>
 
           <p className="mt-8 text-sm text-background/50">
-            Atendimento comercial para clientes finais e parceiros, com resposta centralizada no mesmo canal.
+            Atendimento para encomendas, eventos e parcerias.
           </p>
         </div>
       </div>

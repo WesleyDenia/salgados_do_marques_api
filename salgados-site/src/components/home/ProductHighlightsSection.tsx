@@ -9,22 +9,22 @@ import miniChurrosImage from "@/assets/mini-churros.jpg";
 const highlights = [
   {
     title: "Mini salgados",
-    description: "O formato mais procurado para festas, mesas de apoio e eventos com circulação.",
+    description: "A escolha ideal para festas, aniversários e eventos com partilha prática.",
     image: miniSalgadosImage,
   },
   {
     title: "Salgados 70g",
-    description: "Peças mais substanciais para lanches, coffee breaks e momentos com mais apetite.",
+    description: "Opções mais generosas para lanches, pausas de trabalho e momentos com mais apetite.",
     image: salgados70gImage,
   },
   {
     title: "Pão de queijo",
-    description: "Um clássico que encaixa bem como complemento quente e memorável.",
+    description: "Um clássico irresistível, perfeito para complementar encomendas e servir quente.",
     image: paoQueijoImage,
   },
   {
     title: "Mini churros",
-    description: "Fecho doce para packs mistos, festas infantis e celebrações descontraídas.",
+    description: "O toque doce ideal para completar festas, packs variados e momentos especiais.",
     image: miniChurrosImage,
   },
 ];
@@ -37,11 +37,11 @@ export function ProductHighlightsSection() {
           <div className="max-w-3xl">
             <span className="highlight-badge mb-4 inline-flex">Produtos em destaque</span>
             <h2 className="heading-section mb-4 text-foreground">
-              Portefólio pensado para festas, encomendas rápidas e eventos
+              Sabores pensados para festas, encomendas e momentos de partilha
             </h2>
             <p className="text-lg text-muted-foreground">
-              A home passa a mostrar a linha principal da marca logo na navegação inicial,
-              deixando o detalhe de preços e formatos para a página de produtos.
+              Descubra algumas das opções mais procuradas da nossa loja, preparadas para
+              diferentes ocasiões, desde convívios em família até eventos e celebrações.
             </p>
           </div>
 

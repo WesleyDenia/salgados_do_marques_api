@@ -5,22 +5,22 @@ import { OG_IMAGES, SITE_NAME, SITE_URL } from "@/lib/site";
 
 const partnerTypes = [
   "Casas de festas e espaços para eventos",
-  "Organizadores de eventos e catering complementar",
-  "Empresas com necessidade recorrente para reuniões e ativações",
-  "Revenda selecionada com procura por salgados prontos a recomendar",
+  "Organizadores de eventos e serviços de catering complementar",
+  "Empresas com necessidades recorrentes para reuniões, ações e ativações",
+  "Revenda selecionada com interesse em produtos prontos a recomendar",
 ];
 
 const benefits = [
-  "Oferta alinhada com produtos já fortes na marca",
-  "Canal rápido para ajustar volumes e contexto de uso",
-  "Comunicação simples para acelerar a decisão comercial",
-  "Possibilidade de relação recorrente para eventos e encomendas",
+  "Oferta prática e ajustada a diferentes tipos de evento e operação",
+  "Atendimento rápido para definir quantidades, mix de produtos e contexto de uso",
+  "Processo simples para facilitar encomendas pontuais ou recorrentes",
+  "Relação comercial pensada para continuidade, consistência e proximidade",
 ];
 
 const workflow = [
-  "Partilha do contexto do parceiro e do tipo de evento ou operação.",
-  "Definição do mix de produtos, quantidades e frequência pretendida.",
-  "Validação comercial via WhatsApp e alinhamento dos próximos passos.",
+  "Partilhe connosco o contexto do seu negócio, evento ou necessidade recorrente.",
+  "Definimos em conjunto os produtos, quantidades e frequência mais adequados.",
+  "Alinhamos os próximos passos pelo WhatsApp de forma rápida e direta.",
 ];
 
 const Parceiros = () => {
@@ -28,7 +28,7 @@ const Parceiros = () => {
     "@context": "https://schema.org",
     "@type": "Service",
     name: "Parcerias comerciais para salgados e eventos",
-    serviceType: "Parcerias B2B para salgados, eventos e revenda",
+    serviceType: "Parcerias para salgados, eventos e revenda",
     areaServed: "Portugal",
     provider: {
       "@type": "Organization",
@@ -73,15 +73,15 @@ const Parceiros = () => {
             <div className="max-w-3xl space-y-6">
               <span className="highlight-badge">
                 <BriefcaseBusiness className="h-4 w-4" />
-                Parcerias comerciais
+                Parcerias
               </span>
               <h1 className="heading-display text-foreground">
-                Uma página dedicada para quem quer trabalhar connosco em eventos, festas e revenda
+                Soluções para eventos, negócios e revenda com atendimento direto
               </h1>
               <p className="text-lg leading-relaxed text-muted-foreground">
-                Se gere uma casa de festas, organiza eventos ou precisa de um parceiro de confiança
-                para encomendas recorrentes, esta frente B2B foi desenhada para explicar a proposta
-                com clareza e encaminhar o contacto comercial certo.
+                Trabalhamos com parceiros que procuram uma oferta prática, consistente e fácil de integrar
+                em eventos, operações recorrentes ou pontos de revenda. Uma forma simples de contar com
+                produtos preparados para servir, recomendar e voltar a encomendar.
               </p>
               <div className="flex flex-col gap-3 sm:flex-row">
                 <Button variant="whatsapp" size="lg" asChild>
@@ -92,7 +92,7 @@ const Parceiros = () => {
                     className="flex items-center gap-2"
                   >
                     <MessageCircle className="h-5 w-5" />
-                    Seja um parceiro
+                    Falar sobre parceria
                   </a>
                 </Button>
                 <Button variant="outline" size="lg" asChild>
@@ -110,15 +110,19 @@ const Parceiros = () => {
       <section className="section-padding bg-secondary/25">
         <div className="section-container">
           <div className="mb-10 max-w-3xl">
-            <h2 className="heading-section mb-4 text-foreground">Tipos de parceiros atendidos</h2>
+            <h2 className="heading-section mb-4 text-foreground">Para quem faz sentido</h2>
             <p className="text-lg text-muted-foreground">
-              A página existe para mostrar que a marca consegue responder a relações comerciais
-              regulares sem tirar foco do cliente final.
+              Esta solução é indicada para parceiros que valorizam rapidez no contacto,
+              facilidade na encomenda e uma oferta adequada a diferentes ocasiões.
             </p>
           </div>
           <div className="grid gap-5 md:grid-cols-2">
             {partnerTypes.map((item, index) => (
-              <article key={item} className="card-elevated flex gap-4 p-6 animate-fade-up" style={{ animationDelay: `${index * 0.08}s` }}>
+              <article
+                key={item}
+                className="card-elevated flex gap-4 p-6 animate-fade-up"
+                style={{ animationDelay: `${index * 0.08}s` }}
+              >
                 <div className="mt-1 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10">
                   <Store className="h-6 w-6 text-primary" />
                 </div>
@@ -134,7 +138,7 @@ const Parceiros = () => {
           <div className="card-elevated p-8">
             <div className="mb-5 flex items-center gap-3">
               <Handshake className="h-6 w-6 text-primary" />
-              <h2 className="heading-card text-foreground">Benefícios da parceria</h2>
+              <h2 className="heading-card text-foreground">Vantagens da parceria</h2>
             </div>
             <ul className="space-y-4">
               {benefits.map((item) => (
@@ -149,7 +153,7 @@ const Parceiros = () => {
           <div id="como-funciona" className="card-elevated p-8">
             <div className="mb-5 flex items-center gap-3">
               <CalendarRange className="h-6 w-6 text-primary" />
-              <h2 className="heading-card text-foreground">Modo de trabalho</h2>
+              <h2 className="heading-card text-foreground">Como funciona</h2>
             </div>
             <ol className="space-y-4">
               {workflow.map((item, index) => (
@@ -167,11 +171,11 @@ const Parceiros = () => {
 
       <section className="section-padding bg-foreground text-background">
         <div className="section-container max-w-4xl text-center">
-          <h2 className="heading-section mb-5">Confiança institucional e contacto direto</h2>
+          <h2 className="heading-section mb-5">Vamos conversar sobre a sua necessidade</h2>
           <p className="mx-auto mb-8 max-w-3xl text-lg text-background/75">
-            O objetivo desta página não é complicar o processo com formulários. É criar uma ponte
-            clara entre a marca e parceiros com potencial recorrente, usando o mesmo canal principal
-            de comunicação do resto do site.
+            Seja para eventos, encomendas recorrentes ou revenda, o contacto é simples e direto.
+            Fale connosco pelo WhatsApp para apresentar o seu contexto e perceber a melhor forma
+            de trabalharmos em conjunto.
           </p>
           <Button variant="whatsapp" size="xl" asChild>
             <a
@@ -181,7 +185,7 @@ const Parceiros = () => {
               className="flex items-center gap-2"
             >
               <MessageCircle className="h-5 w-5" />
-              Seja um parceiro
+              Falar sobre parceria
             </a>
           </Button>
         </div>

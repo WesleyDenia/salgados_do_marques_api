@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="panel" x1="48" y1="48" x2="1152" y2="582" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#4E0101" />
+      <stop offset="1" stop-color="#24080E" />
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="#F3EEF4" />
+  <rect x="48" y="48" width="1104" height="534" rx="40" fill="url(#panel)" />
+  <circle cx="1016" cy="154" r="150" fill="#25D366" fill-opacity="0.12" />
+  <circle cx="196" cy="490" r="128" fill="#FFFFFF" fill-opacity="0.08" />
+  <text x="112" y="174" font-family="Arial, sans-serif" font-size="34" font-weight="700" fill="#F7F3F5">Salgados do Marquês</text>
+  <text x="112" y="280" font-family="Georgia, serif" font-size="70" font-weight="700" fill="#FFFFFF">Parceiros para eventos,</text>
+  <text x="112" y="360" font-family="Georgia, serif" font-size="70" font-weight="700" fill="#FFFFFF">festas e revenda</text>
+  <text x="112" y="438" font-family="Arial, sans-serif" font-size="30" fill="#F3D5D9">Página dedicada para casas de festas, eventos empresariais e relações recorrentes.</text>
+  <rect x="112" y="486" width="246" height="58" rx="18" fill="#25D366" />
+  <text x="150" y="524" font-family="Arial, sans-serif" font-size="28" font-weight="700" fill="#FFFFFF">Seja um parceiro</text>
+</svg>

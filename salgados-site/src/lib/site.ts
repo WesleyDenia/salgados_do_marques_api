@@ -3,6 +3,7 @@ export const SITE_URL = "https://salgadosdomarques.pt";
 export const DEFAULT_OG_IMAGE = `${SITE_URL}/og-image.svg`;
 export const OG_IMAGES = {
   home: `${SITE_URL}/og-home.svg`,
+  parceiros: `${SITE_URL}/og-parceiros.svg`,
   produtos: `${SITE_URL}/og-produtos.svg`,
   festas: `${SITE_URL}/og-festas.svg`,
   sobre: `${SITE_URL}/og-sobre.svg`,

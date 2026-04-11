@@ -20,11 +20,12 @@ const buttonVariants = cva(
           "bg-secondary text-secondary-foreground border border-border hover:bg-secondary/80 hover:border-primary/30",
         ghost: "hover:bg-accent/10 hover:text-accent",
         link: "text-primary underline-offset-4 hover:underline",
-        // Custom variants for the brand
-        cta: "bg-accent text-accent-foreground shadow-lg hover:bg-accent/90 hover:shadow-xl hover:scale-[1.02]",
-        hero: "bg-accent text-accent-foreground shadow-lg px-8 py-6 text-base hover:bg-accent/90 hover:shadow-xl hover:scale-[1.02]",
-        "hero-secondary": "bg-card text-foreground border-2 border-border px-8 py-6 text-base hover:border-primary/50 hover:bg-secondary",
-        whatsapp: "bg-[hsl(142_70%_45%)] text-white shadow-lg hover:bg-[hsl(142_70%_40%)] hover:shadow-xl hover:scale-[1.02]",
+        cta: "bg-primary text-primary-foreground shadow-lg hover:bg-primary/92 hover:shadow-xl hover:scale-[1.02]",
+        hero: "bg-[hsl(var(--whatsapp))] px-8 py-6 text-base text-white shadow-lg hover:bg-[hsl(var(--whatsapp-dark))] hover:shadow-xl hover:scale-[1.02]",
+        "hero-secondary":
+          "border-2 border-border bg-card/90 px-8 py-6 text-base text-foreground backdrop-blur-sm hover:border-primary/50 hover:bg-card",
+        whatsapp:
+          "bg-[hsl(var(--whatsapp))] text-white shadow-lg hover:bg-[hsl(var(--whatsapp-dark))] hover:shadow-xl hover:scale-[1.02]",
       },
       size: {
         default: "h-11 px-6 py-2",

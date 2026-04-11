@@ -70,9 +70,9 @@ const Festas = () => {
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center gap-2"
-                  >
-                    <MessageCircle className="w-5 h-5" />
-                    Solicitar Orçamento
+                >
+                  <MessageCircle className="w-5 h-5" />
+                    Falar no WhatsApp
                   </a>
                 </Button>
               </div>
@@ -144,7 +144,7 @@ const Festas = () => {
                     <span className="text-primary mt-1">•</span>
                     <div className="flex-1 flex items-center justify-between gap-4">
                       <span className="text-foreground">Pack 100 unidades</span>
-                      <span className="font-semibold text-primary">100€</span>
+                      <span className="font-semibold text-primary">30€</span>
                     </div>
                   </li>
                 </ul>
@@ -276,7 +276,7 @@ const Festas = () => {
                     rel="noopener noreferrer"
                     className="flex items-center justify-center gap-2"
                   >
-                    Falar Connosco
+                    Falar no WhatsApp
                     <ArrowRight className="w-4 h-4" />
                   </a>
                 </Button>

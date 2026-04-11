@@ -1,7 +1,10 @@
 import { Seo } from "@/components/Seo";
 import { ADDRESS, CONTACT_PHONE, OG_IMAGES, SITE_NAME, SITE_URL } from "@/lib/site";
 import { HeroSection } from "@/components/home/HeroSection";
-import { EmergencySupportSection } from "@/components/home/EmergencySupportSection";
+import { PartySolutionsSection } from "@/components/home/PartySolutionsSection";
+import { ProductHighlightsSection } from "@/components/home/ProductHighlightsSection";
+import { TrustSection } from "@/components/home/TrustSection";
+import { PartnersTeaserSection } from "@/components/home/PartnersTeaserSection";
 import { CTASection } from "@/components/home/CTASection";
 
 const Index = () => {
@@ -37,7 +40,7 @@ const Index = () => {
         name: "Fazem encomendas de salgados em Portugal?",
         acceptedAnswer: {
           "@type": "Answer",
-          text: "Sim. Atendemos encomendas de salgados para festas em Portugal, com foco em Pombal e região de Leiria.",
+          text: "Sim. Atendemos encomendas de salgados para festas e eventos em Portugal, com foco comercial em Pombal e região de Leiria.",
         },
       },
       {
@@ -45,7 +48,7 @@ const Index = () => {
         name: "Têm salgadinhos para festa em Portugal?",
         acceptedAnswer: {
           "@type": "Answer",
-          text: "Temos mini salgados, salgados 70g, mini churros e pão de queijo para aniversários, eventos empresariais e celebrações.",
+          text: "Temos mini salgados, salgados 70g, mini churros e pão de queijo para aniversários, casamentos, eventos empresariais e outras celebrações.",
         },
       },
     ],
@@ -55,7 +58,7 @@ const Index = () => {
     <main>
       <Seo
         title={`${SITE_NAME} | Salgados em Portugal e Salgadinhos para Festa`}
-        description="Salgados em Portugal para festas e eventos: mini salgados, salgados 70g, mini churros e pão de queijo. Encomendas de salgadinhos para festa em Portugal, com atendimento em Pombal e região."
+        description="Salgados em Portugal para festas e eventos: mini salgados, salgados 70g, pão de queijo e mini churros. Fale no WhatsApp para encomendas de salgadinhos para festa em Pombal, Leiria e região."
         canonical={`${SITE_URL}/`}
         ogImage={OG_IMAGES.home}
         schema={[
@@ -83,7 +86,10 @@ const Index = () => {
         ]}
       />
       <HeroSection />
-      <EmergencySupportSection />
+      <PartySolutionsSection />
+      <ProductHighlightsSection />
+      <TrustSection />
+      <PartnersTeaserSection />
       <CTASection />
     </main>
   );

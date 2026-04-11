@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Phone, Mail, MapPin, Clock } from "lucide-react";
+import { Clock, Mail, MapPin, MessageCircle, Phone } from "lucide-react";
 import { useCookieConsent } from "@/components/CookieConsentProvider";
 
 export function Footer() {
@@ -15,9 +15,18 @@ export function Footer() {
               Salgados do Marquês
             </h3>
             <p className="text-background/70 text-sm leading-relaxed">
-              Salgados e doces de qualidade para as suas festas e eventos. 
-              Produção própria com ingredientes selecionados.
+              Salgados para festa, eventos e encomendas com atendimento comercial
+              direto por WhatsApp e base local em Pombal.
             </p>
+            <a
+              href="https://wa.me/351939197110"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 text-sm font-semibold text-white"
+            >
+              <MessageCircle className="h-4 w-4" />
+              Falar no WhatsApp
+            </a>
           </div>
 
           {/* Quick Links */}
@@ -28,10 +37,13 @@ export function Footer() {
                 Início
               </Link>
               <Link to="/festas" className="text-background/70 hover:text-background transition-colors text-sm">
-                Festas & Encomendas
+                Festas
               </Link>
               <Link to="/produtos" className="text-background/70 hover:text-background transition-colors text-sm">
                 Produtos
+              </Link>
+              <Link to="/parceiros" className="text-background/70 hover:text-background transition-colors text-sm">
+                Parceiros
               </Link>
               <Link to="/sobre" className="text-background/70 hover:text-background transition-colors text-sm">
                 Sobre Nós
@@ -78,8 +90,8 @@ export function Footer() {
                 <Clock className="w-4 h-4 flex-shrink-0 mt-0.5" />
                 <div>
                   <p>Terça a Sábado: 12h - 20h</p>
-                  <p>Domingo: retirada de encomendas</p>
-                  <p>Segunda: Encerrado</p>
+                  <p>Canal principal: WhatsApp</p>
+                  <p>Página dedicada para parceiros disponível no site</p>
                 </div>
               </div>
             </div>

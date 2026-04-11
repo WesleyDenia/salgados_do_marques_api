@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Menu, X, Phone } from "lucide-react";
+import { Menu, MessageCircle, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const navLinks = [
   { href: "/", label: "Início" },
-  { href: "/festas", label: "Festas & Encomendas" },
+  { href: "/festas", label: "Festas" },
   { href: "/produtos", label: "Produtos" },
+  { href: "/parceiros", label: "Parceiros" },
   { href: "/sobre", label: "Sobre Nós" },
   { href: "/contactos", label: "Contactos" },
 ];
@@ -47,15 +48,15 @@ export function Header() {
 
           {/* CTA Button */}
           <div className="hidden lg:flex items-center gap-4">
-            <Button variant="cta" size="default" asChild>
+            <Button variant="whatsapp" size="default" asChild>
               <a
                 href="https://wa.me/351939197110"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-2"
               >
-                <Phone className="w-4 h-4" />
-                Agendar Apoio
+                <MessageCircle className="w-4 h-4" />
+                Falar no WhatsApp
               </a>
             </Button>
           </div>
@@ -88,15 +89,15 @@ export function Header() {
                   {link.label}
                 </Link>
               ))}
-              <Button variant="cta" className="mt-4 w-full" asChild>
+              <Button variant="whatsapp" className="mt-4 w-full" asChild>
                 <a
                   href="https://wa.me/351939197110"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center justify-center gap-2"
                 >
-                  <Phone className="w-4 h-4" />
-                  Agendar Apoio
+                  <MessageCircle className="w-4 h-4" />
+                  Falar no WhatsApp
                 </a>
               </Button>
             </nav>

@@ -1,53 +1,54 @@
-import { PartyPopper, Users, Clock, CheckCircle } from "lucide-react";
+import { Building2, CalendarHeart, CheckCircle, GlassWater, PartyPopper } from "lucide-react";
 
 const solutions = [
   {
     icon: PartyPopper,
     title: "Aniversários",
-    description: "Salgados e doces para celebrar momentos especiais em família.",
+    description: "Packs flexíveis para reunir família e amigos sem perder tempo na cozinha.",
   },
   {
-    icon: Users,
+    icon: Building2,
     title: "Eventos Empresariais",
-    description: "Reuniões, workshops e confraternizações com qualidade garantida.",
+    description: "Coffee breaks, reuniões e ativações com serviço simples de encomendar.",
   },
   {
-    icon: Clock,
-    title: "Celebrações",
-    description: "Batizados, comunhões e outras ocasiões importantes.",
+    icon: CalendarHeart,
+    title: "Casamentos & Celebrações",
+    description: "Apoio para momentos especiais com variedade de salgados e complementos.",
+  },
+  {
+    icon: GlassWater,
+    title: "Eventos Informais",
+    description: "Soluções práticas para convívios, open days e encontros com equipas ou clientes.",
   },
 ];
 
 const benefits = [
-  "Praticidade na organização",
-  "Variedade de opções",
-  "Quantidades para todos os grupos",
-  "Produção consistente e de qualidade",
-  "Entrega pontual",
-  "Suporte dedicado",
+  "Atendimento rápido via WhatsApp",
+  "Opções para diferentes dimensões de evento",
+  "Portefólio com salgados, pão de queijo e doces",
+  "Produção local com foco em consistência",
+  "Apoio para escolher quantidades",
+  "Ponto de contacto único para encomenda",
 ];
 
 export function PartySolutionsSection() {
   return (
     <section className="section-padding bg-secondary/30">
       <div className="section-container">
-        {/* Header */}
         <div className="text-center max-w-3xl mx-auto mb-16">
-          <span className="highlight-badge mb-4 inline-block">
-            Soluções Completas
-          </span>
+          <span className="highlight-badge mb-4 inline-block">Ocasiões de Uso</span>
           <h2 className="heading-section text-foreground mb-6">
-            Tranquilidade para quem organiza
+            Salgados para festa adaptados ao tipo de evento
           </h2>
           <p className="text-lg text-muted-foreground">
-            Deixe a comida por nossa conta. Focamo-nos em entregar qualidade e 
-            consistência para que possa dedicar-se ao que realmente importa: 
-            aproveitar o momento.
+            A homepage passa a explicar onde a marca se encaixa: eventos familiares,
+            empresariais e celebrações que pedem variedade, praticidade e um contacto
+            comercial simples.
           </p>
         </div>
 
-        {/* Solutions Grid */}
-        <div className="grid md:grid-cols-3 gap-8 mb-16">
+        <div className="grid gap-8 md:grid-cols-2 xl:grid-cols-4 mb-16">
           {solutions.map((solution, index) => (
             <div
               key={solution.title}
@@ -63,16 +64,15 @@ export function PartySolutionsSection() {
           ))}
         </div>
 
-        {/* Benefits */}
         <div className="bg-card rounded-2xl p-8 md:p-12 border border-border">
           <div className="grid md:grid-cols-2 gap-8 items-center">
             <div>
               <h3 className="heading-card text-foreground mb-4">
-                Por que escolher Salgados do Marquês?
+                Por que funciona bem para quem organiza?
               </h3>
               <p className="text-muted-foreground mb-6">
-                Organizamos cada encomenda com cuidado, garantindo que todos os 
-                detalhes estejam alinhados com as suas necessidades.
+                A promessa aqui é comercial: facilidade para avançar, variedade para
+                servir bem e clareza suficiente para decidir sem fricção.
               </p>
             </div>
             <div className="grid grid-cols-2 gap-4">

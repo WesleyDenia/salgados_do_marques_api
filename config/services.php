@@ -44,6 +44,16 @@ return [
         'api_key' => env('WAPIFY_API_KEY'),
         'verify_ssl' => env('WAPIFY_VERIFY_SSL', true),
     ],
+    'google_places' => [
+        'base_url' => env('GOOGLE_PLACES_BASE_URL', 'https://places.googleapis.com/v1'),
+        'api_key' => env('GOOGLE_PLACES_API_KEY'),
+        'place_id' => env('GOOGLE_PLACES_PLACE_ID'),
+        'language_code' => env('GOOGLE_PLACES_LANGUAGE_CODE', 'pt-PT'),
+        'region_code' => env('GOOGLE_PLACES_REGION_CODE', 'PT'),
+        'minimum_rating' => (int) env('GOOGLE_PLACES_MINIMUM_REVIEW_RATING', 4),
+        'limit' => (int) env('GOOGLE_PLACES_REVIEW_LIMIT', 4),
+        'cache_hours' => (int) env('GOOGLE_PLACES_CACHE_HOURS', 6),
+    ],
 
 
 ];

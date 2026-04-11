@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\V1\{
     LoyaltyBonusController,
     LoyaltyRewardController,
     ContentHomeController,
+    GoogleReviewsController,
     LgpdController,
     PasswordResetController,
     StoreController,
@@ -37,6 +38,7 @@ Route::prefix('v1')->group(function () {
         Route::post('reset-password', [PasswordResetController::class, 'reset']);
     });
     Route::get('stores', [StoreController::class, 'index']);
+    Route::get('google-reviews', [GoogleReviewsController::class, 'index']);
 
     Route::middleware('auth:sanctum')->group(function () {
         Route::get('orders/settings', [OrderController::class, 'settings']);

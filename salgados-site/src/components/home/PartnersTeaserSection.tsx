@@ -11,15 +11,14 @@ export function PartnersTeaserSection() {
             <div className="space-y-5">
               <span className="highlight-badge">
                 <BriefcaseBusiness className="h-4 w-4" />
-                Frente B2B
+                Parcerias
               </span>
               <h2 className="heading-section text-foreground">
-                Também procuramos parceiros para festas, eventos e revenda
+                Soluções pensadas para eventos, negócios e revenda
               </h2>
               <p className="max-w-3xl text-lg text-muted-foreground">
-                Casas de festas, organizadores de eventos e negócios que precisem de oferta regular
-                podem conhecer a proposta comercial numa página própria, sem competir com a proposta
-                principal da home.
+                Trabalhamos com parceiros que procuram uma oferta prática, consistente e fácil de integrar
+                no seu negócio ou evento. Uma solução simples para quem precisa de qualidade com regularidade.
               </p>
               <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
                 <span className="inline-flex items-center gap-2 rounded-full bg-secondary px-4 py-2">
@@ -32,7 +31,7 @@ export function PartnersTeaserSection() {
                 </span>
                 <span className="inline-flex items-center gap-2 rounded-full bg-secondary px-4 py-2">
                   <Store className="h-4 w-4 text-primary" />
-                  Revenda selecionada
+                  Revenda
                 </span>
               </div>
             </div>
@@ -40,7 +39,7 @@ export function PartnersTeaserSection() {
             <div className="flex flex-col gap-3">
               <Button variant="outline" size="lg" asChild>
                 <Link to="/parceiros" className="flex items-center gap-2">
-                  Seja um parceiro
+                  Ver condições para parceiros
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               </Button>

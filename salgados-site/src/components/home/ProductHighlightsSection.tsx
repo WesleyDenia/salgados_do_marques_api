@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import miniSalgadosImage from "@/assets/mini-salgados.jpg";
 import salgados70gImage from "@/assets/salgados-70g.jpg";
 import paoQueijoImage from "@/assets/pao-queijo.jpg";
-import miniChurrosImage from "@/assets/mini-churros.jpg";
+import miniChurrosImage from "@/assets/churros.webp";
 
 const highlights = [
   {

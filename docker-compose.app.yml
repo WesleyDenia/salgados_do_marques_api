@@ -18,6 +18,7 @@ services:
       - mail_password
       - vendus_key
       - wapify_key
+      - google_api_key
     environment:
       APP_ENV: production
       APP_DEBUG: "false"
@@ -26,6 +27,7 @@ services:
       MAIL_PASSWORD_FILE: /run/secrets/mail_password
       VENDUS_API_KEY_FILE: /run/secrets/vendus_key
       WAPIFY_API_KEY_FILE: /run/secrets/wapify_key
+      GOOGLE_API_KEY_FILE: /run/secrets/google_api_key
     networks:
       - backend
 
@@ -54,6 +56,8 @@ secrets:
     file: ./docker/secrets/vendus_key.txt
   wapify_key:
     file: ./docker/secrets/wapify_key.txt
+  google_api_key:
+    file: ./docker/secrets/google_api_key.txt
 
 networks:
   backend:

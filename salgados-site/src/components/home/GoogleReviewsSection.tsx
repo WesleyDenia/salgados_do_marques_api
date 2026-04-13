@@ -72,14 +72,16 @@ export function GoogleReviewsSection() {
             <div className="max-w-3xl space-y-4">
               <span className="highlight-badge">
                 <Quote className="h-4 w-4" />
-                Reviews no Google Maps
+                Avaliações no Google Maps
               </span>
+
               <h2 className="heading-section text-foreground">
-                O que os clientes destacam quando avaliam a experiência
+                O que os clientes dizem sobre a experiência
               </h2>
+
               <p className="text-lg text-muted-foreground">
-                Avaliações oficiais do Google Maps, ordenadas por relevância e filtradas
-                para mostrar reviews com classificação igual ou superior a 4 estrelas.
+                Algumas das avaliações partilhadas por clientes no Google Maps,
+                destacando a qualidade dos produtos e do atendimento.
               </p>
             </div>
 
@@ -122,14 +124,14 @@ export function GoogleReviewsSection() {
                   {truncateReview(review.text)}
                 </p>
 
-                <div className="mt-6 pt-4 border-t border-border/70">
+                <div className="mt-6 border-t border-border/70 pt-4">
                   <a
                     href={review.google_maps_url ?? primaryMapsUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-2 text-sm font-semibold text-primary transition-colors hover:text-primary/80"
                   >
-                    Ver review no Google Maps
+                    Ver avaliação no Google Maps
                     <ExternalLink className="h-4 w-4" />
                   </a>
                 </div>
@@ -138,8 +140,8 @@ export function GoogleReviewsSection() {
           </div>
 
           <p className="mt-6 text-sm text-muted-foreground">
-            Fonte: Google Maps. A ordem apresentada segue a relevância definida pela
-            Google e a disponibilidade de reviews no Place Details.
+            Fonte: Google Maps. A seleção e a ordem das avaliações dependem da
+            disponibilidade da plataforma.
           </p>
         </div>
       </div>

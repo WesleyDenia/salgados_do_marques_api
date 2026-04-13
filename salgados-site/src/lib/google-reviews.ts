@@ -1,4 +1,16 @@
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/$/, "") ?? "";
+const DEFAULT_API_BASE_URL = "https://api.salgadosdomarques.pt/api/v1";
+
+function resolveReviewsEndpoint() {
+  const configuredBase =
+    (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/$/, "") ??
+    DEFAULT_API_BASE_URL;
+
+  if (configuredBase.endsWith("/api/v1")) {
+    return `${configuredBase}/google-reviews`;
+  }
+
+  return `${configuredBase}/api/v1/google-reviews`;
+}
 export interface GoogleReview {
   author_name: string;
   author_url?: string | null;
@@ -27,7 +39,7 @@ export function shouldFetchGoogleReviews() {
 }
 
 export async function fetchGoogleReviews(): Promise<GoogleReviewsResponse> {
-  const response = await fetch(`${API_BASE_URL}/api/v1/google-reviews`, {
+  const response = await fetch(resolveReviewsEndpoint(), {
     headers: {
       Accept: "application/json",
     },

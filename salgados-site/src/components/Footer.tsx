@@ -11,9 +11,20 @@ export function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12">
           {/* Brand */}
           <div className="space-y-4">
-            <h3 className="font-display text-2xl font-bold">
-              Salgados do Marquês
-            </h3>
+            <h3 className="sr-only">Salgados do Marquês</h3>
+            <Link
+              to="/"
+              aria-label="Salgados do Marquês"
+              className="inline-flex items-center"
+            >
+              <img
+                src="/logo_site.png"
+                alt="Logo Salgados do Marquês"
+                className="h-16 w-auto"
+                loading="lazy"
+                decoding="async"
+              />
+            </Link>
             <p className="text-background/70 text-sm leading-relaxed">
               Salgados para festa, eventos e encomendas com atendimento comercial
               direto por WhatsApp e base local em Pombal.

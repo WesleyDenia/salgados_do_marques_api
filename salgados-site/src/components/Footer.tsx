@@ -18,7 +18,7 @@ export function Footer() {
               className="inline-flex items-center"
             >
               <img
-                src="/logo_site.png"
+                src="/logo_site_branco.png"
                 alt="Logo Salgados do Marquês"
                 className="h-16 w-auto"
                 loading="lazy"

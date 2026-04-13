@@ -6,7 +6,7 @@ export function Footer() {
   const { openPreferences } = useCookieConsent();
 
   return (
-    <footer className="bg-foreground text-background">
+    <footer className="bg-[hsl(var(--footer-background))] text-background">
       <div className="section-container py-16">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12">
           {/* Brand */}

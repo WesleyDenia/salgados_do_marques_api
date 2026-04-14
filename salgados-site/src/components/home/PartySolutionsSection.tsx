@@ -76,8 +76,8 @@ export function PartySolutionsSection() {
               >
                 <div className="absolute inset-0 bg-gradient-to-br from-foreground/30 via-foreground/10 to-transparent" />
               </div>
-              <div className="-mt-8 px-6 pb-6">
-                <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-sm ring-4 ring-card">
+              <div className="relative z-10 -mt-8 px-6 pb-6">
+                <div className="relative z-10 mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-sm ring-4 ring-card">
                   <solution.icon className="h-6 w-6" />
                 </div>
 

@@ -30,7 +30,7 @@ function resolveApiBaseUrl() {
 }
 
 function resolvePartnersEndpoint(path = "") {
-  return `${resolveApiBaseUrl()}/partners${path}`;
+  return `${resolveApiBaseUrl()}/public/partners${path}`;
 }
 
 export function resolvePartnerImageUrl(path?: string | null): string | undefined {

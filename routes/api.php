@@ -32,6 +32,8 @@ Route::prefix('v1')->group(function () {
     Route::post('register', [AuthController::class, 'register']);
     Route::post('login', [AuthController::class, 'login']);
     Route::get('lgpd/terms', [LgpdController::class, 'terms']);
+    Route::get('partners', [PartnerController::class, 'index']);
+    Route::get('partners/{partner}', [PartnerController::class, 'show']);
     Route::prefix('auth')->group(function () {
         Route::post('forgot-password', [PasswordResetController::class, 'forgot']);
         Route::post('verify-otp', [PasswordResetController::class, 'verifyOtp']);
@@ -57,8 +59,6 @@ Route::prefix('v1')->group(function () {
         Route::get('products/{product}', [ProductController::class, 'show']);
         Route::get('promotions', [PromotionController::class, 'index']);
         Route::get('coupons', [CouponController::class, 'index']);
-        Route::get('partners', [PartnerController::class, 'index']);
-        Route::get('partners/{partner}', [PartnerController::class, 'show']);
         Route::get('content-home', [ContentHomeController::class, 'index']);
         Route::get('flavors', [FlavorController::class, 'index']);
 

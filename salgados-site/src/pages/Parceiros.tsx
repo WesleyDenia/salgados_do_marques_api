@@ -1,37 +1,24 @@
-import { ArrowRight, BriefcaseBusiness, CalendarRange, Handshake, MessageCircle, Store } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { ArrowRight, BriefcaseBusiness, MessageCircle } from "lucide-react";
+import { Link } from "react-router-dom";
 import { Seo } from "@/components/Seo";
 import { Button } from "@/components/ui/button";
+import { buildPartnerPath, fetchPartners, resolvePartnerImageUrl } from "@/lib/partners";
 import { OG_IMAGES, SITE_NAME, SITE_URL } from "@/lib/site";
 
-const partnerTypes = [
-  "Casas de festas e espaços para eventos",
-  "Organizadores de eventos e serviços de catering complementar",
-  "Empresas com necessidades recorrentes para reuniões, ações e ativações",
-  "Revenda selecionada com interesse em produtos prontos a recomendar",
-];
-
-const benefits = [
-  "Oferta prática e ajustada a diferentes tipos de evento e operação",
-  "Atendimento rápido para definir quantidades, mix de produtos e contexto de uso",
-  "Processo simples para facilitar encomendas pontuais ou recorrentes",
-  "Relação comercial pensada para continuidade, consistência e proximidade",
-];
-
-const workflow = [
-  "Partilhe connosco o contexto do seu negócio, evento ou necessidade recorrente.",
-  "Definimos em conjunto os produtos, quantidades e frequência mais adequados.",
-  "Alinhamos os próximos passos pelo WhatsApp de forma rápida e direta.",
-];
-
 const Parceiros = () => {
+  const { data: partners = [], isLoading, isError } = useQuery({
+    queryKey: ["partners"],
+    queryFn: fetchPartners,
+  });
+
   const partnerSchema = {
     "@context": "https://schema.org",
-    "@type": "Service",
-    name: "Parcerias comerciais para salgados e eventos",
-    serviceType: "Parcerias para salgados, eventos e revenda",
-    areaServed: "Portugal",
-    provider: {
-      "@type": "Organization",
+    "@type": "CollectionPage",
+    name: "Parceiros do Salgados do Marquês",
+    url: `${SITE_URL}/parceiros`,
+    isPartOf: {
+      "@type": "WebSite",
       name: SITE_NAME,
       url: SITE_URL,
     },
@@ -40,8 +27,8 @@ const Parceiros = () => {
   return (
     <main>
       <Seo
-        title={`${SITE_NAME} | Parceiros para Eventos e Revenda`}
-        description="Página para parceiros do Salgados do Marquês: casas de festas, eventos empresariais e revenda. Conheça benefícios, forma de trabalho e fale connosco no WhatsApp."
+        title={`${SITE_NAME} | Parceiros`}
+        description="Conheça os parceiros do Salgados do Marquês e veja os detalhes de cada parceria ativa."
         canonical={`${SITE_URL}/parceiros`}
         ogImage={OG_IMAGES.parceiros}
         schema={[
@@ -73,17 +60,20 @@ const Parceiros = () => {
             <div className="max-w-3xl space-y-6">
               <span className="highlight-badge">
                 <BriefcaseBusiness className="h-4 w-4" />
-                Parcerias
+                Parceiros
               </span>
-              <h1 className="heading-display text-foreground">
-                Soluções para eventos, negócios e revenda com atendimento direto
-              </h1>
+              <h1 className="heading-display text-foreground">Parcerias ativas no Salgados do Marquês</h1>
               <p className="text-lg leading-relaxed text-muted-foreground">
-                Trabalhamos com parceiros que procuram uma oferta prática, consistente e fácil de integrar
-                em eventos, operações recorrentes ou pontos de revenda. Uma forma simples de contar com
-                produtos preparados para servir, recomendar e voltar a encomendar.
+                Veja os parceiros já presentes no nosso ecossistema. Cada página reúne a imagem,
+                o nome e a descrição da parceria para facilitar a consulta no site.
               </p>
               <div className="flex flex-col gap-3 sm:flex-row">
+                <Button variant="outline" size="lg" asChild>
+                  <a href="#lista-parceiros" className="flex items-center gap-2">
+                    Ver parceiros
+                    <ArrowRight className="h-4 w-4" />
+                  </a>
+                </Button>
                 <Button variant="whatsapp" size="lg" asChild>
                   <a
                     href="https://wa.me/351939197110"
@@ -92,13 +82,7 @@ const Parceiros = () => {
                     className="flex items-center gap-2"
                   >
                     <MessageCircle className="h-5 w-5" />
-                    Falar sobre parceria
-                  </a>
-                </Button>
-                <Button variant="outline" size="lg" asChild>
-                  <a href="#como-funciona" className="flex items-center gap-2">
-                    Como funciona
-                    <ArrowRight className="h-4 w-4" />
+                    Falar no WhatsApp
                   </a>
                 </Button>
               </div>
@@ -107,87 +91,94 @@ const Parceiros = () => {
         </div>
       </section>
 
-      <section className="section-padding bg-secondary/25">
+      <section id="lista-parceiros" className="section-padding bg-secondary/25">
         <div className="section-container">
           <div className="mb-10 max-w-3xl">
-            <h2 className="heading-section mb-4 text-foreground">Para quem faz sentido</h2>
+            <h2 className="heading-section mb-4 text-foreground">Parceiros disponíveis</h2>
             <p className="text-lg text-muted-foreground">
-              Esta solução é indicada para parceiros que valorizam rapidez no contacto,
-              facilidade na encomenda e uma oferta adequada a diferentes ocasiões.
+              Selecione um parceiro para abrir a página interna e consultar a descrição completa.
             </p>
           </div>
-          <div className="grid gap-5 md:grid-cols-2">
-            {partnerTypes.map((item, index) => (
-              <article
-                key={item}
-                className="card-elevated flex gap-4 p-6 animate-fade-up"
-                style={{ animationDelay: `${index * 0.08}s` }}
-              >
-                <div className="mt-1 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10">
-                  <Store className="h-6 w-6 text-primary" />
+
+          {isLoading ? (
+            <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+              {Array.from({ length: 6 }).map((_, index) => (
+                <div
+                  key={index}
+                  className="card-elevated overflow-hidden bg-card/80 animate-pulse"
+                >
+                  <div className="h-56 bg-muted" />
+                  <div className="space-y-3 p-6">
+                    <div className="h-6 w-3/4 rounded bg-muted" />
+                    <div className="h-4 w-full rounded bg-muted" />
+                    <div className="h-4 w-2/3 rounded bg-muted" />
+                  </div>
                 </div>
-                <p className="text-base leading-relaxed text-foreground">{item}</p>
-              </article>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="section-padding">
-        <div className="section-container grid gap-8 lg:grid-cols-2">
-          <div className="card-elevated p-8">
-            <div className="mb-5 flex items-center gap-3">
-              <Handshake className="h-6 w-6 text-primary" />
-              <h2 className="heading-card text-foreground">Vantagens da parceria</h2>
-            </div>
-            <ul className="space-y-4">
-              {benefits.map((item) => (
-                <li key={item} className="flex gap-3 text-muted-foreground">
-                  <span className="mt-2 h-2 w-2 rounded-full bg-primary" />
-                  <span>{item}</span>
-                </li>
               ))}
-            </ul>
-          </div>
-
-          <div id="como-funciona" className="card-elevated p-8">
-            <div className="mb-5 flex items-center gap-3">
-              <CalendarRange className="h-6 w-6 text-primary" />
-              <h2 className="heading-card text-foreground">Como funciona</h2>
             </div>
-            <ol className="space-y-4">
-              {workflow.map((item, index) => (
-                <li key={item} className="flex gap-4 text-muted-foreground">
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
-                    {index + 1}
-                  </span>
-                  <span>{item}</span>
-                </li>
-              ))}
-            </ol>
-          </div>
-        </div>
-      </section>
+          ) : null}
 
-      <section className="section-padding bg-foreground text-background">
-        <div className="section-container max-w-4xl text-center">
-          <h2 className="heading-section mb-5">Vamos conversar sobre a sua necessidade</h2>
-          <p className="mx-auto mb-8 max-w-3xl text-lg text-background/75">
-            Seja para eventos, encomendas recorrentes ou revenda, o contacto é simples e direto.
-            Fale connosco pelo WhatsApp para apresentar o seu contexto e perceber a melhor forma
-            de trabalharmos em conjunto.
-          </p>
-          <Button variant="whatsapp" size="xl" asChild>
-            <a
-              href="https://wa.me/351939197110"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-2"
-            >
-              <MessageCircle className="h-5 w-5" />
-              Falar sobre parceria
-            </a>
-          </Button>
+          {!isLoading && isError ? (
+            <div className="card-elevated p-8 text-center">
+              <p className="text-lg font-medium text-foreground">Não foi possível carregar os parceiros.</p>
+              <p className="mt-3 text-muted-foreground">Tente novamente dentro de instantes.</p>
+            </div>
+          ) : null}
+
+          {!isLoading && !isError && partners.length === 0 ? (
+            <div className="card-elevated p-8 text-center">
+              <p className="text-lg font-medium text-foreground">Nenhum parceiro disponível no momento.</p>
+            </div>
+          ) : null}
+
+          {!isLoading && !isError && partners.length > 0 ? (
+            <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+              {partners.map((partner, index) => {
+                const imageUrl = resolvePartnerImageUrl(partner.image_url);
+
+                return (
+                  <Link
+                    key={partner.id}
+                    to={buildPartnerPath(partner)}
+                    className="group card-elevated overflow-hidden bg-card animate-fade-up"
+                    style={{ animationDelay: `${index * 0.06}s` }}
+                  >
+                    {imageUrl ? (
+                      <img
+                        src={imageUrl}
+                        alt={partner.name}
+                        className="h-56 w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className="flex h-56 items-center justify-center bg-muted px-6 text-center">
+                        <span className="heading-card text-foreground">{partner.name}</span>
+                      </div>
+                    )}
+
+                    <div className="space-y-3 p-6">
+                      <h3 className="heading-card text-foreground">{partner.name}</h3>
+                      <p
+                        className="text-sm leading-6 text-muted-foreground"
+                        style={{
+                          display: "-webkit-box",
+                          WebkitBoxOrient: "vertical",
+                          WebkitLineClamp: 3,
+                          overflow: "hidden",
+                        }}
+                      >
+                        {partner.description}
+                      </p>
+                      <span className="inline-flex items-center gap-2 text-sm font-semibold text-primary">
+                        Ver parceiro
+                        <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
+                      </span>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          ) : null}
         </div>
       </section>
     </main>

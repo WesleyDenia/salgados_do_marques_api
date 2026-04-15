@@ -9,6 +9,7 @@ import bgCardBusiness from "@/assets/bg_card_busines.png";
 import bgCardCamping from "@/assets/bg_card_camping.png";
 import bgCardCasamento from "@/assets/bg_card_casamento.png";
 import bgCardParty from "@/assets/bg_card_party.png";
+import fundoClaro from "@/assets/fundo_claro.png";
 
 const solutions = [
   {
@@ -50,7 +51,14 @@ const benefits = [
 
 export function PartySolutionsSection() {
   return (
-    <section className="section-padding bg-secondary/20">
+    <section
+      className="section-padding bg-secondary/20"
+      style={{
+        backgroundImage: `url(${fundoClaro})`,
+        backgroundPosition: "center",
+        backgroundSize: "cover",
+      }}
+    >
       <div className="section-container">
         <div className="mx-auto mb-12 max-w-3xl text-center">
           <span className="highlight-badge mb-4 inline-block">Ocasiões de Uso</span>

@@ -1,4 +1,5 @@
 import { Clock3, MapPin, MessageCircleMore, ShieldCheck } from "lucide-react";
+import fundoClaro from "@/assets/fundo_claro.png";
 
 const trustPoints = [
   {
@@ -25,7 +26,14 @@ const trustPoints = [
 
 export function TrustSection() {
   return (
-    <section className="section-padding bg-secondary/25">
+    <section
+      className="section-padding bg-secondary/25"
+      style={{
+        backgroundImage: `url(${fundoClaro})`,
+        backgroundPosition: "center",
+        backgroundSize: "cover",
+      }}
+    >
       <div className="section-container">
         <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
           <div className="space-y-5">

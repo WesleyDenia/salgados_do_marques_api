@@ -1,10 +1,18 @@
 import { ArrowRight, BriefcaseBusiness, Store } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import fundoClaro from "@/assets/fundo_claro.png";
 
 export function PartnersTeaserSection() {
   return (
-    <section className="section-padding">
+    <section
+      className="section-padding"
+      style={{
+        backgroundImage: `url(${fundoClaro})`,
+        backgroundPosition: "center",
+        backgroundSize: "cover",
+      }}
+    >
       <div className="section-container">
         <div className="brand-panel overflow-hidden p-8 md:p-10">
           <div className="grid gap-8 lg:grid-cols-[1fr_auto] lg:items-center">

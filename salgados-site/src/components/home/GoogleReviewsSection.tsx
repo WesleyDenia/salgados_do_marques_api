@@ -8,6 +8,7 @@ import {
   shouldFetchGoogleReviews,
   type GoogleReview,
 } from "@/lib/google-reviews";
+import fundoParalax from "@/assets/fundo_paralax.jpg";
 
 function renderStars(rating: number) {
   return Array.from({ length: 5 }, (_, index) => (
@@ -65,7 +66,16 @@ export function GoogleReviewsSection() {
     "https://maps.google.com/";
 
   return (
-    <section className="section-padding">
+    <section
+      className="section-padding"
+      style={{
+        backgroundAttachment: "fixed",
+        backgroundImage: `url(${fundoParalax})`,
+        backgroundPosition: "center",
+        backgroundRepeat: "no-repeat",
+        backgroundSize: "cover",
+      }}
+    >
       <div className="section-container">
         <div className="brand-panel overflow-hidden p-8 md:p-10">
           <div className="mb-10 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">

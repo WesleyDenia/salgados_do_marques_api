@@ -5,6 +5,7 @@ import miniSalgadosImage from "@/assets/mini-salgados.jpg";
 import salgados70gImage from "@/assets/salgados-70g.jpg";
 import paoQueijoImage from "@/assets/pao-queijo.jpg";
 import miniChurrosImage from "@/assets/churros.webp";
+import fundoParalax from "@/assets/fundo_paralax.jpg";
 
 const highlights = [
   {
@@ -31,7 +32,16 @@ const highlights = [
 
 export function ProductHighlightsSection() {
   return (
-    <section className="section-padding">
+    <section
+      className="section-padding"
+      style={{
+        backgroundAttachment: "fixed",
+        backgroundImage: `url(${fundoParalax})`,
+        backgroundPosition: "center",
+        backgroundRepeat: "no-repeat",
+        backgroundSize: "cover",
+      }}
+    >
       <div className="section-container space-y-12">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-3xl">

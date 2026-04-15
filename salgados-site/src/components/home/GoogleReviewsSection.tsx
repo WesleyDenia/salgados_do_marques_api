@@ -77,7 +77,7 @@ export function GoogleReviewsSection() {
       }}
     >
       <div className="section-container">
-        <div className="brand-panel overflow-hidden p-8 md:p-10">
+        <div className="brand-panel overflow-hidden bg-card/70 p-8 md:p-10">
           <div className="mb-10 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-3xl space-y-4">
               <span className="highlight-badge">

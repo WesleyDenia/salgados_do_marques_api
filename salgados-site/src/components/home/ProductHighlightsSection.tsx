@@ -42,54 +42,58 @@ export function ProductHighlightsSection() {
         backgroundSize: "cover",
       }}
     >
-      <div className="section-container space-y-12">
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-          <div className="max-w-3xl">
-            <span className="highlight-badge mb-4 inline-flex">Produtos em destaque</span>
-            <h2 className="heading-section mb-4 text-foreground">
-              Sabores pensados para festas, encomendas e momentos de partilha
-            </h2>
-            <p className="text-lg text-muted-foreground">
-              Descubra algumas das opções mais procuradas da nossa loja, preparadas para
-              diferentes ocasiões, desde convívios em família até eventos e celebrações.
-            </p>
-          </div>
-
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <Button variant="whatsapp" asChild>
-              <a
-                href="https://wa.me/351939197110"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2"
-              >
-                <MessageCircle className="h-4 w-4" />
-                Falar no WhatsApp
-              </a>
-            </Button>
-            <Button variant="outline" asChild>
-              <Link to="/produtos" className="flex items-center gap-2">
-                Ver produtos
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-            </Button>
-          </div>
-        </div>
-
-        <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
-          {highlights.map((item, index) => (
-            <article
-              key={item.title}
-              className="card-elevated overflow-hidden animate-fade-up"
-              style={{ animationDelay: `${index * 0.08}s` }}
-            >
-              <img src={item.image} alt={item.title} className="h-56 w-full object-cover" />
-              <div className="space-y-3 p-6">
-                <h3 className="heading-card text-foreground">{item.title}</h3>
-                <p className="text-sm leading-relaxed text-muted-foreground">{item.description}</p>
+      <div className="section-container">
+        <div className="brand-panel overflow-hidden bg-card/70 p-8 md:p-10">
+          <div className="space-y-12">
+            <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+              <div className="max-w-3xl">
+                <span className="highlight-badge mb-4 inline-flex">Produtos em destaque</span>
+                <h2 className="heading-section mb-4 text-foreground">
+                  Sabores pensados para festas, encomendas e momentos de partilha
+                </h2>
+                <p className="text-lg text-muted-foreground">
+                  Descubra algumas das opções mais procuradas da nossa loja, preparadas para
+                  diferentes ocasiões, desde convívios em família até eventos e celebrações.
+                </p>
               </div>
-            </article>
-          ))}
+
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <Button variant="whatsapp" asChild>
+                  <a
+                    href="https://wa.me/351939197110"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2"
+                  >
+                    <MessageCircle className="h-4 w-4" />
+                    Falar no WhatsApp
+                  </a>
+                </Button>
+                <Button variant="outline" asChild>
+                  <Link to="/produtos" className="flex items-center gap-2">
+                    Ver produtos
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </Button>
+              </div>
+            </div>
+
+            <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
+              {highlights.map((item, index) => (
+                <article
+                  key={item.title}
+                  className="card-elevated overflow-hidden animate-fade-up"
+                  style={{ animationDelay: `${index * 0.08}s` }}
+                >
+                  <img src={item.image} alt={item.title} className="h-56 w-full object-cover" />
+                  <div className="space-y-3 p-6">
+                    <h3 className="heading-card text-foreground">{item.title}</h3>
+                    <p className="text-sm leading-relaxed text-muted-foreground">{item.description}</p>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     </section>

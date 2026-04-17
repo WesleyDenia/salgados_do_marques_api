@@ -6,6 +6,9 @@ cd "$REPO_DIR"
 
 SITE_DIR="$REPO_DIR/salgados-site"
 NETWORK_NAME="salgados_backend_net"
+DB_DATA_DIR="${DB_DATA_DIR:-/srv/salgados/mariadb_data}"
+DB_UID="${DB_UID:-999}"
+DB_GID="${DB_GID:-999}"
 
 normalize_input() {
   echo "${1:-}" | tr '[:upper:]' '[:lower:]' | xargs
@@ -42,11 +45,36 @@ compose_app() {
   "${COMPOSE_CMD[@]}" -f docker-compose.app.yml "$@"
 }
 
+compose_db() {
+  "${COMPOSE_CMD[@]}" -f docker-compose.db.yml "$@"
+}
+
 ensure_docker_network() {
   if ! docker network inspect "$NETWORK_NAME" >/dev/null 2>&1; then
     echo "Criando rede Docker compartilhada: $NETWORK_NAME"
     docker network create "$NETWORK_NAME" >/dev/null
   fi
+}
+
+run_privileged() {
+  if "$@" >/dev/null 2>&1; then
+    return
+  fi
+
+  if command -v sudo >/dev/null 2>&1; then
+    sudo "$@"
+    return
+  fi
+
+  echo "Erro: comando sem permissão e sudo não está disponível: $*"
+  exit 1
+}
+
+ensure_db_data_dir() {
+  echo "Garantindo diretório de dados do DB: $DB_DATA_DIR"
+  run_privileged mkdir -p "$DB_DATA_DIR"
+  run_privileged chown -R "${DB_UID}:${DB_GID}" "$DB_DATA_DIR"
+  run_privileged chmod 750 "$DB_DATA_DIR"
 }
 
 recreate_service_without_db() {
@@ -80,6 +108,33 @@ require_app_running() {
 run_artisan_with_secrets() {
   local artisan_command="$1"
   docker exec salgados-app sh -lc "/usr/local/bin/load-secrets.sh php artisan ${artisan_command}"
+}
+
+start_db_service() {
+  ensure_docker_network
+  ensure_db_data_dir
+
+  echo "Subindo serviço mariadb via docker-compose.db.yml..."
+  compose_db stop mariadb || true
+  compose_db rm -f mariadb || true
+  compose_db up -d mariadb
+}
+
+stop_db_service() {
+  echo "Parando serviço mariadb..."
+  compose_db stop mariadb || true
+}
+
+restart_db_service() {
+  echo "Reiniciando serviço mariadb..."
+  stop_db_service
+  start_db_service
+}
+
+show_db_status() {
+  echo ""
+  echo "Status do banco:"
+  compose_db ps mariadb || true
 }
 
 deploy_site() {
@@ -168,25 +223,54 @@ db_operations_menu() {
 
   echo ""
   echo "=== Operações no DB ==="
-  echo "1) Migrate"
-  echo "2) Seeder"
-  echo "3) Refresh Seed"
-  echo "4) Voltar"
-  read -r -p "Escolha uma opção [1-4]: " db_option
+  echo "1) Subir DB"
+  echo "2) Parar DB"
+  echo "3) Reiniciar DB"
+  echo "4) Status DB"
+  echo "5) Migrate"
+  echo "6) Seeder"
+  echo "7) Refresh Seed"
+  echo "8) Voltar"
+  read -r -p "Escolha uma opção [1-8]: " db_option
   db_option="$(normalize_input "$db_option")"
 
   case "$db_option" in
-    1|migrate)
+    1|subir|up|db-up|db_up)
+      start_db_service
+      echo "DB iniciado com sucesso."
+      ;;
+    2|parar|stop|db-stop|db_stop)
+      echo "Atenção: esta operação para apenas o container do banco."
+      if ! confirm_dangerous_action "Confirmar parada do mariadb?"; then
+        echo "Parada do DB cancelada."
+        return 0
+      fi
+      stop_db_service
+      echo "DB parado com sucesso."
+      ;;
+    3|reiniciar|restart|db-restart|db_restart)
+      echo "Atenção: esta operação reinicia apenas o container do banco."
+      if ! confirm_dangerous_action "Confirmar reinício do mariadb?"; then
+        echo "Reinício do DB cancelado."
+        return 0
+      fi
+      restart_db_service
+      echo "DB reiniciado com sucesso."
+      ;;
+    4|status|ps)
+      show_db_status
+      ;;
+    5|migrate)
       require_app_running
       run_artisan_with_secrets "migrate --force --no-interaction"
       echo "Migrate concluído com sucesso."
       ;;
-    2|seeder|seed)
+    6|seeder|seed)
       require_app_running
       run_artisan_with_secrets "db:seed --force --no-interaction"
       echo "Seeder concluído com sucesso."
       ;;
-    3|refresh|refresh-seed|refresh_seed)
+    7|refresh|refresh-seed|refresh_seed)
       require_app_running
       echo "Atenção: Refresh Seed recria schema e dados da aplicação."
       if ! confirm_dangerous_action "Confirmar execução de migrate:refresh --seed?"; then
@@ -196,7 +280,7 @@ db_operations_menu() {
       run_artisan_with_secrets "migrate:refresh --seed --force --no-interaction"
       echo "Refresh Seed concluído com sucesso."
       ;;
-    4|voltar|sair|exit|q)
+    8|voltar|sair|exit|q)
       echo "Operações no DB encerradas."
       return 0
       ;;

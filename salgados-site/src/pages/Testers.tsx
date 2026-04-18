@@ -36,8 +36,9 @@ const benefits = [
   },
   {
     icon: Coins,
-    title: "200 Coinxinhas de oferta",
-    description: "Entre já com saldo promocional e aproveite a experiência nova com recompensa desde o primeiro acesso.",
+    title: "200 Pontos de oferta",
+    description:
+      "Entre já com saldo promocional que pode ser trocado por produtos e aproveite a nova experiência com recompensa desde o primeiro acesso.",
   },
   {
     icon: Crown,
@@ -60,7 +61,7 @@ const steps = [
   {
     icon: Gift,
     title: "Instale e comece com vantagens",
-    description: "Ative o app, use o desconto e aproveite as suas Coinxinhas desde o arranque.",
+    description: "Ative o app, use o desconto e entre com pontos promocionais para trocar por produtos.",
   },
 ];
 
@@ -142,7 +143,7 @@ const Testers = () => {
     availability: "https://schema.org/LimitedAvailability",
     eligibleCustomerType: "https://schema.org/BusinessAudience",
     description:
-      "Acesso antecipado ao novo app com 15% OFF durante 20 dias e 200 Coinxinhas para os primeiros 50 clientes.",
+      "Acesso antecipado ao novo app com 15% OFF durante 20 dias e 200 pontos promocionais para os primeiros 50 clientes.",
   };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -195,7 +196,7 @@ const Testers = () => {
     <main className="overflow-hidden">
       <Seo
         title={`Clube VIP do App | ${SITE_NAME}`}
-        description="Junte-se ao Clube VIP do Salgados do Marquês e garanta acesso antecipado ao novo app com 15% OFF durante 20 dias e 200 Coinxinhas. Apenas 50 vagas."
+        description="Junte-se ao Clube VIP do Salgados do Marquês e garanta acesso antecipado ao novo app com 15% OFF durante 20 dias e 200 pontos promocionais. Apenas 50 vagas."
         canonical={`${SITE_URL}/testers`}
         ogImage={OG_IMAGES.home}
         schema={[faqSchema, offerSchema]}
@@ -231,8 +232,8 @@ const Testers = () => {
                 </Card>
                 <Card className="rounded-[1.5rem] border-amber-200/60 bg-[#fff8ec] p-5 shadow-[0_24px_60px_-36px_rgba(109,23,23,0.45)]">
                   <div className="text-sm font-semibold uppercase tracking-[0.16em] text-amber-700">Bónus</div>
-                  <div className="mt-2 text-3xl font-semibold text-foreground">200 Coinxinhas</div>
-                  <p className="mt-2 text-sm leading-6 text-muted-foreground">Entrar primeiro compensa desde o primeiro toque.</p>
+                  <div className="mt-2 text-3xl font-semibold text-foreground">200 Pontos</div>
+                  <p className="mt-2 text-sm leading-6 text-muted-foreground">Saldo promocional para trocar por produtos no novo app.</p>
                 </Card>
                 <Card className="rounded-[1.5rem] border-primary/10 bg-[linear-gradient(160deg,#910202,#5d0101)] p-5 text-white shadow-[0_24px_60px_-36px_rgba(109,23,23,0.6)]">
                   <div className="text-sm font-semibold uppercase tracking-[0.16em] text-white/70">Vagas</div>
@@ -639,7 +640,7 @@ const Testers = () => {
               <div>
                 <p className="text-sm font-semibold uppercase tracking-[0.18em] text-primary/70">Última chamada para esta fase</p>
                 <h2 className="mt-2 text-3xl md:text-4xl">
-                  Entra agora no grupo limitado e começa com <span className="gradient-text">15% OFF + 200 Coinxinhas</span>
+                  Entra agora no grupo limitado e começa com <span className="gradient-text">15% OFF + 200 Pontos</span>
                 </h2>
                 <p className="mt-4 max-w-3xl text-base leading-7 text-muted-foreground md:text-lg">
                   Se gosta de encomendar com rapidez, benefícios reais e acesso antecipado, esta é a altura certa para
@@ -648,7 +649,7 @@ const Testers = () => {
               </div>
               <Button asChild size="xl" className="rounded-full px-10">
                 <a href="#tester-form">
-                  Garantir a minha vaga VIP
+                  Garantir 15% OFF + 200 Pontos
                   <ChevronRight className="h-4 w-4" />
                 </a>
               </Button>

@@ -15,6 +15,7 @@ use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\Admin\StoreController;
 use App\Http\Controllers\Admin\FlavorController;
 use App\Http\Controllers\Admin\HomeComponentController;
+use App\Http\Controllers\Admin\AppTesterController as AdminAppTesterController;
 
 Route::get('/', function () {
     return view('welcome');
@@ -53,4 +54,5 @@ Route::middleware(['auth', 'can:manage'])
         Route::resource('loyalty-rewards', LoyaltyRewardController::class)->except('show');
         Route::resource('stores', StoreController::class)->except('show');
         Route::resource('settings', AdminSettingController::class)->only(['index', 'create', 'store', 'edit', 'update']);
+        Route::get('app-testers', [AdminAppTesterController::class, 'index'])->name('app-testers.index');
     });

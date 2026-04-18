@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\V1\{
+    AppTesterController,
     AuthController,
     UserController,
     CategoryController,
@@ -31,6 +32,7 @@ use App\Http\Controllers\Api\V1\{
 Route::prefix('v1')->group(function () {
     Route::post('register', [AuthController::class, 'register']);
     Route::post('login', [AuthController::class, 'login']);
+    Route::post('testers', [AppTesterController::class, 'store']);
     Route::get('lgpd/terms', [LgpdController::class, 'terms']);
     Route::prefix('public')->group(function () {
         Route::get('partners', [PartnerController::class, 'publicIndex']);

@@ -504,6 +504,7 @@
             <a class="nav-link {{ request()->routeIs('admin.stores.*') ? 'active' : '' }}" href="{{ route('admin.stores.index') }}">Lojas</a>
             <a class="nav-link {{ request()->routeIs('admin.partners.*') ? 'active' : '' }}" href="{{ route('admin.partners.index') }}">Parceiros</a>
             <a class="nav-link {{ request()->routeIs('admin.partner-campaigns.*') ? 'active' : '' }}" href="{{ route('admin.partner-campaigns.index') }}">Campanhas de Parceiros</a>
+            <a class="nav-link {{ request()->routeIs('admin.app-testers.*') ? 'active' : '' }}" href="{{ route('admin.app-testers.index') }}">Testers do App</a>
           </div>
 
           <div class="nav-section">

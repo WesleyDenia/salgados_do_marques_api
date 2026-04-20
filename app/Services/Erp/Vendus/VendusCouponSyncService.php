@@ -32,11 +32,11 @@ class VendusCouponSyncService
      public function create(UserCoupon $userCoupon): ?array
     {
         $payload = $this->toVendusPayload($userCoupon);
-        Log::info('📤 [Vendus] POST /discountcards payload', $payload);
+        Log::info('[Vendus] POST /discountcards payload', $payload);
 
         $resp = $this->http->client()->post('/discountcards/', $payload);
 
-        Log::info('📥 [Vendus] POST /discountcards resp', [
+        Log::info('[Vendus] POST /discountcards resp', [
             'status' => $resp->status(),
             'body'   => $resp->body(),
         ]);
@@ -54,7 +54,7 @@ class VendusCouponSyncService
             ];
         }
 
-        Log::error('❌ [Vendus] Falha ao criar cupom', [
+        Log::error('[Vendus] Falha ao criar cupom', [
             'status' => $resp->status(),
             'body'   => $resp->body(),
         ]);
@@ -70,7 +70,7 @@ class VendusCouponSyncService
         $id = $userCoupon->external_id;
 
         $resp = $this->http->client()->send('PATCH', "/discountcards/{$id}", ['json' => $payload]);
-        Log::info('📥 [Vendus] PATCH /discountcards', [
+        Log::info('[Vendus] PATCH /discountcards', [
             'status' => $resp->status(),
             'body'   => $resp->body(),
         ]);
@@ -85,7 +85,7 @@ class VendusCouponSyncService
             $resp = $this->http->client()->get('/discountcards');
 
             if (!$resp->successful()) {
-                Log::error('❌ [Vendus] Falha ao buscar discountcards', [
+                Log::error('[Vendus] Falha ao buscar discountcards', [
                     'status' => $resp->status(),
                     'body'   => $resp->body(),
                 ]);
@@ -102,11 +102,11 @@ class VendusCouponSyncService
             ]);
 
             if (!is_array($list) || empty($list)) {
-                Log::info('ℹ️ [Vendus] Nenhum cupom retornado do ERP.');
+                Log::info('ℹ[Vendus] Nenhum cupom retornado do ERP.');
                 return;
             }
 
-            Log::info('📦 [Vendus] Cupons recebidos', ['count' => count($list)]);
+            Log::info('[Vendus] Cupons recebidos', ['count' => count($list)]);
 
             foreach ($list as $erpCoupon) {
                 $code = $erpCoupon['code'] ?? null;
@@ -124,19 +124,19 @@ class VendusCouponSyncService
                             'active' => false,
                         ]);
 
-                        Log::info('✅ [Sync] Cupom marcado como utilizado', [
+                        Log::info('[Sync] Cupom marcado como utilizado', [
                             'user_coupon_id' => $userCoupon->id,
                             'external_code'  => $code,
                         ]);
                     } else {
-                        Log::warning('⚠️ [Sync] Cupom "done" não encontrado localmente', [
+                        Log::warning('[Sync] Cupom "done" não encontrado localmente', [
                             'external_code' => $code,
                         ]);
                     }
                 }
             }
         } catch (\Throwable $e) {
-            Log::error('❌ [VendusCouponSyncService] Erro ao sincronizar usados', [
+            Log::error('[VendusCouponSyncService] Erro ao sincronizar usados', [
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);

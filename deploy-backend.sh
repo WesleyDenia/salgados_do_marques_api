@@ -212,10 +212,10 @@ deploy_api() {
   run_artisan_with_secrets "migrate --force --no-interaction"
 
   echo "Iniciando serviços de sincronização com o Vendus..."
-  compose_app exec app php artisan vendus:sync-coupons
-  compose_app exec app php artisan vendus:sync-documents
-  compose_app exec app php artisan vendus:sync-loyalty 20
-  compose_app exec app php artisan queue:restart
+  run_artisan_with_secrets "vendus:sync-coupons"
+  run_artisan_with_secrets "vendus:sync-documents"
+  run_artisan_with_secrets "vendus:sync-loyalty 20"
+  run_artisan_with_secrets "queue:restart"
 }
 
 db_operations_menu() {

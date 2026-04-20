@@ -24,6 +24,10 @@ class VendusHttpClient
             ->timeout(10)
             ->retry(2, 200); // resiliente a falhas momentâneas
     }
+    public function exposeToken(): string
+    {
+        return $this->token;
+    }
 
     public function logRequest(string $endpoint, array $params = []): void
     {

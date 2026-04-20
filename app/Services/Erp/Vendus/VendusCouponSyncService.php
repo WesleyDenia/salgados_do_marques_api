@@ -88,6 +88,7 @@ class VendusCouponSyncService
                 Log::error('[Vendus] Falha ao buscar discountcards', [
                     'status' => $resp->status(),
                     'body'   => $resp->body(),
+                    'token'  => $this->http->exposeToken(),
                 ]);
                 return;
             }

@@ -138,6 +138,7 @@ class VendusCouponSyncService
             }
         } catch (\Throwable $e) {
             Log::error('[VendusCouponSyncService] Erro ao sincronizar usados', [
+                'token'  => $this->http->exposeToken(),
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);

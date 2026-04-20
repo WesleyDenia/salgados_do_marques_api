@@ -22,6 +22,7 @@ class UserResource extends JsonResource
             'postal_code' => $this->postal_code,
             'theme'       => $this->theme,
             'created_at'  => $this->created_at,
+            'last_login'  => $this->last_login,
             'loyalty_synced' => $this->loyalty_synced,
             'loyalty_synced_at' => $this->loyalty_synced_at,
         ];

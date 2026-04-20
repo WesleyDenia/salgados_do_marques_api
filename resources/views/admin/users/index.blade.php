@@ -81,6 +81,7 @@
             <th>Coinxinhas</th>
             <th>Cupons</th>
             <th>Encomendas</th>
+            <th>Último login</th>
             <th>Status</th>
             <th style="width:120px;">Ações</th>
           </tr>
@@ -100,6 +101,7 @@
               <td>{{ number_format((int) ($user->loyaltyAccount?->points ?? 0), 0, ',', '.') }}</td>
               <td>{{ $user->user_coupons_count }}</td>
               <td>{{ $user->orders_count }}</td>
+              <td>{{ $user->last_login?->format('d/m/Y H:i') ?? '—' }}</td>
               <td>
                 @if ($user->active)
                   <span class="badge badge-success">Ativo</span>
@@ -113,7 +115,7 @@
             </tr>
           @empty
             <tr>
-              <td colspan="8" style="text-align:center; padding:32px 0; color:#6b7280;">
+              <td colspan="9" style="text-align:center; padding:32px 0; color:#6b7280;">
                 Nenhum usuário encontrado.
               </td>
             </tr>

@@ -26,6 +26,7 @@ class User extends Authenticatable
         'postal_code',
         'theme',
         'external_id',
+        'last_login',
         'loyalty_synced',
         'loyalty_synced_at',
         'lgpd_consent_at',
@@ -38,6 +39,7 @@ class User extends Authenticatable
 
     protected $casts = [
         'email_verified_at' => 'datetime',
+        'last_login' => 'datetime',
         'birth_date' => 'date',
         'active' => 'boolean',
         'lgpd_consent_at' => 'datetime',

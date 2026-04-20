@@ -33,6 +33,18 @@
         <div style="font-size:0.85rem; text-transform:uppercase; letter-spacing:0.08em; color:#9ca3af;">Elegíveis nesta fase</div>
         <div style="font-size:2rem; font-weight:700; margin-top:8px;">{{ $stats['eligible'] }}</div>
       </div>
+      <div class="card">
+        <div style="font-size:0.85rem; text-transform:uppercase; letter-spacing:0.08em; color:#9ca3af;">Registrados</div>
+        <div style="font-size:2rem; font-weight:700; margin-top:8px;">{{ $stats['registered'] }}</div>
+      </div>
+      <div class="card">
+        <div style="font-size:0.85rem; text-transform:uppercase; letter-spacing:0.08em; color:#9ca3af;">Conta criada</div>
+        <div style="font-size:2rem; font-weight:700; margin-top:8px;">{{ $stats['account_created'] }}</div>
+      </div>
+      <div class="card">
+        <div style="font-size:0.85rem; text-transform:uppercase; letter-spacing:0.08em; color:#9ca3af;">Testando</div>
+        <div style="font-size:2rem; font-weight:700; margin-top:8px;">{{ $stats['testing'] }}</div>
+      </div>
     </div>
 
     <div class="card">
@@ -57,6 +69,16 @@
           </select>
         </div>
 
+        <div class="form-group">
+          <label for="status">Status</label>
+          <select id="status" name="status">
+            <option value="">Todos</option>
+            @foreach ($statuses as $status)
+              <option value="{{ $status }}" @selected($filters['status'] === $status)>{{ $status }}</option>
+            @endforeach
+          </select>
+        </div>
+
         <div class="form-group align-end">
           <button type="submit" class="btn btn-primary">Filtrar</button>
         </div>
@@ -68,6 +90,7 @@
             <th>Cliente</th>
             <th>Contacto</th>
             <th>Sistema</th>
+            <th>Status</th>
             <th>Fase atual</th>
             <th>Consentimento</th>
             <th>Origem</th>
@@ -87,6 +110,15 @@
               </td>
               <td>{{ $tester->operating_system === 'android' ? 'Android' : 'iPhone' }}</td>
               <td>
+                @if ($tester->status === \App\Models\AppTester::STATUS_TESTING)
+                  <span class="badge badge-success">Testando</span>
+                @elseif ($tester->status === \App\Models\AppTester::STATUS_ACCOUNT_CREATED)
+                  <span class="badge badge-success" style="background:rgba(59,130,246,0.15); color:#1d4ed8;">Conta criada</span>
+                @else
+                  <span class="badge badge-muted">Registrado</span>
+                @endif
+              </td>
+              <td>
                 @if ($tester->is_android_eligible)
                   <span class="badge badge-success">Elegível</span>
                 @else
@@ -99,7 +131,7 @@
             </tr>
           @empty
             <tr>
-              <td colspan="7" style="text-align:center; padding:32px 0; color:#6b7280;">
+              <td colspan="8" style="text-align:center; padding:32px 0; color:#6b7280;">
                 Ainda não há testers captados.
               </td>
             </tr>

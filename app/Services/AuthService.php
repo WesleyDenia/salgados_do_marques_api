@@ -18,6 +18,7 @@ class AuthService
     public function __construct(
         protected CustomerSyncInterface $erp,
         protected SettingService $settings,
+        protected AppTesterService $appTesters,
     ) {}
 
     public function register(array $data, array $metadata = []): User
@@ -116,6 +117,15 @@ class AuthService
             ]);
         }
 
+        try {
+            $this->appTesters->syncStatusForUser($user);
+        } catch (\Throwable $e) {
+            Log::warning('⚠️ [AuthService] Falha ao sincronizar status do tester', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
         return $user;
     }
 
@@ -127,6 +137,7 @@ class AuthService
 
         /** @var \App\Models\User|\Laravel\Sanctum\HasApiTokens $user */
         $user = Auth::guard('web')->user();
+        $this->touchLastLogin($user);
 
         return $this->authPayload($user);
     }
@@ -156,13 +167,34 @@ class AuthService
 
         return [
             'token' => $token,
-            'user' => $user,
+            'user' => $user->fresh(),
             'config' => $this->appConfig(),
         ];
+    }
+
+    public function markUserAsActive(User $user): void
+    {
+        $this->touchLastLogin($user);
     }
 
     public function logout(User $user)
     {
         $user->tokens()->delete();
+    }
+
+    protected function touchLastLogin(User $user): void
+    {
+        $user->forceFill([
+            'last_login' => now(),
+        ])->save();
+
+        try {
+            $this->appTesters->syncStatusForUser($user->fresh());
+        } catch (\Throwable $e) {
+            Log::warning('⚠️ [AuthService] Falha ao atualizar status do tester no login', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 }

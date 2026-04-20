@@ -27,6 +27,7 @@ class AuthController extends Controller
             ]
         );
 
+        $this->service->markUserAsActive($user);
         $auth = $this->service->authPayload($user);
 
         return response()->json([

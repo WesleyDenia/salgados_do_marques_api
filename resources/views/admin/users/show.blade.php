@@ -61,6 +61,10 @@
             <div style="margin-top:4px; font-weight:600;">{{ $user->active ? 'Ativo' : 'Inativo' }}</div>
           </div>
           <div style="padding:12px; border:1px solid #e5e7eb; border-radius:10px;">
+            <div style="color:#6b7280; font-size:0.85rem;">Último login</div>
+            <div style="margin-top:4px; font-weight:600;">{{ $user->last_login?->format('d/m/Y H:i') ?? '—' }}</div>
+          </div>
+          <div style="padding:12px; border:1px solid #e5e7eb; border-radius:10px;">
             <div style="color:#6b7280; font-size:0.85rem;">Nascimento</div>
             <div style="margin-top:4px; font-weight:600;">{{ $user->birth_date?->format('d/m/Y') ?? '—' }}</div>
           </div>

@@ -52,7 +52,7 @@ secrets:
     file: ./docker/secrets/db_password.txt
   mail_password:
     file: ./docker/secrets/mail_password.txt
-  vendus_key:
+  vendus_api_key:
     file: ./docker/secrets/vendus_api_key.txt
   wapify_key:
     file: ./docker/secrets/wapify_key.txt

@@ -16,6 +16,7 @@ use App\Http\Controllers\Admin\StoreController;
 use App\Http\Controllers\Admin\FlavorController;
 use App\Http\Controllers\Admin\HomeComponentController;
 use App\Http\Controllers\Admin\AppTesterController as AdminAppTesterController;
+use App\Http\Controllers\Admin\UserController as AdminUserController;
 
 Route::get('/', function () {
     return view('welcome');
@@ -55,4 +56,8 @@ Route::middleware(['auth', 'can:manage'])
         Route::resource('stores', StoreController::class)->except('show');
         Route::resource('settings', AdminSettingController::class)->only(['index', 'create', 'store', 'edit', 'update']);
         Route::get('app-testers', [AdminAppTesterController::class, 'index'])->name('app-testers.index');
+        Route::get('users', [AdminUserController::class, 'index'])->name('users.index');
+        Route::get('users/{user}', [AdminUserController::class, 'show'])->name('users.show');
+        Route::post('users/{user}/loyalty', [AdminUserController::class, 'storeLoyalty'])->name('users.loyalty.store');
+        Route::post('users/{user}/coupons', [AdminUserController::class, 'storeCoupon'])->name('users.coupons.store');
     });

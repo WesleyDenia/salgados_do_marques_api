@@ -87,8 +87,7 @@ class VendusCouponSyncService
             if (!$resp->successful()) {
                 Log::error('[Vendus] Falha ao buscar discountcards', [
                     'status' => $resp->status(),
-                    'body'   => $resp->body(),
-                    'token'  => $this->http->exposeToken(),
+                    'body'   => $resp->body(),                    
                 ]);
                 return;
             }
@@ -97,7 +96,7 @@ class VendusCouponSyncService
 
             // Pode vir como "data", "discountcards" ou lista direta
             $list = $data['discountcards'] ?? $data['data'] ?? $data;
-            Log::info('🔍 [Vendus] Processando lista de cupons', 
+            Log::info('[Vendus] Processando lista de cupons', 
             [
                 'coupons' => $list
             ]);
@@ -137,13 +136,10 @@ class VendusCouponSyncService
                 }
             }
         } catch (\Throwable $e) {
-            Log::error('[VendusCouponSyncService] Erro ao sincronizar usados', [
-                'token'  => $this->http->exposeToken(),
+            Log::error('[VendusCouponSyncService] Erro ao sincronizar usados', [                
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
         }
     }
-
-
 }

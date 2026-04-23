@@ -41,4 +41,22 @@ class AdminUserService
             ],
         ];
     }
+
+    public function update(User $user, array $data): User
+    {
+        $erpFields = ['name', 'email', 'nif', 'phone', 'street', 'city', 'postal_code'];
+        $erpPayloadChanged = collect($erpFields)
+            ->contains(fn (string $field) => array_key_exists($field, $data) && $user->{$field} !== $data[$field]);
+
+        $data['active'] = (bool) ($data['active'] ?? false);
+
+        if ($erpPayloadChanged) {
+            $data['erp_sync_status'] = 'pending';
+            $data['erp_sync_error'] = null;
+        }
+
+        $user->update($data);
+
+        return $user->refresh();
+    }
 }

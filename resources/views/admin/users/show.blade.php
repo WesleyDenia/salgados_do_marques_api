@@ -12,7 +12,10 @@
             Utilizador #{{ $user->id }} criado em {{ $user->created_at?->format('d/m/Y H:i') ?? '—' }}
           </p>
         </div>
-        <a href="{{ route('admin.users.index') }}" class="btn btn-secondary">Voltar para a lista</a>
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+          <a href="{{ route('admin.users.edit', $user) }}" class="btn btn-primary">Editar dados</a>
+          <a href="{{ route('admin.users.index') }}" class="btn btn-secondary">Voltar para a lista</a>
+        </div>
       </div>
     </div>
 

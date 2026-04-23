@@ -63,6 +63,8 @@ Route::middleware(['auth', 'can:manage'])
         Route::delete('queue/failed/{failedJob}', [QueueMonitorController::class, 'destroyFailed'])->name('queue.failed.destroy');
         Route::get('users', [AdminUserController::class, 'index'])->name('users.index');
         Route::get('users/{user}', [AdminUserController::class, 'show'])->name('users.show');
+        Route::get('users/{user}/edit', [AdminUserController::class, 'edit'])->name('users.edit');
+        Route::put('users/{user}', [AdminUserController::class, 'update'])->name('users.update');
         Route::post('users/{user}/loyalty', [AdminUserController::class, 'storeLoyalty'])->name('users.loyalty.store');
         Route::post('users/{user}/coupons', [AdminUserController::class, 'storeCoupon'])->name('users.coupons.store');
     });

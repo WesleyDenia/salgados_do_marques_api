@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\UserAddLoyaltyPointsRequest;
 use App\Http\Requests\Admin\UserAssignCouponRequest;
+use App\Http\Requests\Admin\UserUpdateRequest;
 use App\Models\User;
 use App\Services\AdminUserService;
 use App\Services\LoyaltyService;
@@ -45,6 +46,22 @@ class UserController extends Controller
     public function show(User $user)
     {
         return view('admin.users.show', $this->adminUserService->detailData($user));
+    }
+
+    public function edit(User $user)
+    {
+        return view('admin.users.edit', [
+            'user' => $user,
+        ]);
+    }
+
+    public function update(UserUpdateRequest $request, User $user)
+    {
+        $this->adminUserService->update($user, $request->validated());
+
+        return redirect()
+            ->route('admin.users.show', $user)
+            ->with('status', 'Dados do usuário atualizados com sucesso.');
     }
 
     public function storeLoyalty(UserAddLoyaltyPointsRequest $request, User $user)

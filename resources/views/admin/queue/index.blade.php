@@ -21,6 +21,10 @@
         <div style="font-size:2rem; font-weight:700; margin-top:8px;">{{ $stats['missing_users'] }}</div>
       </div>
       <div class="card">
+        <div style="font-size:0.85rem; text-transform:uppercase; letter-spacing:0.08em; color:#9ca3af;">Com erro</div>
+        <div style="font-size:2rem; font-weight:700; margin-top:8px;">{{ $stats['sync_errors'] }}</div>
+      </div>
+      <div class="card">
         <div style="font-size:0.85rem; text-transform:uppercase; letter-spacing:0.08em; color:#9ca3af;">Na fila</div>
         <div style="font-size:2rem; font-weight:700; margin-top:8px;">{{ $stats['queued_jobs'] }}</div>
       </div>
@@ -38,6 +42,9 @@
             <th>Usuário</th>
             <th>Contacto</th>
             <th>NIF</th>
+            <th>Status ERP</th>
+            <th>Última tentativa</th>
+            <th>Erro</th>
             <th>Criado em</th>
             <th style="width:160px;">Ações</th>
           </tr>
@@ -54,6 +61,26 @@
                 <div style="color:#6b7280;">{{ $user->phone ?: '—' }}</div>
               </td>
               <td>{{ $user->nif ?: '—' }}</td>
+              <td>
+                @if ($user->erp_sync_status === 'synced')
+                  <span class="badge badge-success">Sincronizado</span>
+                @elseif ($user->erp_sync_status === 'failed')
+                  <span class="badge" style="background:rgba(239,68,68,0.15); color:#991b1b;">Erro</span>
+                @elseif ($user->erp_sync_status === 'syncing')
+                  <span class="badge" style="background:rgba(245,158,11,0.15); color:#92400e;">Sincronizando</span>
+                @else
+                  <span class="badge badge-muted">Pendente</span>
+                @endif
+                <div style="margin-top:4px; color:#6b7280;">Tentativas: {{ (int) $user->erp_sync_attempts }}</div>
+              </td>
+              <td>{{ $user->erp_sync_attempted_at?->format('d/m/Y H:i') ?? '—' }}</td>
+              <td style="max-width:420px;">
+                @if ($user->erp_sync_error)
+                  <code style="white-space:normal; color:#991b1b;">{{ $user->erp_sync_error }}</code>
+                @else
+                  —
+                @endif
+              </td>
               <td>{{ $user->created_at?->format('d/m/Y H:i') ?? '—' }}</td>
               <td>
                 <div style="display:flex; gap:8px; flex-wrap:wrap;">
@@ -67,7 +94,7 @@
             </tr>
           @empty
             <tr>
-              <td colspan="5" style="text-align:center; padding:32px 0; color:#6b7280;">
+              <td colspan="8" style="text-align:center; padding:32px 0; color:#6b7280;">
                 Nenhum usuário pendente de sincronização.
               </td>
             </tr>

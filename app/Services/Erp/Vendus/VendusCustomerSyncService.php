@@ -10,6 +10,8 @@ use Illuminate\Support\Facades\Log;
 
 class VendusCustomerSyncService implements CustomerSyncInterface
 {
+    protected ?string $lastError = null;
+
     public function __construct(protected VendusHttpClient $http) {}
 
     /** Normaliza o payload exatamente no shape do Vendus */
@@ -33,13 +35,30 @@ class VendusCustomerSyncService implements CustomerSyncInterface
 
     public function upsert(CustomerData $customer): ?string
     {
+        $this->lastError = null;
         $payload = $this->toVendusPayload($customer);
         $resp = null;
+
+        if (!empty($payload['fiscal_id'])) {
+            $existing = $this->findByFiscalId($payload['fiscal_id']);
+
+            if ($existing && isset($existing['id'])) {
+                $id = (string) $existing['id'];
+
+                if ($this->update($id, $customer)) {
+                    return $id;
+                }
+
+                return null;
+            }
+        }
 
         try {
             $resp = $this->http->client()->post('/clients/', $payload);
         } catch (RequestException $e) {
             $resp = $e->response;
+            $this->lastError = $this->responseError($resp) ?: $e->getMessage();
+
             Log::warning('⚠️ [Vendus] POST /clients lançou exceção', [
                 'status' => $resp?->status(),
                 'body' => $resp?->body(),
@@ -56,16 +75,7 @@ class VendusCustomerSyncService implements CustomerSyncInterface
             return $json['id'] ?? ($json['client']['id'] ?? null);
         }
 
-        // Se falhou e existe NIF → tentar localizar e atualizar (idempotência)
-        if (!empty($payload['fiscal_id'])) {
-            $existing = $this->findByFiscalId($payload['fiscal_id']);
-            if ($existing && isset($existing['id'])) {
-                $id = (string)$existing['id'];
-                if ($this->update($id, $customer)) {
-                    return $id;
-                }
-            }
-        }
+        $this->lastError = $this->responseError($resp) ?: 'Vendus não retornou sucesso ao criar cliente.';
 
         Log::error('❌ [Vendus] upsert falhou', [
             'status' => $resp?->status(),
@@ -76,13 +86,30 @@ class VendusCustomerSyncService implements CustomerSyncInterface
 
     public function update(string $externalId, CustomerData $customer): bool
     {
+        $this->lastError = null;
         $payload = $this->toVendusPayload($customer);
         Log::info('♻️ [Vendus] PATCH /clients/{id}', ['id' => $externalId, 'payload' => $payload]);
 
-        $resp = $this->http->client()->send('PATCH', "/clients/{$externalId}", ['json' => $payload]);
+        try {
+            $resp = $this->http->client()->send('PATCH', "/clients/{$externalId}", ['json' => $payload]);
+        } catch (RequestException $e) {
+            $resp = $e->response;
+            $this->lastError = $this->responseError($resp) ?: $e->getMessage();
+
+            Log::error('❌ [Vendus] update lançou exceção', [
+                'id' => $externalId,
+                'status' => $resp?->status(),
+                'body' => $resp?->body(),
+                'error' => $e->getMessage(),
+            ]);
+
+            return false;
+        }
 
         Log::info('📥 [Vendus] PATCH resp', ['status' => $resp->status(), 'body' => $resp->body()]);
         if ($resp->successful()) return true;
+
+        $this->lastError = $this->responseError($resp) ?: 'Vendus não retornou sucesso ao atualizar cliente.';
 
         Log::error('❌ [Vendus] update falhou', ['id' => $externalId, 'status' => $resp->status(), 'body' => $resp->body()]);
         return false;
@@ -127,5 +154,28 @@ class VendusCustomerSyncService implements CustomerSyncInterface
     {
         $resp = $this->http->client()->delete("/clients/{$externalId}");
         return $resp->successful();
+    }
+
+    public function lastError(): ?string
+    {
+        return $this->lastError;
+    }
+
+    protected function responseError($resp): ?string
+    {
+        if (!$resp) {
+            return null;
+        }
+
+        $json = $resp->json();
+
+        if (is_array($json) && isset($json['errors'][0]['message'])) {
+            $code = $json['errors'][0]['code'] ?? null;
+            $message = $json['errors'][0]['message'];
+
+            return trim(($code ? "{$code}: " : '') . $message);
+        }
+
+        return trim("HTTP {$resp->status()}: " . $resp->body());
     }
 }

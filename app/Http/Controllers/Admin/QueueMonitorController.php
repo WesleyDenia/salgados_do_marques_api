@@ -14,7 +14,10 @@ class QueueMonitorController extends Controller
     public function index()
     {
         $missingUsersQuery = User::query()
-            ->whereNull('external_id')
+            ->where(function ($query) {
+                $query->whereNull('external_id')
+                    ->orWhere('erp_sync_status', 'failed');
+            })
             ->orderByDesc('created_at');
 
         $queuedJobsQuery = DB::table('jobs')
@@ -34,6 +37,7 @@ class QueueMonitorController extends Controller
         return view('admin.queue.index', [
             'stats' => [
                 'missing_users' => (clone $missingUsersQuery)->count(),
+                'sync_errors' => User::where('erp_sync_status', 'failed')->count(),
                 'queued_jobs' => (clone $queuedJobsQuery)->count(),
                 'failed_jobs' => (clone $failedJobsQuery)->count(),
             ],
@@ -53,6 +57,11 @@ class QueueMonitorController extends Controller
 
     public function enqueueUser(User $user): RedirectResponse
     {
+        $user->forceFill([
+            'erp_sync_status' => 'pending',
+            'erp_sync_error' => null,
+        ])->save();
+
         SyncCustomerToErpJob::dispatch($user->id);
 
         return back()->with('status', "Sincronização do usuário #{$user->id} reenfileirada.");
@@ -73,6 +82,10 @@ class QueueMonitorController extends Controller
         }
 
         SyncCustomerToErpJob::dispatch($userId);
+        User::whereKey($userId)->update([
+            'erp_sync_status' => 'pending',
+            'erp_sync_error' => null,
+        ]);
         DB::table('failed_jobs')->where('id', $failedJob)->delete();
 
         return back()->with('status', "Sincronização do usuário #{$userId} reenfileirada.");

@@ -26,6 +26,11 @@ class User extends Authenticatable
         'postal_code',
         'theme',
         'external_id',
+        'erp_sync_status',
+        'erp_sync_attempts',
+        'erp_sync_error',
+        'erp_sync_attempted_at',
+        'erp_synced_at',
         'last_login',
         'loyalty_synced',
         'loyalty_synced_at',
@@ -42,6 +47,9 @@ class User extends Authenticatable
         'last_login' => 'datetime',
         'birth_date' => 'date',
         'active' => 'boolean',
+        'erp_sync_attempts' => 'integer',
+        'erp_sync_attempted_at' => 'datetime',
+        'erp_synced_at' => 'datetime',
         'lgpd_consent_at' => 'datetime',
     ];
 

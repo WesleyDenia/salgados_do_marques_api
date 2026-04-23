@@ -17,6 +17,7 @@ use App\Http\Controllers\Admin\FlavorController;
 use App\Http\Controllers\Admin\HomeComponentController;
 use App\Http\Controllers\Admin\AppTesterController as AdminAppTesterController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
+use App\Http\Controllers\Admin\QueueMonitorController;
 
 Route::get('/', function () {
     return view('welcome');
@@ -56,6 +57,10 @@ Route::middleware(['auth', 'can:manage'])
         Route::resource('stores', StoreController::class)->except('show');
         Route::resource('settings', AdminSettingController::class)->only(['index', 'create', 'store', 'edit', 'update']);
         Route::get('app-testers', [AdminAppTesterController::class, 'index'])->name('app-testers.index');
+        Route::get('queue', [QueueMonitorController::class, 'index'])->name('queue.index');
+        Route::post('queue/users/{user}/sync', [QueueMonitorController::class, 'enqueueUser'])->name('queue.users.sync');
+        Route::post('queue/failed/{failedJob}/retry', [QueueMonitorController::class, 'retryFailed'])->name('queue.failed.retry');
+        Route::delete('queue/failed/{failedJob}', [QueueMonitorController::class, 'destroyFailed'])->name('queue.failed.destroy');
         Route::get('users', [AdminUserController::class, 'index'])->name('users.index');
         Route::get('users/{user}', [AdminUserController::class, 'show'])->name('users.show');
         Route::post('users/{user}/loyalty', [AdminUserController::class, 'storeLoyalty'])->name('users.loyalty.store');

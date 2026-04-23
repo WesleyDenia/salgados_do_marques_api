@@ -3,6 +3,7 @@
 
 namespace App\Services;
 
+use App\Jobs\SyncCustomerToErpJob;
 use App\Models\User;
 use App\Models\Setting;
 use App\Models\UserConsent;
@@ -10,13 +11,10 @@ use Illuminate\Auth\AuthenticationException;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
-use App\Contracts\Erp\CustomerSyncInterface;
-use App\Mappers\CustomerMapper;
 
 class AuthService
 {
     public function __construct(
-        protected CustomerSyncInterface $erp,
         protected SettingService $settings,
         protected AppTesterService $appTesters,
     ) {}
@@ -93,29 +91,7 @@ class AuthService
             'user_agent'  => $consentUserAgent,
         ]);
 
-        try {
-            $dto = CustomerMapper::fromUser($user);
-
-            // Estratégia: se já houver external_id por algum motivo, garante update; senão faz upsert
-            if (!empty($user->external_id)) {
-                $ok = $this->erp->update((string)$user->external_id, $dto);
-                if (!$ok) Log::warning('⚠️ [AuthService] Update ERP falhou; tentando upsert');
-            }
-
-            if (empty($user->external_id)) {
-                $externalId = $this->erp->upsert($dto);
-                if ($externalId) {
-                    $user->update(['external_id' => $externalId]);
-                } else {
-                    Log::error('❌ [AuthService] ERP upsert falhou; user ficará sem external_id por enquanto', ['user_id' => $user->id]);
-                }
-            }
-        } catch (\Throwable $e) {
-            Log::error('💥 [AuthService] Falha ao sincronizar cliente com ERP', [
-                'error'   => $e->getMessage(),
-                'user_id' => $user->id,
-            ]);
-        }
+        SyncCustomerToErpJob::dispatch($user->id)->afterCommit();
 
         try {
             $this->appTesters->syncStatusForUser($user);

@@ -87,6 +87,11 @@ class VendusCouponSyncService
                 'status' => 'done',
             ]);
 
+            Log::info('[Vendus] GET /discountcards?status=done resp', [
+                'status' => $resp->status(),
+                'body'   => $resp->body(),
+            ]);
+
             if (!$resp->successful()) {
                 Log::error('[Vendus] Falha ao buscar discountcards', [
                     'status' => $resp->status(),

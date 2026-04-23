@@ -34,6 +34,7 @@ class VendusCustomerSyncService implements CustomerSyncInterface
     public function upsert(CustomerData $customer): ?string
     {
         $payload = $this->toVendusPayload($customer);
+        $resp = null;
 
         try {
             $resp = $this->http->client()->post('/clients/', $payload);
@@ -66,7 +67,10 @@ class VendusCustomerSyncService implements CustomerSyncInterface
             }
         }
 
-        Log::error('❌ [Vendus] upsert falhou', ['status' => $resp->status(), 'body' => $resp->body()]);
+        Log::error('❌ [Vendus] upsert falhou', [
+            'status' => $resp?->status(),
+            'body' => $resp?->body(),
+        ]);
         return null;
     }
 
@@ -88,10 +92,26 @@ class VendusCustomerSyncService implements CustomerSyncInterface
     {
         if ($fiscalId === '') return null;
 
-        $resp = $this->http->client()->get('/clients/', [
-            'fiscal_id' => $fiscalId,
-            'status'    => 'active',
-        ]);
+        try {
+            $resp = $this->http->client()->get('/clients/', [
+                'fiscal_id' => $fiscalId,
+                'status'    => 'active',
+            ]);
+        } catch (RequestException $e) {
+            $resp = $e->response;
+
+            if ($resp?->status() === 404) {
+                Log::info('🔎 [Vendus] Cliente não encontrado por NIF', [
+                    'fiscal_id' => $fiscalId,
+                    'status' => $resp->status(),
+                    'body' => $resp->body(),
+                ]);
+
+                return null;
+            }
+
+            throw $e;
+        }
 
         Log::info('🔎 [Vendus] GET /clients by NIF', ['status' => $resp->status(), 'body' => $resp->body()]);
 

@@ -87,6 +87,10 @@ class ProcessVendusDiscountCardImportJob implements ShouldQueue, ShouldBeUnique
             'active' => false,
         ]);
 
+        if ($userCoupon->coupon && ($userCoupon->coupon->is_loyalty_reward || $userCoupon->partner_campaign_id)) {
+            $userCoupon->coupon->update(['active' => false]);
+        }
+
         $import->forceFill([
             'sync_status' => VendusDiscountCardImport::STATUS_PROCESSED,
             'sync_error' => null,

@@ -30,6 +30,13 @@
       </thead>
       <tbody>
         @forelse ($coupons as $coupon)
+          @php
+            $assignedCount = (int) $coupon->user_coupons_count;
+            $usedCount = (int) $coupon->used_user_coupons_count;
+            $activeUserCouponCount = (int) $coupon->active_user_coupons_count;
+            $allAssignedCouponsUsed = $assignedCount > 0 && $usedCount >= $assignedCount;
+            $isIndividualCoupon = (bool) $coupon->is_loyalty_reward || $assignedCount === 1;
+          @endphp
           <tr>
             <td>{{ $coupon->title }}</td>
             <td>{{ $coupon->code }}</td>
@@ -47,10 +54,19 @@
             </td>
             <td>{{ $coupon->category?->name ?? '—' }}</td>
             <td>
-              @if ($coupon->active)
+              @if ($isIndividualCoupon && $allAssignedCouponsUsed)
+                <span class="badge badge-muted">Usado</span>
+              @elseif ($activeUserCouponCount > 0)
+                <span class="badge badge-success">Disponível</span>
+              @elseif ($coupon->active)
                 <span class="badge badge-success">Ativo</span>
               @else
                 <span class="badge badge-muted">Inativo</span>
+              @endif
+              @if ($assignedCount > 0)
+                <div style="margin-top:4px; color:#6b7280; font-size:0.85rem;">
+                  {{ $usedCount }} / {{ $assignedCount }} usados
+                </div>
               @endif
             </td>
             <td>

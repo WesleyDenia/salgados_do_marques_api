@@ -17,6 +17,13 @@ class AdminCouponService
     {
         return Coupon::query()
             ->with('category')
+            ->withCount([
+                'userCoupons',
+                'userCoupons as used_user_coupons_count' => fn ($query) => $query->where('status', 'done'),
+                'userCoupons as active_user_coupons_count' => fn ($query) => $query
+                    ->where('active', true)
+                    ->where('status', '!=', 'done'),
+            ])
             ->orderByDesc('created_at')
             ->paginate(15);
     }

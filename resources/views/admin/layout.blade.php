@@ -415,6 +415,55 @@
         font-size: 0.95rem;
       }
 
+      .pagination {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        margin-top: 18px;
+        flex-wrap: wrap;
+      }
+
+      .pagination-summary {
+        color: #6b7280;
+        font-size: 0.9rem;
+      }
+
+      .pagination-links {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        flex-wrap: wrap;
+      }
+
+      .pagination-link {
+        min-width: 36px;
+        min-height: 36px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 8px 12px;
+        border-radius: 10px;
+        border: 1px solid #e5e7eb;
+        background: #ffffff;
+        color: #374151;
+        font-weight: 700;
+        font-size: 0.9rem;
+        text-decoration: none;
+      }
+
+      .pagination-link.active {
+        background: #910202;
+        border-color: #910202;
+        color: #ffffff;
+      }
+
+      .pagination-link.disabled {
+        color: #9ca3af;
+        background: #f9fafb;
+        cursor: not-allowed;
+      }
+
       @media (max-width: 860px) {
         .admin-shell {
           grid-template-columns: 1fr;

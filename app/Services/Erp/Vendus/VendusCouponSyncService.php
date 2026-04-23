@@ -136,7 +136,7 @@ class VendusCouponSyncService
         $status = strtolower((string) ($erpCoupon['status'] ?? ''));
         $wasUsed = $status === 'done' || !empty($erpCoupon['date_used']);
 
-        if (!$code && !$externalId) {
+        if (!$wasUsed || (!$code && !$externalId)) {
             return;
         }
 

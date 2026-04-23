@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\DB;
 
 class QueueMonitorController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         $missingUsersQuery = User::query()
             ->where(function ($query) {
@@ -41,8 +41,34 @@ class QueueMonitorController extends Controller
             })
             ->orderByDesc('failed_at');
 
+        $couponFilters = [
+            'code' => trim((string) $request->query('coupon_code', '')),
+            'status' => (string) $request->query('coupon_status', ''),
+        ];
+
+        $couponStatusOptions = [
+            VendusDiscountCardImport::STATUS_DOWNLOADED => 'Baixado',
+            VendusDiscountCardImport::STATUS_QUEUED => 'Enfileirado',
+            VendusDiscountCardImport::STATUS_PROCESSING => 'Processando',
+            VendusDiscountCardImport::STATUS_PROCESSED => 'Processado',
+            VendusDiscountCardImport::STATUS_FAILED => 'Erro',
+            VendusDiscountCardImport::STATUS_MANUALLY_CLOSED => 'Baixa manual',
+        ];
+
+        if (!array_key_exists($couponFilters['status'], $couponStatusOptions)) {
+            $couponFilters['status'] = '';
+        }
+
         $couponImportsQuery = VendusDiscountCardImport::query()
             ->with('userCoupon.user')
+            ->when($couponFilters['code'] !== '', function ($query) use ($couponFilters) {
+                $query->where('external_code', 'like', "%{$couponFilters['code']}%");
+            })
+            ->when(
+                $couponFilters['status'] !== '',
+                fn ($query) => $query->where('sync_status', $couponFilters['status']),
+                fn ($query) => $query->where('sync_status', '!=', VendusDiscountCardImport::STATUS_MANUALLY_CLOSED)
+            )
             ->orderByDesc('downloaded_at')
             ->orderByDesc('created_at');
 
@@ -73,6 +99,8 @@ class QueueMonitorController extends Controller
             'couponImports' => $couponImportsQuery
                 ->paginate(15, ['*'], 'coupons_page')
                 ->withQueryString(),
+            'couponFilters' => $couponFilters,
+            'couponStatusOptions' => $couponStatusOptions,
         ]);
     }
 

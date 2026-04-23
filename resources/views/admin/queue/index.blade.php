@@ -129,6 +129,34 @@
         </div>
       @elseif ($activeTab === 'cupons')
         <h3 style="margin:0 0 16px; font-size:1.2rem;">Cupons Vendus baixados</h3>
+        <form method="GET" action="{{ route('admin.queue.index') }}" class="filter-grid" style="align-items:end;">
+          <input type="hidden" name="tab" value="cupons">
+          <div class="form-group">
+            <label for="coupon_code">Código Vendus</label>
+            <input
+              id="coupon_code"
+              type="text"
+              name="coupon_code"
+              value="{{ $couponFilters['code'] }}"
+              placeholder="Ex.: 39-260422-49"
+            >
+          </div>
+          <div class="form-group">
+            <label for="coupon_status">Status</label>
+            <select id="coupon_status" name="coupon_status">
+              <option value="">Todos exceto baixa manual</option>
+              @foreach ($couponStatusOptions as $status => $label)
+                <option value="{{ $status }}" @selected($couponFilters['status'] === $status)>
+                  {{ $label }}
+                </option>
+              @endforeach
+            </select>
+          </div>
+          <div class="form-group" style="flex-direction:row; gap:10px;">
+            <button class="btn btn-primary" type="submit">Filtrar</button>
+            <a class="btn btn-secondary" href="{{ route('admin.queue.index', ['tab' => 'cupons']) }}">Limpar</a>
+          </div>
+        </form>
         <table>
           <thead>
             <tr>
@@ -214,7 +242,7 @@
           </tbody>
         </table>
         <div style="margin-top:18px;">
-          {{ $couponImports->appends(['tab' => 'cupons'])->links() }}
+          {{ $couponImports->appends(array_merge(request()->except('coupons_page'), ['tab' => 'cupons']))->links() }}
         </div>
       @elseif ($activeTab === 'jobs')
         <h3 style="margin:0 0 16px; font-size:1.2rem;">Jobs aguardando execução</h3>

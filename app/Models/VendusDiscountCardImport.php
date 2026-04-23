@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class VendusDiscountCardImport extends Model
 {
@@ -45,6 +46,11 @@ class VendusDiscountCardImport extends Model
     public function userCoupon(): BelongsTo
     {
         return $this->belongsTo(UserCoupon::class);
+    }
+
+    public function matchedUserCoupon(): HasOne
+    {
+        return $this->hasOne(UserCoupon::class, 'external_code', 'external_code');
     }
 
     public function manuallyClosedBy(): BelongsTo

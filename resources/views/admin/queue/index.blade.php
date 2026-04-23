@@ -163,6 +163,7 @@
               <th>Vendus</th>
               <th>Status</th>
               <th>Uso</th>
+              <th>User</th>
               <th>Cupom local</th>
               <th>Erro</th>
               <th>Baixado em</th>
@@ -195,11 +196,20 @@
                   <div style="color:#6b7280;">{{ $import->date_used?->format('d/m/Y H:i') ?? '—' }}</div>
                 </td>
                 <td>
-                  @if ($import->userCoupon)
-                    #{{ $import->userCoupon->id }}
-                    @if ($import->userCoupon->user)
-                      <br><a href="{{ route('admin.users.show', $import->userCoupon->user) }}">Usuário #{{ $import->userCoupon->user->id }}</a>
-                    @endif
+                  @php
+                    $matchedUserCoupon = $import->userCoupon ?: $import->matchedUserCoupon;
+                    $matchedUser = $matchedUserCoupon?->user;
+                  @endphp
+                  @if ($matchedUser)
+                    <a href="{{ route('admin.users.show', $matchedUser) }}">{{ $matchedUser->name }}</a><br>
+                    <span style="color:#6b7280;">#{{ $matchedUser->id }} · {{ $matchedUser->email }}</span>
+                  @else
+                    —
+                  @endif
+                </td>
+                <td>
+                  @if ($matchedUserCoupon)
+                    #{{ $matchedUserCoupon->id }}
                   @else
                     —
                   @endif
@@ -234,7 +244,7 @@
               </tr>
             @empty
               <tr>
-                <td colspan="7" style="text-align:center; padding:32px 0; color:#6b7280;">
+                <td colspan="8" style="text-align:center; padding:32px 0; color:#6b7280;">
                   Nenhum cupom Vendus baixado.
                 </td>
               </tr>

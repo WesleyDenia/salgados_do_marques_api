@@ -60,7 +60,7 @@ class QueueMonitorController extends Controller
         }
 
         $couponImportsQuery = VendusDiscountCardImport::query()
-            ->with('userCoupon.user')
+            ->with(['userCoupon.user', 'matchedUserCoupon.user'])
             ->when($couponFilters['code'] !== '', function ($query) use ($couponFilters) {
                 $query->where('external_code', 'like', "%{$couponFilters['code']}%");
             })

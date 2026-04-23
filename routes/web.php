@@ -59,6 +59,8 @@ Route::middleware(['auth', 'can:manage'])
         Route::get('app-testers', [AdminAppTesterController::class, 'index'])->name('app-testers.index');
         Route::get('queue', [QueueMonitorController::class, 'index'])->name('queue.index');
         Route::post('queue/users/{user}/sync', [QueueMonitorController::class, 'enqueueUser'])->name('queue.users.sync');
+        Route::post('queue/coupon-imports/{import}/retry', [QueueMonitorController::class, 'retryCouponImport'])->name('queue.coupon-imports.retry');
+        Route::post('queue/coupon-imports/{import}/close', [QueueMonitorController::class, 'closeCouponImport'])->name('queue.coupon-imports.close');
         Route::post('queue/failed/{failedJob}/retry', [QueueMonitorController::class, 'retryFailed'])->name('queue.failed.retry');
         Route::delete('queue/failed/{failedJob}', [QueueMonitorController::class, 'destroyFailed'])->name('queue.failed.destroy');
         Route::get('users', [AdminUserController::class, 'index'])->name('users.index');

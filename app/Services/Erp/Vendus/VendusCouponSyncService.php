@@ -2,6 +2,8 @@
 
 namespace App\Services\Erp\Vendus;
 
+use App\Jobs\ProcessVendusDiscountCardImportJob;
+use App\Models\VendusDiscountCardImport;
 use Illuminate\Support\Facades\Log;
 use App\Models\UserCoupon;
 
@@ -81,13 +83,9 @@ class VendusCouponSyncService
     public function syncUsedCoupons(): void
     {
         try {
-            // Busca diretamente os discountcards utilizados. A API do Vendus
-            // suporta o filtro status=done para este endpoint.
-            $resp = $this->http->client()->get('/discountcards/', [
-                'status' => 'done',
-            ]);
+            $resp = $this->http->client()->get('/discountcards/');
 
-            Log::info('[Vendus] GET /discountcards?status=done resp', [
+            Log::info('[Vendus] GET /discountcards resp', [
                 'status' => $resp->status(),
                 'body'   => $resp->body(),
             ]);
@@ -121,42 +119,7 @@ class VendusCouponSyncService
                     continue;
                 }
 
-                $code = $erpCoupon['code'] ?? null;
-                $externalId = isset($erpCoupon['id']) ? (string) $erpCoupon['id'] : null;
-                $status = strtolower((string) ($erpCoupon['status'] ?? ''));
-                $wasUsed = $status === 'done' || !empty($erpCoupon['date_used']);
-
-                if (!$wasUsed) {
-                    continue;
-                }
-
-                if (!$code && !$externalId) {
-                    continue;
-                }
-
-                $userCoupon = UserCoupon::query()
-                    ->when($code, fn ($query) => $query->where('external_code', $code))
-                    ->when($code && $externalId, fn ($query) => $query->orWhere('external_id', $externalId))
-                    ->when(!$code && $externalId, fn ($query) => $query->where('external_id', $externalId))
-                    ->first();
-
-                if ($userCoupon) {
-                    $userCoupon->update([
-                        'status' => 'done',
-                        'active' => false,
-                    ]);
-
-                    Log::info('[Sync] Cupom marcado como utilizado', [
-                        'user_coupon_id' => $userCoupon->id,
-                        'external_code'  => $code,
-                        'external_id'    => $externalId,
-                    ]);
-                } else {
-                    Log::warning('[Sync] Cupom "done" não encontrado localmente', [
-                        'external_code' => $code,
-                        'external_id' => $externalId,
-                    ]);
-                }
+                $this->downloadAndQueue($erpCoupon);
             }
         } catch (\Throwable $e) {
             Log::error('[VendusCouponSyncService] Erro ao sincronizar usados', [                
@@ -164,5 +127,68 @@ class VendusCouponSyncService
                 'trace' => $e->getTraceAsString(),
             ]);
         }
+    }
+
+    protected function downloadAndQueue(array $erpCoupon): void
+    {
+        $code = $erpCoupon['code'] ?? null;
+        $externalId = isset($erpCoupon['id']) ? (string) $erpCoupon['id'] : null;
+        $status = strtolower((string) ($erpCoupon['status'] ?? ''));
+        $wasUsed = $status === 'done' || !empty($erpCoupon['date_used']);
+
+        if (!$code && !$externalId) {
+            return;
+        }
+
+        $existing = VendusDiscountCardImport::query()
+            ->when($externalId, fn ($query) => $query->where('external_id', $externalId))
+            ->when($externalId && $code, fn ($query) => $query->orWhere('external_code', $code))
+            ->when(!$externalId && $code, fn ($query) => $query->where('external_code', $code))
+            ->first();
+
+        if ($existing) {
+            $existing->update([
+                'vendus_status' => $status ?: null,
+                'date_used' => !empty($erpCoupon['date_used']) ? $erpCoupon['date_used'] : $existing->date_used,
+                'payload' => $erpCoupon,
+            ]);
+
+            if ($wasUsed && $existing->sync_status === VendusDiscountCardImport::STATUS_DOWNLOADED) {
+                $existing->update([
+                    'sync_status' => VendusDiscountCardImport::STATUS_QUEUED,
+                    'queued_at' => now(),
+                ]);
+
+                ProcessVendusDiscountCardImportJob::dispatch($existing->id);
+            }
+
+            return;
+        }
+
+        $import = VendusDiscountCardImport::create([
+            'external_id' => $externalId,
+            'external_code' => $code,
+            'vendus_status' => $status ?: null,
+            'date_used' => !empty($erpCoupon['date_used']) ? $erpCoupon['date_used'] : null,
+            'sync_status' => VendusDiscountCardImport::STATUS_DOWNLOADED,
+            'payload' => $erpCoupon,
+            'downloaded_at' => now(),
+        ]);
+
+        if ($wasUsed) {
+            $import->update([
+                'sync_status' => VendusDiscountCardImport::STATUS_QUEUED,
+                'queued_at' => now(),
+            ]);
+
+            ProcessVendusDiscountCardImportJob::dispatch($import->id);
+        }
+
+        Log::info('[Vendus] Cupom baixado do Vendus', [
+            'vendus_discount_card_import_id' => $import->id,
+            'external_id' => $externalId,
+            'external_code' => $code,
+            'queued' => $wasUsed,
+        ]);
     }
 }

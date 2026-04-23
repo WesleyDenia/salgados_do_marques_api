@@ -127,7 +127,7 @@ class UserCouponFeatureTest extends TestCase
         $this->assertFalse($userCoupon->active);
 
         Http::assertSent(fn ($request) =>
-            $request->url() === 'https://vendus.test/ws/v1.1/discountcards/?status=done'
+            $request->url() === 'https://vendus.test/ws/v1.1/discountcards/'
         );
     }
 

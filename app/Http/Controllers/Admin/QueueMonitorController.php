@@ -3,9 +3,12 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\ProcessVendusDiscountCardImportJob;
 use App\Jobs\SyncCustomerToErpJob;
 use App\Models\User;
+use App\Models\VendusDiscountCardImport;
 use Carbon\Carbon;
+use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
 
@@ -23,16 +26,25 @@ class QueueMonitorController extends Controller
         $queuedJobsQuery = DB::table('jobs')
             ->where(function ($query) {
                 $query->where('payload', 'like', '%SyncCustomerToErpJob%')
-                    ->orWhere('payload', 'like', '%SyncPendingCustomersJob%');
+                    ->orWhere('payload', 'like', '%SyncPendingCustomersJob%')
+                    ->orWhere('payload', 'like', '%ProcessVendusDiscountCardImportJob%')
+                    ->orWhere('payload', 'like', '%SyncVendusCouponsJob%');
             })
             ->orderByDesc('created_at');
 
         $failedJobsQuery = DB::table('failed_jobs')
             ->where(function ($query) {
                 $query->where('payload', 'like', '%SyncCustomerToErpJob%')
-                    ->orWhere('payload', 'like', '%SyncPendingCustomersJob%');
+                    ->orWhere('payload', 'like', '%SyncPendingCustomersJob%')
+                    ->orWhere('payload', 'like', '%ProcessVendusDiscountCardImportJob%')
+                    ->orWhere('payload', 'like', '%SyncVendusCouponsJob%');
             })
             ->orderByDesc('failed_at');
+
+        $couponImportsQuery = VendusDiscountCardImport::query()
+            ->with('userCoupon.user')
+            ->orderByDesc('downloaded_at')
+            ->orderByDesc('created_at');
 
         return view('admin.queue.index', [
             'stats' => [
@@ -40,6 +52,12 @@ class QueueMonitorController extends Controller
                 'sync_errors' => User::where('erp_sync_status', 'failed')->count(),
                 'queued_jobs' => (clone $queuedJobsQuery)->count(),
                 'failed_jobs' => (clone $failedJobsQuery)->count(),
+                'coupon_imports_failed' => VendusDiscountCardImport::where('sync_status', VendusDiscountCardImport::STATUS_FAILED)->count(),
+                'coupon_imports_pending' => VendusDiscountCardImport::whereIn('sync_status', [
+                    VendusDiscountCardImport::STATUS_DOWNLOADED,
+                    VendusDiscountCardImport::STATUS_QUEUED,
+                    VendusDiscountCardImport::STATUS_PROCESSING,
+                ])->count(),
             ],
             'missingUsers' => $missingUsersQuery
                 ->paginate(15, ['*'], 'users_page')
@@ -51,6 +69,9 @@ class QueueMonitorController extends Controller
             'failedJobs' => $failedJobsQuery
                 ->paginate(10, ['*'], 'failed_page')
                 ->through(fn ($job) => $this->formatFailedJob($job))
+                ->withQueryString(),
+            'couponImports' => $couponImportsQuery
+                ->paginate(15, ['*'], 'coupons_page')
                 ->withQueryString(),
         ]);
     }
@@ -76,19 +97,28 @@ class QueueMonitorController extends Controller
         }
 
         $userId = $this->extractUserId($job->payload);
+        $importId = $this->extractImportId($job->payload);
 
-        if (!$userId) {
-            return back()->with('status', 'Não foi possível identificar o usuário deste job falhado.');
+        if ($userId) {
+            SyncCustomerToErpJob::dispatch($userId);
+            User::whereKey($userId)->update([
+                'erp_sync_status' => 'pending',
+                'erp_sync_error' => null,
+            ]);
+        } elseif ($importId) {
+            VendusDiscountCardImport::whereKey($importId)->update([
+                'sync_status' => VendusDiscountCardImport::STATUS_QUEUED,
+                'sync_error' => null,
+                'queued_at' => now(),
+            ]);
+            ProcessVendusDiscountCardImportJob::dispatch($importId);
+        } else {
+            return back()->with('status', 'Não foi possível identificar o registro deste job falhado.');
         }
 
-        SyncCustomerToErpJob::dispatch($userId);
-        User::whereKey($userId)->update([
-            'erp_sync_status' => 'pending',
-            'erp_sync_error' => null,
-        ]);
         DB::table('failed_jobs')->where('id', $failedJob)->delete();
 
-        return back()->with('status', "Sincronização do usuário #{$userId} reenfileirada.");
+        return back()->with('status', 'Job falhado reenfileirado.');
     }
 
     public function destroyFailed(int $failedJob): RedirectResponse
@@ -98,10 +128,45 @@ class QueueMonitorController extends Controller
         return back()->with('status', 'Falha removida da fila.');
     }
 
+    public function retryCouponImport(VendusDiscountCardImport $import): RedirectResponse
+    {
+        if ($import->sync_status === VendusDiscountCardImport::STATUS_MANUALLY_CLOSED) {
+            return back()->with('status', 'Este cupom já recebeu baixa manual.');
+        }
+
+        $import->update([
+            'sync_status' => VendusDiscountCardImport::STATUS_QUEUED,
+            'sync_error' => null,
+            'queued_at' => now(),
+        ]);
+
+        ProcessVendusDiscountCardImportJob::dispatch($import->id);
+
+        return back()->with('status', "Cupom Vendus #{$import->id} reenfileirado.");
+    }
+
+    public function closeCouponImport(Request $request, VendusDiscountCardImport $import): RedirectResponse
+    {
+        $data = $request->validate([
+            'manual_note' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        $import->update([
+            'sync_status' => VendusDiscountCardImport::STATUS_MANUALLY_CLOSED,
+            'sync_error' => null,
+            'manually_closed_at' => now(),
+            'manually_closed_by' => $request->user()?->id,
+            'manual_note' => $data['manual_note'] ?? null,
+        ]);
+
+        return back()->with('status', "Baixa manual aplicada ao cupom Vendus #{$import->id}.");
+    }
+
     protected function formatQueuedJob(object $job): object
     {
         $job->display_name = $this->extractDisplayName($job->payload);
         $job->user_id = $this->extractUserId($job->payload);
+        $job->import_id = $this->extractImportId($job->payload);
         $job->created_at_human = $this->timestampToDate($job->created_at);
         $job->available_at_human = $this->timestampToDate($job->available_at);
         $job->reserved_at_human = $job->reserved_at ? $this->timestampToDate($job->reserved_at) : null;
@@ -113,6 +178,7 @@ class QueueMonitorController extends Controller
     {
         $job->display_name = $this->extractDisplayName($job->payload);
         $job->user_id = $this->extractUserId($job->payload);
+        $job->import_id = $this->extractImportId($job->payload);
         $job->exception_summary = $this->exceptionSummary($job->exception);
 
         return $job;
@@ -135,6 +201,22 @@ class QueueMonitorController extends Controller
         }
 
         if (preg_match('/userId[^0-9]+(\d+)/', $payload, $matches)) {
+            return (int) $matches[1];
+        }
+
+        return null;
+    }
+
+    protected function extractImportId(string $payload): ?int
+    {
+        $decoded = json_decode($payload, true);
+        $command = (string) ($decoded['data']['command'] ?? '');
+
+        if (preg_match('/"importId";i:(\d+)/', $command, $matches)) {
+            return (int) $matches[1];
+        }
+
+        if (preg_match('/importId[^0-9]+(\d+)/', $payload, $matches)) {
             return (int) $matches[1];
         }
 

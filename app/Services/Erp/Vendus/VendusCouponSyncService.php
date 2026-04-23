@@ -81,8 +81,11 @@ class VendusCouponSyncService
     public function syncUsedCoupons(): void
     {
         try {
-            // 🔹 Busca todos os discountcards (sem filtros)
-            $resp = $this->http->client()->get('/discountcards');
+            // Busca diretamente os discountcards utilizados. A API do Vendus
+            // suporta o filtro status=done para este endpoint.
+            $resp = $this->http->client()->get('/discountcards/', [
+                'status' => 'done',
+            ]);
 
             if (!$resp->successful()) {
                 Log::error('[Vendus] Falha ao buscar discountcards', [
@@ -109,30 +112,45 @@ class VendusCouponSyncService
             Log::info('[Vendus] Cupons recebidos', ['count' => count($list)]);
 
             foreach ($list as $erpCoupon) {
+                if (!is_array($erpCoupon)) {
+                    continue;
+                }
+
                 $code = $erpCoupon['code'] ?? null;
-                $status = $erpCoupon['status'] ?? null;
+                $externalId = isset($erpCoupon['id']) ? (string) $erpCoupon['id'] : null;
+                $status = strtolower((string) ($erpCoupon['status'] ?? ''));
+                $wasUsed = $status === 'done' || !empty($erpCoupon['date_used']);
 
-                if (!$code) continue;
+                if (!$wasUsed) {
+                    continue;
+                }
 
-                // 🔹 Processa apenas cupons finalizados
-                if ($status === 'done') {
-                    $userCoupon = UserCoupon::where('external_code', $code)->first();
+                if (!$code && !$externalId) {
+                    continue;
+                }
 
-                    if ($userCoupon) {
-                        $userCoupon->update([
-                            'status' => 'done',
-                            'active' => false,
-                        ]);
+                $userCoupon = UserCoupon::query()
+                    ->when($code, fn ($query) => $query->where('external_code', $code))
+                    ->when($code && $externalId, fn ($query) => $query->orWhere('external_id', $externalId))
+                    ->when(!$code && $externalId, fn ($query) => $query->where('external_id', $externalId))
+                    ->first();
 
-                        Log::info('[Sync] Cupom marcado como utilizado', [
-                            'user_coupon_id' => $userCoupon->id,
-                            'external_code'  => $code,
-                        ]);
-                    } else {
-                        Log::warning('[Sync] Cupom "done" não encontrado localmente', [
-                            'external_code' => $code,
-                        ]);
-                    }
+                if ($userCoupon) {
+                    $userCoupon->update([
+                        'status' => 'done',
+                        'active' => false,
+                    ]);
+
+                    Log::info('[Sync] Cupom marcado como utilizado', [
+                        'user_coupon_id' => $userCoupon->id,
+                        'external_code'  => $code,
+                        'external_id'    => $externalId,
+                    ]);
+                } else {
+                    Log::warning('[Sync] Cupom "done" não encontrado localmente', [
+                        'external_code' => $code,
+                        'external_id' => $externalId,
+                    ]);
                 }
             }
         } catch (\Throwable $e) {

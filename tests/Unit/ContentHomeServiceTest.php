@@ -45,7 +45,7 @@ class ContentHomeServiceTest extends TestCase
             'is_active' => true,
             'show_component_title' => true,
             'cta_image_only' => false,
-        ], UploadedFile::fake()->image('hero.jpg'));
+        ], UploadedFile::fake()->create('hero.jpg', 64, 'image/jpeg'));
 
         $this->assertSame(1, $created->display_order);
         $this->assertSame(['cta' => 'ativar'], $created->component_props);

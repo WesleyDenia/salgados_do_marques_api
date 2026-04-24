@@ -58,7 +58,7 @@ class ApiRequestValidationFeatureTest extends TestCase
         Sanctum::actingAs(User::factory()->create(['role' => 'admin']));
 
         $response = $this->postJson('/api/v1/upload', [
-            'image' => UploadedFile::fake()->image('banner.png'),
+            'image' => UploadedFile::fake()->create('banner.png', 64, 'image/png'),
         ]);
 
         $response->assertOk()

@@ -9,6 +9,7 @@ class UserCouponResource extends JsonResource
     public function toArray($request): array
     {
         $partner = $this->partnerCampaign?->partner;
+        $latestTask = $this->relationLoaded('latestErpTask') ? $this->latestErpTask : null;
         $originType = $this->type === 'partner'
             ? 'partner'
             : ($this->type === 'loyalty' ? 'loyalty' : 'regular');
@@ -25,6 +26,8 @@ class UserCouponResource extends JsonResource
             'expires_at'  => optional($this->expires_at)->toIso8601String(),
             'active'      => $this->active,
             'status'      => $this->status,
+            'erp_status'  => $latestTask?->status,
+            'erp_error'   => $latestTask?->last_error ?: $this->erp_sync_error,
             'created_at'  => optional($this->created_at)->toIso8601String(),
             'origin'      => [
                 'type' => $originType,
@@ -41,6 +44,12 @@ class UserCouponResource extends JsonResource
                     'public_name' => $this->partnerCampaign->public_name,
                 ] : null,
             ],
+            'erp_task' => $latestTask ? [
+                'id' => $latestTask->id,
+                'operation' => $latestTask->operation,
+                'status' => $latestTask->status,
+                'last_error' => $latestTask->last_error,
+            ] : null,
             'user'        => [
                 'id'    => $this->user->id ?? null,
                 'name'  => $this->user->name ?? null,

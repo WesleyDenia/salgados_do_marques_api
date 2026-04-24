@@ -2,7 +2,9 @@
 
 namespace App\Services;
 
+use App\Jobs\CreateVendusDiscountCardJob;
 use App\Models\Coupon;
+use App\Models\ErpSyncTask;
 use App\Models\LoyaltyReward;
 use App\Models\Setting;
 use App\Models\User;
@@ -10,13 +12,12 @@ use App\Models\UserCoupon;
 use App\Repositories\LoyaltyRepository;
 use App\Repositories\LoyaltyRewardRepository;
 use App\Repositories\UserCouponRepository;
-use App\Services\Erp\Vendus\VendusCouponSyncService;
+use App\Services\ErpSyncTaskService;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Str;
-use Illuminate\Validation\ValidationException;
 
 class LoyaltyRewardService
 {
@@ -24,7 +25,7 @@ class LoyaltyRewardService
         protected LoyaltyRewardRepository $repository,
         protected LoyaltyRepository $loyaltyRepository,
         protected UserCouponRepository $userCouponRepository,
-        protected VendusCouponSyncService $vendusCouponSyncService,
+        protected ErpSyncTaskService $erpSyncTaskService,
         protected AdminImageService $images,
     ) {}
 
@@ -35,7 +36,7 @@ class LoyaltyRewardService
         if ($user && $rewards->isNotEmpty()) {
             $rewardIds = $rewards->pluck('id');
 
-            $userCoupons = UserCoupon::with('coupon')
+            $userCoupons = UserCoupon::with(['coupon', 'latestErpTask'])
                 ->where('user_id', $user->id)
                 ->whereIn('loyalty_reward_id', $rewardIds)
                 ->orderByDesc('created_at')
@@ -44,8 +45,8 @@ class LoyaltyRewardService
 
             foreach ($rewards as $reward) {
                 $coupon = $userCoupons->get($reward->id)?->first(function (UserCoupon $candidate) {
-                    $status = $candidate->status ?? 'pending';
-                    return $status !== 'done' && $candidate->active;
+                    return in_array($candidate->status ?? UserCoupon::STATUS_PENDING, UserCoupon::ACTIVE_REUSABLE_STATUSES, true)
+                        && $candidate->active;
                 });
 
                 if ($coupon) {
@@ -116,19 +117,24 @@ class LoyaltyRewardService
             abort(422, 'Configure um valor válido para esta recompensa.');
         }
 
-        $existing = UserCoupon::with('coupon')
-            ->where('user_id', $user->id)
-            ->where('loyalty_reward_id', $reward->id)
-            ->where('type', 'loyalty')
-            ->first();
-
-        if ($existing && $existing->status !== 'done') {
-            return $existing;
-        }
-
         $quantity = max(1, $quantity);
 
         return DB::transaction(function () use ($user, $reward, $quantity) {
+            $expiresAt = $this->resolveExpirationDate();
+            $totalValue = $reward->value * $quantity;
+            $originKey = 'loyalty_reward:' . $reward->id;
+
+            $userCoupon = UserCoupon::query()
+                ->with(['coupon', 'latestErpTask'])
+                ->lockForUpdate()
+                ->where('user_id', $user->id)
+                ->where('origin_key', $originKey)
+                ->first();
+
+            if ($userCoupon && in_array($userCoupon->status, UserCoupon::ACTIVE_REUSABLE_STATUSES, true)) {
+                return $userCoupon;
+            }
+
             $account = $this->loyaltyRepository->getOrCreateAccount($user);
             $requiredPoints = $reward->threshold * $quantity;
 
@@ -136,69 +142,85 @@ class LoyaltyRewardService
                 abort(422, 'Pontos insuficientes para resgatar esta recompensa.');
             }
 
-            $expiresAt = $this->resolveExpirationDate();
-            $totalValue = $reward->value * $quantity;
+            if ($userCoupon) {
+                $coupon = $userCoupon->coupon;
 
-            $coupon = Coupon::create([
-                'title' => sprintf('Recompensa: %s', $reward->name),
-                'body' => $reward->description ?? 'Cupom gerado via programa de fidelidade.',
-                'code' => $this->generatePlaceholderCode($user),
-                'image_url' => $reward->image_url,
-                'recurrence' => 'none',
-                'starts_at' => now(),
-                'ends_at' => $expiresAt,
-                'active' => true,
-                'type' => 'money',
-                'amount' => $totalValue,
-                'is_loyalty_reward' => true,
-            ]);
+                if (!$coupon) {
+                    $coupon = new Coupon();
+                }
 
-            $userCoupon = UserCoupon::create([
-                'user_id' => $user->id,
-                'coupon_id' => $coupon->id,
-                'loyalty_reward_id' => $reward->id,
-                'type' => 'loyalty',
-                'usage_limit' => 1,
-                'usage_count' => 0,
-                'expires_at' => $expiresAt,
-                'active' => true,
-                'status' => 'pending',
-            ]);
+                $coupon->fill([
+                    'title' => sprintf('Recompensa: %s', $reward->name),
+                    'body' => $reward->description ?? 'Cupom gerado via programa de fidelidade.',
+                    'code' => $this->generatePlaceholderCode($user),
+                    'image_url' => $reward->image_url,
+                    'recurrence' => 'none',
+                    'starts_at' => now(),
+                    'ends_at' => $expiresAt,
+                    'active' => true,
+                    'type' => 'money',
+                    'amount' => $totalValue,
+                    'is_loyalty_reward' => true,
+                ]);
+                $coupon->save();
 
-            $newPoints = $account->points - $requiredPoints;
-            $this->loyaltyRepository->updatePoints($account, $newPoints);
-
-            $this->loyaltyRepository->createTransaction([
-                'user_id' => $user->id,
-                'type' => 'redeem',
-                'points' => -$requiredPoints,
-                'reason' => sprintf('Resgate da recompensa "%s"', $reward->name),
-                'meta' => [
-                    'loyalty_reward_id' => $reward->id,
+                $userCoupon->forceFill([
                     'coupon_id' => $coupon->id,
-                    'value' => $totalValue,
-                    'quantity' => $quantity,
-                    'expires_at' => $expiresAt?->toIso8601String(),
-                ],
-            ]);
+                    'expires_at' => $expiresAt,
+                    'active' => true,
+                    'status' => UserCoupon::STATUS_PENDING_ERP,
+                    'external_id' => null,
+                    'external_code' => null,
+                    'erp_sync_error' => null,
+                    'erp_synced_at' => null,
+                    'erp_sync_attempts' => 0,
+                    'redeem_applied_at' => null,
+                    'redeem_transaction_id' => null,
+                    'usage_limit' => 1,
+                    'usage_count' => 0,
+                ])->save();
+            } else {
+                $coupon = Coupon::create([
+                    'title' => sprintf('Recompensa: %s', $reward->name),
+                    'body' => $reward->description ?? 'Cupom gerado via programa de fidelidade.',
+                    'code' => $this->generatePlaceholderCode($user),
+                    'image_url' => $reward->image_url,
+                    'recurrence' => 'none',
+                    'starts_at' => now(),
+                    'ends_at' => $expiresAt,
+                    'active' => true,
+                    'type' => 'money',
+                    'amount' => $totalValue,
+                    'is_loyalty_reward' => true,
+                ]);
 
-            $userCoupon->setRelation('coupon', $coupon);
-
-            $response = $this->vendusCouponSyncService->create($userCoupon);
-
-            if (!$response || empty($response['external_code'])) {
-                throw ValidationException::withMessages([
-                    'reward' => 'Não foi possível gerar o cupom no Vendus.',
+                $userCoupon = UserCoupon::create([
+                    'user_id' => $user->id,
+                    'coupon_id' => $coupon->id,
+                    'type' => 'loyalty',
+                    'loyalty_reward_id' => $reward->id,
+                    'origin_key' => $originKey,
+                    'usage_limit' => 1,
+                    'usage_count' => 0,
+                    'expires_at' => $expiresAt,
+                    'active' => true,
+                    'status' => UserCoupon::STATUS_PENDING_ERP,
                 ]);
             }
 
-            $userCoupon = $this->userCouponRepository->syncFromErp($userCoupon, $response);
+            $this->erpSyncTaskService->createOrReuseActive(
+                ErpSyncTask::OPERATION_CREATE_DISCOUNT_CARD,
+                ErpSyncTask::ENTITY_USER_COUPON,
+                $userCoupon->id,
+                [
+                    'status' => ErpSyncTask::STATUS_QUEUED,
+                    'queued_at' => now(),
+                ]
+            );
 
-            if (!empty($response['external_code'])) {
-                $coupon->update(['code' => $response['external_code']]);
-            }
+            CreateVendusDiscountCardJob::dispatch($userCoupon->id)->afterCommit();
 
-            return $userCoupon->fresh('coupon');
+            return $userCoupon->fresh(['coupon', 'latestErpTask']);
         });
     }
 

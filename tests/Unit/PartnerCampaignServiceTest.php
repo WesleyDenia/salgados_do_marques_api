@@ -2,13 +2,15 @@
 
 namespace Tests\Unit;
 
+use App\Jobs\CreateVendusDiscountCardJob;
 use App\Models\Coupon;
 use App\Models\Partner;
 use App\Models\PartnerCampaign;
 use App\Models\User;
-use App\Services\Erp\Vendus\VendusCouponSyncService;
+use App\Models\UserCoupon;
 use App\Services\PartnerCampaignService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
@@ -18,18 +20,10 @@ class PartnerCampaignServiceTest extends TestCase
 
     public function test_validate_code_creates_partner_coupon_and_is_idempotent(): void
     {
+        Queue::fake();
+
         $user = User::factory()->create();
         $campaign = $this->createCampaign();
-
-        $vendus = \Mockery::mock(VendusCouponSyncService::class);
-        $vendus->shouldReceive('create')
-            ->once()
-            ->andReturn([
-                'external_id' => 'vd-100',
-                'external_code' => 'PAR-100',
-                'status' => 'pending',
-            ]);
-        $this->app->instance(VendusCouponSyncService::class, $vendus);
 
         /** @var PartnerCampaignService $service */
         $service = $this->app->make(PartnerCampaignService::class);
@@ -39,12 +33,21 @@ class PartnerCampaignServiceTest extends TestCase
 
         $this->assertSame($first->id, $second->id);
         $this->assertSame('partner', $first->type);
-        $this->assertSame('PAR-100', $first->external_code);
+        $this->assertSame(UserCoupon::STATUS_PENDING_ERP, $first->status);
+        $this->assertNull($first->external_code);
         $this->assertDatabaseHas('user_coupons', [
             'user_id' => $user->id,
             'partner_campaign_id' => $campaign->id,
             'type' => 'partner',
+            'status' => UserCoupon::STATUS_PENDING_ERP,
         ]);
+        $this->assertDatabaseHas('erp_sync_tasks', [
+            'operation' => 'create_discount_card',
+            'entity_type' => 'user_coupon',
+            'entity_id' => $first->id,
+            'status' => 'queued',
+        ]);
+        Queue::assertPushed(CreateVendusDiscountCardJob::class, 1);
     }
 
     public function test_validate_code_rejects_inactive_partner(): void

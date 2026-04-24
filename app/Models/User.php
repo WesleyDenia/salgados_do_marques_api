@@ -48,6 +48,7 @@ class User extends Authenticatable
         'last_login' => 'datetime',
         'birth_date' => 'date',
         'active' => 'boolean',
+        'loyalty_synced' => 'boolean',
         'erp_sync_attempts' => 'integer',
         'erp_sync_attempted_at' => 'datetime',
         'erp_synced_at' => 'datetime',

@@ -277,6 +277,8 @@
                 <td>
                   @if ($task->entity_type === 'user')
                     <a href="{{ route('admin.users.show', $task->entity_id) }}">Usuário #{{ $task->entity_id }}</a>
+                  @elseif ($task->entity_type === 'user_coupon')
+                    Cupom privado #{{ $task->entity_id }}
                   @elseif ($task->entity_type === 'vendus_discount_card_import')
                     Cupom Vendus #{{ $task->entity_id }}
                   @else
@@ -324,6 +326,8 @@
                 <td>
                   @if ($task->entity_type === 'user')
                     <a href="{{ route('admin.users.show', $task->entity_id) }}">Usuário #{{ $task->entity_id }}</a>
+                  @elseif ($task->entity_type === 'user_coupon')
+                    Cupom privado #{{ $task->entity_id }}
                   @elseif ($task->entity_type === 'vendus_discount_card_import')
                     Cupom Vendus #{{ $task->entity_id }}
                   @else
@@ -345,6 +349,20 @@
                       </form>
                     @else
                       <span style="color:#6b7280;">Reabertura manual necessária</span>
+                    @endif
+                    @if ($task->operation === 'create_discount_card' && $task->entity_type === 'user_coupon' && $task->status !== 'cancelled')
+                      <form method="POST" action="{{ route('admin.queue.tasks.status', $task) }}">
+                        @csrf
+                        <input type="hidden" name="target_status" value="manual_review">
+                        <input type="hidden" name="manual_note" value="Encaminhado para revisão manual pelo painel administrativo.">
+                        <button class="btn btn-secondary" type="submit">Revisão manual</button>
+                      </form>
+                      <form method="POST" action="{{ route('admin.queue.tasks.status', $task) }}" onsubmit="return confirm('Cancelar esta tarefa ERP e encerrar o cupom local?');">
+                        @csrf
+                        <input type="hidden" name="target_status" value="cancelled">
+                        <input type="hidden" name="manual_note" value="Cancelado manualmente pelo painel administrativo.">
+                        <button class="btn btn-secondary" type="submit">Cancelar</button>
+                      </form>
                     @endif
                   </div>
                 </td>

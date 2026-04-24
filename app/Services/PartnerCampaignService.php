@@ -2,12 +2,13 @@
 
 namespace App\Services;
 
+use App\Jobs\CreateVendusDiscountCardJob;
+use App\Models\ErpSyncTask;
 use App\Models\PartnerCampaign;
 use App\Models\User;
 use App\Models\UserCoupon;
 use App\Repositories\PartnerCampaignRepository;
 use App\Repositories\UserCouponRepository;
-use App\Services\Erp\Vendus\VendusCouponSyncService;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -17,7 +18,7 @@ class PartnerCampaignService
     public function __construct(
         protected PartnerCampaignRepository $campaigns,
         protected UserCouponRepository $userCoupons,
-        protected VendusCouponSyncService $vendusCouponSyncService,
+        protected ErpSyncTaskService $erpSyncTaskService,
     ) {}
 
     public function validateCode(User $user, string $code): UserCoupon
@@ -42,16 +43,19 @@ class PartnerCampaignService
                 return $userCoupon;
             }
 
-            $response = $this->vendusCouponSyncService->create($userCoupon);
+            $this->erpSyncTaskService->createOrReuseActive(
+                ErpSyncTask::OPERATION_CREATE_DISCOUNT_CARD,
+                ErpSyncTask::ENTITY_USER_COUPON,
+                $userCoupon->id,
+                [
+                    'status' => ErpSyncTask::STATUS_QUEUED,
+                    'queued_at' => now(),
+                ]
+            );
 
-            if (!$response || empty($response['external_code'])) {
-                throw ValidationException::withMessages([
-                    'code' => 'Não foi possível gerar o cupom do parceiro neste momento.',
-                ]);
-            }
+            CreateVendusDiscountCardJob::dispatch($userCoupon->id)->afterCommit();
 
-            return $this->userCoupons->syncFromErp($userCoupon, $response)
-                ->load(['coupon', 'partnerCampaign.partner', 'user']);
+            return $userCoupon->load(['coupon', 'partnerCampaign.partner', 'user', 'latestErpTask']);
         });
     }
 

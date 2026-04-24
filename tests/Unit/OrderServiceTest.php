@@ -73,7 +73,7 @@ class OrderServiceTest extends TestCase
         $settings->shouldReceive('get')->once()->with('ORDER_CANCEL_MINUTES', '90')->andReturn('120');
         $settings->shouldReceive('get')->once()->with('order_timezone', 'Europe/Lisbon')->andReturn('UTC');
         $settings->shouldReceive('get')->once()->with('ORDER_TIMEZONE', 'UTC')->andReturn('Europe/Madrid');
-        $settings->shouldReceive('get')->once()->with('ORDER_SCHEDULING_WINDOW_DAYS', 14)->andReturn('30');
+        $settings->shouldReceive('get')->once()->with('ORDER_SCHEDULING_WINDOW_DAYS', 15)->andReturn('30');
 
         $service = new OrderService($repository, $products, $settings, $stores);
 

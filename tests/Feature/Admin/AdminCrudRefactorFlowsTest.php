@@ -55,7 +55,7 @@ class AdminCrudRefactorFlowsTest extends TestCase
             'slug' => 'parceiro-xpto',
             'description' => 'Descrição',
             'active' => '1',
-            'image' => UploadedFile::fake()->image('partner.jpg'),
+            'image' => UploadedFile::fake()->create('partner.jpg', 64, 'image/jpeg'),
         ]);
 
         $partnerResponse->assertRedirect(route('admin.partners.index'));

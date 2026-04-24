@@ -31,10 +31,7 @@ class LgpdService
     protected function normalizeContent(string $content): string
     {
         $normalized = str_replace(["\r\n", "\r"], "\n", $content);
-
-        if (!str_contains($normalized, "\n")) {
-            $normalized = preg_replace('/ {2,}(?=\S)/u', "\n", $normalized);
-        }
+        $normalized = preg_replace('/ {2,}(?=\S)/u', "\n", $normalized);
 
         $normalized = preg_replace('/\n{3,}/', "\n\n", $normalized);
 

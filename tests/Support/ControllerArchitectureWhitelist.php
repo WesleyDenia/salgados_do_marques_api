@@ -14,6 +14,7 @@ final class ControllerArchitectureWhitelist
         return [
             'app/Http/Controllers/Admin/AdminAuthController.php' => 'Admin auth still validates credentials inline and manages session auth directly.',
             'app/Http/Controllers/Admin/OrderController.php' => 'Admin order index still validates read filters inline.',
+            'app/Http/Controllers/Admin/QueueMonitorController.php' => 'ERP queue monitor still coordinates admin-only operational reprocessing directly from controller.',
             'app/Http/Controllers/Admin/StoreController.php' => 'Admin store destroy still deletes the route model directly.',
             'app/Http/Controllers/Api/V1/CategoryController.php' => 'API category controller still uses repository/model-level access from the controller.',
             'app/Http/Controllers/Api/V1/CouponController.php' => 'API coupon controller still uses repository/model-level access from the controller.',
@@ -23,6 +24,7 @@ final class ControllerArchitectureWhitelist
             'app/Http/Controllers/Api/V1/OrderController.php' => 'API order read/cancel actions still depend on framework request directly.',
             'app/Http/Controllers/Api/V1/ProductController.php' => 'API product controller still uses repository/model-level access from the controller.',
             'app/Http/Controllers/Api/V1/PromotionController.php' => 'API promotion controller still injects repository directly.',
+            'app/Http/Controllers/Api/V1/UserController.php' => 'API user update still wraps persistence in controller-level transaction during legacy profile refactor.',
             'app/Http/Controllers/Api/V1/UserCouponAdminController.php' => 'API user coupon admin controller still injects repository directly.',
             'app/Http/Controllers/Api/V1/UserCouponController.php' => 'API user coupon read/destroy actions still depend on framework request directly.',
         ];
@@ -60,6 +62,7 @@ final class ControllerArchitectureWhitelist
             'App\Http\Controllers\Api\V1\CouponController' => 'Coupon API still lacks an intermediate service.',
             'App\Http\Controllers\Api\V1\ProductController' => 'Product API still lacks an intermediate service.',
             'App\Http\Controllers\Api\V1\PromotionController' => 'Promotion API still lacks an intermediate service.',
+            'App\Http\Controllers\Admin\QueueMonitorController' => 'ERP queue monitor still reads operational task data directly for admin remediation flows.',
             'App\Http\Controllers\Api\V1\UserCouponAdminController' => 'User coupon admin API still lacks an intermediate service.',
         ];
     }

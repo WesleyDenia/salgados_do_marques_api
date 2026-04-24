@@ -25,10 +25,14 @@ class LoyaltyRewardResource extends JsonResource
                         return null;
                     }
 
+                    $latestTask = $coupon->relationLoaded('latestErpTask') ? $coupon->latestErpTask : null;
+
                     return [
                         'id' => $coupon->id,
                         'external_code' => $coupon->external_code,
                         'status' => $coupon->status,
+                        'erp_status' => $latestTask?->status,
+                        'erp_error' => $latestTask?->last_error ?: $coupon->erp_sync_error,
                         'type' => $coupon->type,
                         'coupon' => $coupon->relationLoaded('coupon')
                             ? new CouponResource($coupon->coupon)

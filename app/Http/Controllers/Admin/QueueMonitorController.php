@@ -4,12 +4,16 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\CloseCouponImportRequest;
+use App\Http\Requests\Admin\UpdateErpSyncTaskStatusRequest;
+use App\Jobs\CreateVendusDiscountCardJob;
 use App\Jobs\ProcessVendusDiscountCardImportJob;
 use App\Jobs\SyncCustomerToErpJob;
 use App\Models\ErpSyncTask;
+use App\Models\UserCoupon;
 use App\Models\User;
 use App\Models\VendusDiscountCardImport;
 use App\Repositories\ErpSyncTaskRepository;
+use App\Repositories\UserCouponRepository;
 use App\Services\ErpSyncTaskService;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
@@ -18,7 +22,8 @@ class QueueMonitorController extends Controller
 {
     public function __construct(
         protected ErpSyncTaskRepository $tasks,
-        protected ErpSyncTaskService $taskService
+        protected ErpSyncTaskService $taskService,
+        protected UserCouponRepository $userCoupons,
     ) {
     }
 
@@ -126,6 +131,15 @@ class QueueMonitorController extends Controller
                 'erp_sync_status' => 'pending',
                 'erp_sync_error' => null,
             ]);
+        } elseif ($task->operation === ErpSyncTask::OPERATION_CREATE_DISCOUNT_CARD && $task->entity_type === ErpSyncTask::ENTITY_USER_COUPON) {
+            $userCoupon = UserCoupon::query()->find($task->entity_id);
+
+            if (!$userCoupon) {
+                return back()->with('status', 'Cupom local não encontrado para reprocessamento.');
+            }
+
+            $this->userCoupons->markPendingErp($userCoupon);
+            CreateVendusDiscountCardJob::dispatch($userCoupon->id);
         } elseif ($task->operation === ErpSyncTask::OPERATION_IMPORT_DISCOUNT_CARD && $task->entity_type === ErpSyncTask::ENTITY_VENDUS_DISCOUNT_CARD_IMPORT) {
             VendusDiscountCardImport::whereKey($task->entity_id)->update([
                 'sync_status' => VendusDiscountCardImport::STATUS_QUEUED,
@@ -140,6 +154,34 @@ class QueueMonitorController extends Controller
         $this->taskService->markQueued($task);
 
         return back()->with('status', "Tarefa ERP #{$task->id} reenfileirada.");
+    }
+
+    public function updateTaskStatus(UpdateErpSyncTaskStatusRequest $request, ErpSyncTask $task): RedirectResponse
+    {
+        if ($task->operation !== ErpSyncTask::OPERATION_CREATE_DISCOUNT_CARD || $task->entity_type !== ErpSyncTask::ENTITY_USER_COUPON) {
+            return back()->with('status', 'Esta tarefa ERP não suporta atualização manual de status.');
+        }
+
+        $userCoupon = UserCoupon::query()->find($task->entity_id);
+
+        if (!$userCoupon) {
+            return back()->with('status', 'Cupom local não encontrado para atualização manual.');
+        }
+
+        $payload = $request->validated();
+        $note = $payload['manual_note'] ?? null;
+        $actorId = $request->user()?->id;
+
+        if ($payload['target_status'] === ErpSyncTask::STATUS_MANUAL_REVIEW) {
+            $this->userCoupons->markManualReview($userCoupon, $note);
+            $this->taskService->markManualReview($task, $note, $actorId);
+            return back()->with('status', "Tarefa ERP #{$task->id} marcada para revisão manual.");
+        }
+
+        $this->userCoupons->markCancelled($userCoupon, $note);
+        $this->taskService->markCancelled($task, $note, $actorId);
+
+        return back()->with('status', "Tarefa ERP #{$task->id} cancelada.");
     }
 
     public function retryCouponImport(VendusDiscountCardImport $import): RedirectResponse

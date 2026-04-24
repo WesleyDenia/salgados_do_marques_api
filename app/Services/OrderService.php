@@ -294,7 +294,8 @@ class OrderService
             /** @var Product $product */
             $product = $products->get($item['product_id']);
             /** @var ProductVariant|null $variant */
-            $variant = $item['variant_id'] ? $variants->get($item['variant_id']) : null;
+            $variantId = $item['variant_id'] ?? null;
+            $variant = $variantId ? $variants->get($variantId) : null;
             $quantity = (int) $item['quantity'];
 
             if ($variant && $variant->product_id !== $product->id) {

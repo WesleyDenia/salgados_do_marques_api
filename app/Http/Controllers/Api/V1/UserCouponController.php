@@ -32,7 +32,10 @@ class UserCouponController extends Controller
             $request->validated()['coupon_id']
         );
 
-        return new UserCouponResource($userCoupon);
+        return response()->json(
+            (new UserCouponResource($userCoupon))->resolve($request),
+            200
+        );
     }
 
 

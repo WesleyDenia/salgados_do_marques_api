@@ -44,7 +44,7 @@ class ProductAdminServiceTest extends TestCase
                     'display_order' => 0,
                 ],
             ],
-        ], UploadedFile::fake()->image('product.jpg'));
+        ], UploadedFile::fake()->create('product.jpg', 64, 'image/jpeg'));
 
         $this->assertSame('Pack Festa', $product->name);
         $this->assertStringStartsWith('/storage/products/', (string) $product->image_url);

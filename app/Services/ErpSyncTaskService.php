@@ -125,6 +125,32 @@ class ErpSyncTaskService
         return $task->refresh();
     }
 
+    public function markManualReview(ErpSyncTask $task, ?string $error = null, ?int $resolvedBy = null): ErpSyncTask
+    {
+        $task->forceFill([
+            'active_key' => null,
+            'status' => ErpSyncTask::STATUS_MANUAL_REVIEW,
+            'last_error' => $error ? mb_strimwidth($error, 0, 1000, '...') : null,
+            'finished_at' => now(),
+            'resolved_by' => $resolvedBy,
+        ])->save();
+
+        return $task->refresh();
+    }
+
+    public function markCancelled(ErpSyncTask $task, ?string $error = null, ?int $resolvedBy = null): ErpSyncTask
+    {
+        $task->forceFill([
+            'active_key' => null,
+            'status' => ErpSyncTask::STATUS_CANCELLED,
+            'last_error' => $error ? mb_strimwidth($error, 0, 1000, '...') : null,
+            'finished_at' => now(),
+            'resolved_by' => $resolvedBy,
+        ])->save();
+
+        return $task->refresh();
+    }
+
     protected function fillAndSave(ErpSyncTask $task, array $attributes): ErpSyncTask
     {
         $task->fill($this->filterNulls($attributes));

@@ -38,7 +38,7 @@ class ProductRequest extends FormRequest
             'variants.*.display_order' => ['nullable', 'integer', 'min:0'],
             'variants.*.remove' => ['nullable', 'boolean'],
             'flavor_ids' => ['nullable', 'array'],
-            'flavor_ids.*' => ['integer', 'distinct', 'exists:flavors,id'],
+            'flavor_ids.*' => ['integer', 'exists:flavors,id'],
         ];
     }
 }

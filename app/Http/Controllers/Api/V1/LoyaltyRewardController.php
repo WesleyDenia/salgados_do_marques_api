@@ -37,6 +37,8 @@ class LoyaltyRewardController extends Controller
 
         $userCoupon = $this->service->redeem($request->user(), $loyaltyReward, $quantity);
 
-        return new UserCouponResource($userCoupon);
+        return (new UserCouponResource($userCoupon))
+            ->response()
+            ->setStatusCode(200);
     }
 }

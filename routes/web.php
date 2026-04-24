@@ -61,8 +61,7 @@ Route::middleware(['auth', 'can:manage'])
         Route::post('queue/users/{user}/sync', [QueueMonitorController::class, 'enqueueUser'])->name('queue.users.sync');
         Route::post('queue/coupon-imports/{import}/retry', [QueueMonitorController::class, 'retryCouponImport'])->name('queue.coupon-imports.retry');
         Route::post('queue/coupon-imports/{import}/close', [QueueMonitorController::class, 'closeCouponImport'])->name('queue.coupon-imports.close');
-        Route::post('queue/failed/{failedJob}/retry', [QueueMonitorController::class, 'retryFailed'])->name('queue.failed.retry');
-        Route::delete('queue/failed/{failedJob}', [QueueMonitorController::class, 'destroyFailed'])->name('queue.failed.destroy');
+        Route::post('queue/tasks/{task}/retry', [QueueMonitorController::class, 'retryTask'])->name('queue.tasks.retry');
         Route::get('users', [AdminUserController::class, 'index'])->name('users.index');
         Route::get('users/{user}', [AdminUserController::class, 'show'])->name('users.show');
         Route::get('users/{user}/edit', [AdminUserController::class, 'edit'])->name('users.edit');

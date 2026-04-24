@@ -7,8 +7,8 @@
   $tabs = [
     'clientes' => ['label' => 'Clientes', 'count' => $stats['missing_users']],
     'cupons' => ['label' => 'Cupons Vendus', 'count' => $stats['coupon_imports_pending'] + $stats['coupon_imports_failed']],
-    'jobs' => ['label' => 'Jobs', 'count' => $stats['queued_jobs']],
-    'falhas' => ['label' => 'Falhas', 'count' => $stats['failed_jobs']],
+    'jobs' => ['label' => 'Tasks ativas', 'count' => $stats['queued_tasks']],
+    'falhas' => ['label' => 'Tasks com falha', 'count' => $stats['failed_tasks']],
   ];
 @endphp
 
@@ -40,7 +40,7 @@
       </div>
       <div class="card">
         <div style="font-size:0.85rem; text-transform:uppercase; letter-spacing:0.08em; color:#9ca3af;">Falhas de fila</div>
-        <div style="font-size:2rem; font-weight:700; margin-top:8px;">{{ $stats['failed_jobs'] }}</div>
+        <div style="font-size:2rem; font-weight:700; margin-top:8px;">{{ $stats['failed_tasks'] }}</div>
       </div>
     </div>
 
@@ -255,92 +255,97 @@
           {{ $couponImports->appends(array_merge(request()->except('coupons_page'), ['tab' => 'cupons']))->links() }}
         </div>
       @elseif ($activeTab === 'jobs')
-        <h3 style="margin:0 0 16px; font-size:1.2rem;">Jobs aguardando execução</h3>
+        <h3 style="margin:0 0 16px; font-size:1.2rem;">Tasks ERP ativas</h3>
         <table>
           <thead>
             <tr>
-              <th>Job</th>
-              <th>Registro</th>
-              <th>Fila</th>
+              <th>Operação</th>
+              <th>Entidade</th>
+              <th>Status</th>
               <th>Tentativas</th>
-              <th>Disponível em</th>
-              <th>Reservado em</th>
+              <th>Enfileirada em</th>
+              <th>Iniciada em</th>
             </tr>
           </thead>
           <tbody>
-            @forelse ($queuedJobs as $job)
+            @forelse ($queuedTasks as $task)
               <tr>
-                <td>{{ class_basename($job->display_name) }}</td>
                 <td>
-                  @if ($job->user_id)
-                    <a href="{{ route('admin.users.show', $job->user_id) }}">Usuário #{{ $job->user_id }}</a>
-                  @elseif ($job->import_id)
-                    Cupom Vendus #{{ $job->import_id }}
-                  @else
-                    —
-                  @endif
+                  <strong>{{ $task->operation }}</strong><br>
+                  <span style="color:#6b7280;">#{{ $task->id }}</span>
                 </td>
-                <td>{{ $job->queue }}</td>
-                <td>{{ $job->attempts }}</td>
-                <td>{{ $job->available_at_human }}</td>
-                <td>{{ $job->reserved_at_human ?? '—' }}</td>
+                <td>
+                  @if ($task->entity_type === 'user')
+                    <a href="{{ route('admin.users.show', $task->entity_id) }}">Usuário #{{ $task->entity_id }}</a>
+                  @elseif ($task->entity_type === 'vendus_discount_card_import')
+                    Cupom Vendus #{{ $task->entity_id }}
+                  @else
+                    {{ $task->entity_type }} #{{ $task->entity_id }}
+                  @endif
+                  <div style="color:#6b7280;">{{ $task->external_code ?: $task->external_id ?: '—' }}</div>
+                </td>
+                <td><span class="badge badge-muted">{{ $task->status }}</span></td>
+                <td>{{ $task->attempts }}</td>
+                <td>{{ $task->queued_at?->format('d/m/Y H:i') ?? '—' }}</td>
+                <td>{{ $task->started_at?->format('d/m/Y H:i') ?? '—' }}</td>
               </tr>
             @empty
               <tr>
                 <td colspan="6" style="text-align:center; padding:32px 0; color:#6b7280;">
-                  Nenhum job aguardando execução.
+                  Nenhuma task ERP ativa.
                 </td>
               </tr>
             @endforelse
           </tbody>
         </table>
         <div style="margin-top:18px;">
-          {{ $queuedJobs->appends(['tab' => 'jobs'])->links() }}
+          {{ $queuedTasks->appends(['tab' => 'jobs'])->links() }}
         </div>
       @elseif ($activeTab === 'falhas')
-        <h3 style="margin:0 0 16px; font-size:1.2rem;">Falhas de sincronização</h3>
+        <h3 style="margin:0 0 16px; font-size:1.2rem;">Falhas de sincronização ERP</h3>
         <table>
           <thead>
             <tr>
-              <th>Job</th>
-              <th>Registro</th>
-              <th>Fila</th>
+              <th>Operação</th>
+              <th>Entidade</th>
+              <th>Status</th>
               <th>Falhou em</th>
               <th>Erro</th>
               <th style="width:190px;">Ações</th>
             </tr>
           </thead>
           <tbody>
-            @forelse ($failedJobs as $job)
+            @forelse ($failedTasks as $task)
               <tr>
-                <td>{{ class_basename($job->display_name) }}</td>
                 <td>
-                  @if ($job->user_id)
-                    <a href="{{ route('admin.users.show', $job->user_id) }}">Usuário #{{ $job->user_id }}</a>
-                  @elseif ($job->import_id)
-                    Cupom Vendus #{{ $job->import_id }}
-                  @else
-                    —
-                  @endif
+                  <strong>{{ $task->operation }}</strong><br>
+                  <span style="color:#6b7280;">#{{ $task->id }}</span>
                 </td>
-                <td>{{ $job->queue }}</td>
-                <td>{{ \Illuminate\Support\Carbon::parse($job->failed_at)->format('d/m/Y H:i') }}</td>
+                <td>
+                  @if ($task->entity_type === 'user')
+                    <a href="{{ route('admin.users.show', $task->entity_id) }}">Usuário #{{ $task->entity_id }}</a>
+                  @elseif ($task->entity_type === 'vendus_discount_card_import')
+                    Cupom Vendus #{{ $task->entity_id }}
+                  @else
+                    {{ $task->entity_type }} #{{ $task->entity_id }}
+                  @endif
+                  <div style="color:#6b7280;">{{ $task->external_code ?: $task->external_id ?: '—' }}</div>
+                </td>
+                <td><span class="badge" style="background:rgba(239,68,68,0.15); color:#991b1b;">{{ $task->status }}</span></td>
+                <td>{{ $task->finished_at?->format('d/m/Y H:i') ?? $task->updated_at?->format('d/m/Y H:i') ?? '—' }}</td>
                 <td style="max-width:520px;">
-                  <code style="white-space:normal; color:#991b1b;">{{ $job->exception_summary }}</code>
+                  <code style="white-space:normal; color:#991b1b;">{{ $task->last_error ?: 'Erro sem detalhe.' }}</code>
                 </td>
                 <td>
                   <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                    @if ($job->user_id || $job->import_id)
-                      <form method="POST" action="{{ route('admin.queue.failed.retry', $job->id) }}">
+                    @if ($task->status !== 'manual_review')
+                      <form method="POST" action="{{ route('admin.queue.tasks.retry', $task) }}">
                         @csrf
                         <button class="btn btn-primary" type="submit">Reenfileirar</button>
                       </form>
+                    @else
+                      <span style="color:#6b7280;">Reabertura manual necessária</span>
                     @endif
-                    <form method="POST" action="{{ route('admin.queue.failed.destroy', $job->id) }}" onsubmit="return confirm('Remover esta falha?');">
-                      @csrf
-                      @method('DELETE')
-                      <button class="btn btn-danger" type="submit">Remover</button>
-                    </form>
                   </div>
                 </td>
               </tr>
@@ -354,7 +359,7 @@
           </tbody>
         </table>
         <div style="margin-top:18px;">
-          {{ $failedJobs->appends(['tab' => 'falhas'])->links() }}
+          {{ $failedTasks->appends(['tab' => 'falhas'])->links() }}
         </div>
       @endif
     </div>

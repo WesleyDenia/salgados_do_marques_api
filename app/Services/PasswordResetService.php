@@ -15,7 +15,7 @@ class PasswordResetService
     public function forgot(array $data): array
     {
         $method = $data['method'];
-        $identifier = $this->normalizeIdentifier($method, $data['identifier']);
+        $identifier = self::normalizeIdentifier($method, $data['identifier']);
         $expiresAt = CarbonImmutable::now()->addMinutes(15);
 
         $user = $this->findUserByIdentifier($method, $identifier);
@@ -52,7 +52,7 @@ class PasswordResetService
 
     public function verifyOtp(array $data): array
     {
-        $phone = $this->normalizeIdentifier('whatsapp', $data['phone']);
+        $phone = self::normalizeIdentifier('whatsapp', $data['phone']);
         $incomingToken = hash('sha256', $data['token']);
 
         $reset = PasswordReset::query()
@@ -142,7 +142,7 @@ class PasswordResetService
             ->delete();
     }
 
-    protected function normalizeIdentifier(string $method, string $value): string
+    public static function normalizeIdentifier(string $method, string $value): string
     {
         $normalized = trim($value);
 

@@ -59,15 +59,20 @@ class VendusCustomerSyncService implements CustomerSyncInterface
             $resp = $e->response;
             $this->lastError = $this->responseError($resp) ?: $e->getMessage();
 
-            Log::warning('⚠️ [Vendus] POST /clients lançou exceção', [
-                'status' => $resp?->status(),
-                'body' => $resp?->body(),
-                'error' => $e->getMessage(),
-            ]);
+            Log::warning('[Vendus] POST /clients exception', VendusLogSanitizer::response(
+                $resp,
+                'POST /clients',
+                ['entity_type' => 'user', 'entity_id' => $customer->id],
+                $e
+            ));
         }
 
         if ($resp) {
-            Log::info('📥 [Vendus] POST /clients resp', ['status' => $resp->status(), 'body' => $resp->body()]);
+            Log::info('[Vendus] POST /clients response', VendusLogSanitizer::response(
+                $resp,
+                'POST /clients',
+                ['entity_type' => 'user', 'entity_id' => $customer->id]
+            ));
         }
 
         if ($resp && $resp->successful()) {
@@ -77,10 +82,11 @@ class VendusCustomerSyncService implements CustomerSyncInterface
 
         $this->lastError = $this->responseError($resp) ?: 'Vendus não retornou sucesso ao criar cliente.';
 
-        Log::error('❌ [Vendus] upsert falhou', [
-            'status' => $resp?->status(),
-            'body' => $resp?->body(),
-        ]);
+        Log::error('[Vendus] upsert failed', VendusLogSanitizer::response(
+            $resp,
+            'POST /clients',
+            ['entity_type' => 'user', 'entity_id' => $customer->id]
+        ));
         return null;
     }
 
@@ -88,7 +94,12 @@ class VendusCustomerSyncService implements CustomerSyncInterface
     {
         $this->lastError = null;
         $payload = $this->toVendusPayload($customer);
-        Log::info('♻️ [Vendus] PATCH /clients/{id}', ['id' => $externalId, 'payload' => $payload]);
+        Log::info('[Vendus] PATCH /clients request', [
+            'endpoint' => 'PATCH /clients/{id}',
+            'entity_type' => 'user',
+            'entity_id' => $customer->id,
+            'external_id' => $externalId,
+        ]);
 
         try {
             $resp = $this->http->client()->send('PATCH', "/clients/{$externalId}", ['json' => $payload]);
@@ -96,22 +107,30 @@ class VendusCustomerSyncService implements CustomerSyncInterface
             $resp = $e->response;
             $this->lastError = $this->responseError($resp) ?: $e->getMessage();
 
-            Log::error('❌ [Vendus] update lançou exceção', [
-                'id' => $externalId,
-                'status' => $resp?->status(),
-                'body' => $resp?->body(),
-                'error' => $e->getMessage(),
-            ]);
+            Log::error('[Vendus] update exception', VendusLogSanitizer::response(
+                $resp,
+                'PATCH /clients/{id}',
+                ['entity_type' => 'user', 'entity_id' => $customer->id, 'external_id' => $externalId],
+                $e
+            ));
 
             return false;
         }
 
-        Log::info('📥 [Vendus] PATCH resp', ['status' => $resp->status(), 'body' => $resp->body()]);
+        Log::info('[Vendus] PATCH response', VendusLogSanitizer::response(
+            $resp,
+            'PATCH /clients/{id}',
+            ['entity_type' => 'user', 'entity_id' => $customer->id, 'external_id' => $externalId]
+        ));
         if ($resp->successful()) return true;
 
         $this->lastError = $this->responseError($resp) ?: 'Vendus não retornou sucesso ao atualizar cliente.';
 
-        Log::error('❌ [Vendus] update falhou', ['id' => $externalId, 'status' => $resp->status(), 'body' => $resp->body()]);
+        Log::error('[Vendus] update failed', VendusLogSanitizer::response(
+            $resp,
+            'PATCH /clients/{id}',
+            ['entity_type' => 'user', 'entity_id' => $customer->id, 'external_id' => $externalId]
+        ));
         return false;
     }
 
@@ -128,11 +147,7 @@ class VendusCustomerSyncService implements CustomerSyncInterface
             $resp = $e->response;
 
             if ($resp?->status() === 404) {
-                Log::info('🔎 [Vendus] Cliente não encontrado por NIF', [
-                    'fiscal_id' => $fiscalId,
-                    'status' => $resp->status(),
-                    'body' => $resp->body(),
-                ]);
+                Log::info('[Vendus] Cliente não encontrado por NIF', VendusLogSanitizer::response($resp, 'GET /clients'));
 
                 return null;
             }
@@ -140,7 +155,7 @@ class VendusCustomerSyncService implements CustomerSyncInterface
             throw $e;
         }
 
-        Log::info('🔎 [Vendus] GET /clients by NIF', ['status' => $resp->status(), 'body' => $resp->body()]);
+        Log::info('[Vendus] GET /clients by NIF', VendusLogSanitizer::response($resp, 'GET /clients'));
 
         if ($resp->successful()) {
             $data = $resp->json();
@@ -176,6 +191,6 @@ class VendusCustomerSyncService implements CustomerSyncInterface
             return trim(($code ? "{$code}: " : '') . $message);
         }
 
-        return trim("HTTP {$resp->status()}: " . $resp->body());
+        return VendusLogSanitizer::sanitizeMessage("HTTP {$resp->status()}: " . $resp->body());
     }
 }

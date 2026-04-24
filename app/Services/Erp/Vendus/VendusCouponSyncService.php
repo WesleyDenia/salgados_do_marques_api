@@ -3,14 +3,17 @@
 namespace App\Services\Erp\Vendus;
 
 use App\Jobs\ProcessVendusDiscountCardImportJob;
+use App\Models\ErpSyncTask;
 use App\Models\VendusDiscountCardImport;
+use App\Services\ErpSyncTaskService;
 use Illuminate\Support\Facades\Log;
 use App\Models\UserCoupon;
 
 class VendusCouponSyncService
 {
     public function __construct(
-        protected VendusHttpClient $http
+        protected VendusHttpClient $http,
+        protected ErpSyncTaskService $tasks
     ) {}
 
     protected function toVendusPayload(UserCoupon $userCoupon): array
@@ -34,14 +37,19 @@ class VendusCouponSyncService
      public function create(UserCoupon $userCoupon): ?array
     {
         $payload = $this->toVendusPayload($userCoupon);
-        Log::info('[Vendus] POST /discountcards payload', $payload);
+        Log::info('[Vendus] POST /discountcards request', [
+            'endpoint' => 'POST /discountcards',
+            'entity_type' => 'user_coupon',
+            'entity_id' => $userCoupon->id,
+            'coupon_id' => $userCoupon->coupon_id,
+        ]);
 
         $resp = $this->http->client()->post('/discountcards/', $payload);
 
-        Log::info('[Vendus] POST /discountcards resp', [
-            'status' => $resp->status(),
-            'body'   => $resp->body(),
-        ]);
+        Log::info('[Vendus] POST /discountcards response', VendusLogSanitizer::response($resp, 'POST /discountcards', [
+            'entity_type' => 'user_coupon',
+            'entity_id' => $userCoupon->id,
+        ]));
 
         if ($resp->successful()) {
             $json = $resp->json();
@@ -56,10 +64,10 @@ class VendusCouponSyncService
             ];
         }
 
-        Log::error('[Vendus] Falha ao criar cupom', [
-            'status' => $resp->status(),
-            'body'   => $resp->body(),
-        ]);
+        Log::error('[Vendus] Falha ao criar cupom', VendusLogSanitizer::response($resp, 'POST /discountcards', [
+            'entity_type' => 'user_coupon',
+            'entity_id' => $userCoupon->id,
+        ]));
 
         return null;
     }
@@ -72,10 +80,11 @@ class VendusCouponSyncService
         $id = $userCoupon->external_id;
 
         $resp = $this->http->client()->send('PATCH', "/discountcards/{$id}", ['json' => $payload]);
-        Log::info('[Vendus] PATCH /discountcards', [
-            'status' => $resp->status(),
-            'body'   => $resp->body(),
-        ]);
+        Log::info('[Vendus] PATCH /discountcards', VendusLogSanitizer::response($resp, 'PATCH /discountcards/{id}', [
+            'entity_type' => 'user_coupon',
+            'entity_id' => $userCoupon->id,
+            'external_id' => $id,
+        ]));
 
         return $resp->successful();
     }
@@ -85,16 +94,10 @@ class VendusCouponSyncService
         try {
             $resp = $this->http->client()->get('/discountcards/');
 
-            Log::info('[Vendus] GET /discountcards resp', [
-                'status' => $resp->status(),
-                'body'   => $resp->body(),
-            ]);
+            Log::info('[Vendus] GET /discountcards response', VendusLogSanitizer::response($resp, 'GET /discountcards'));
 
             if (!$resp->successful()) {
-                Log::error('[Vendus] Falha ao buscar discountcards', [
-                    'status' => $resp->status(),
-                    'body'   => $resp->body(),                    
-                ]);
+                Log::error('[Vendus] Falha ao buscar discountcards', VendusLogSanitizer::response($resp, 'GET /discountcards'));
                 return;
             }
 
@@ -102,11 +105,6 @@ class VendusCouponSyncService
 
             // Pode vir como "data", "discountcards" ou lista direta
             $list = $data['discountcards'] ?? $data['data'] ?? $data;
-            Log::info('[Vendus] Processando lista de cupons', 
-            [
-                'coupons' => $list
-            ]);
-
             if (!is_array($list) || empty($list)) {
                 Log::info('ℹ[Vendus] Nenhum cupom retornado do ERP.');
                 return;
@@ -122,9 +120,8 @@ class VendusCouponSyncService
                 $this->downloadAndQueue($erpCoupon);
             }
         } catch (\Throwable $e) {
-            Log::error('[VendusCouponSyncService] Erro ao sincronizar usados', [                
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
+            Log::error('[VendusCouponSyncService] Erro ao sincronizar usados', [
+                'message' => VendusLogSanitizer::sanitizeMessage($e->getMessage()),
             ]);
         }
     }
@@ -160,6 +157,17 @@ class VendusCouponSyncService
                 ]);
 
                 ProcessVendusDiscountCardImportJob::dispatch($existing->id);
+                $this->tasks->createOrReuseActive(
+                    ErpSyncTask::OPERATION_IMPORT_DISCOUNT_CARD,
+                    ErpSyncTask::ENTITY_VENDUS_DISCOUNT_CARD_IMPORT,
+                    $existing->id,
+                    [
+                        'external_id' => $externalId,
+                        'external_code' => $code,
+                        'status' => ErpSyncTask::STATUS_QUEUED,
+                        'queued_at' => $existing->queued_at,
+                    ]
+                );
             }
 
             return;
@@ -183,6 +191,18 @@ class VendusCouponSyncService
 
             ProcessVendusDiscountCardImportJob::dispatch($import->id);
         }
+
+        $this->tasks->createOrReuseActive(
+            ErpSyncTask::OPERATION_IMPORT_DISCOUNT_CARD,
+            ErpSyncTask::ENTITY_VENDUS_DISCOUNT_CARD_IMPORT,
+            $import->id,
+            [
+                'external_id' => $externalId,
+                'external_code' => $code,
+                'status' => $wasUsed ? ErpSyncTask::STATUS_QUEUED : ErpSyncTask::STATUS_PENDING,
+                'queued_at' => $wasUsed ? now() : null,
+            ]
+        );
 
         Log::info('[Vendus] Cupom baixado do Vendus', [
             'vendus_discount_card_import_id' => $import->id,

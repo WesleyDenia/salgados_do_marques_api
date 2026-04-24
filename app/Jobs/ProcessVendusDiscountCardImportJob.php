@@ -2,8 +2,10 @@
 
 namespace App\Jobs;
 
+use App\Models\ErpSyncTask;
 use App\Models\UserCoupon;
 use App\Models\VendusDiscountCardImport;
+use App\Services\ErpSyncTaskService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -37,7 +39,7 @@ class ProcessVendusDiscountCardImportJob implements ShouldQueue, ShouldBeUnique
         return [60, 300];
     }
 
-    public function handle(): void
+    public function handle(ErpSyncTaskService $tasks): void
     {
         $import = VendusDiscountCardImport::find($this->importId);
 
@@ -48,6 +50,19 @@ class ProcessVendusDiscountCardImportJob implements ShouldQueue, ShouldBeUnique
             return;
         }
 
+        $task = $tasks->createOrReuseActive(
+            ErpSyncTask::OPERATION_IMPORT_DISCOUNT_CARD,
+            ErpSyncTask::ENTITY_VENDUS_DISCOUNT_CARD_IMPORT,
+            $import->id,
+            [
+                'status' => ErpSyncTask::STATUS_QUEUED,
+                'external_id' => $import->external_id,
+                'external_code' => $import->external_code,
+                'queued_at' => $import->queued_at ?: now(),
+            ]
+        );
+        $task = $tasks->markProcessing($task);
+
         $import->forceFill([
             'sync_status' => VendusDiscountCardImport::STATUS_PROCESSING,
             'sync_attempts' => $import->sync_attempts + 1,
@@ -56,11 +71,17 @@ class ProcessVendusDiscountCardImportJob implements ShouldQueue, ShouldBeUnique
 
         try {
             $this->process($import);
+            $tasks->markSynced($task, [
+                'external_id' => $import->external_id,
+                'external_code' => $import->external_code,
+            ]);
         } catch (Throwable $e) {
             $import->forceFill([
                 'sync_status' => VendusDiscountCardImport::STATUS_FAILED,
                 'sync_error' => $e->getMessage(),
             ])->save();
+
+            $tasks->markFailed($task, $e->getMessage());
 
             throw $e;
         }

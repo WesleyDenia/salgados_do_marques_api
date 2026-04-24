@@ -4,7 +4,9 @@ namespace App\Jobs;
 
 use App\Contracts\Erp\CustomerSyncInterface;
 use App\Mappers\CustomerMapper;
+use App\Models\ErpSyncTask;
 use App\Models\User;
+use App\Services\ErpSyncTaskService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -39,13 +41,25 @@ class SyncCustomerToErpJob implements ShouldQueue, ShouldBeUnique
         return [60, 300, 900, 1800];
     }
 
-    public function handle(CustomerSyncInterface $erp): void
+    public function handle(CustomerSyncInterface $erp, ErpSyncTaskService $tasks): void
     {
         $user = User::find($this->userId);
 
         if (!$user) {
             return;
         }
+
+        $task = $tasks->createOrReuseActive(
+            ErpSyncTask::OPERATION_SYNC_CUSTOMER,
+            ErpSyncTask::ENTITY_USER,
+            $user->id,
+            [
+                'status' => ErpSyncTask::STATUS_QUEUED,
+                'external_id' => $user->external_id,
+                'queued_at' => now(),
+            ]
+        );
+        $task = $tasks->markProcessing($task);
 
         $user->forceFill([
             'erp_sync_status' => 'syncing',
@@ -55,12 +69,17 @@ class SyncCustomerToErpJob implements ShouldQueue, ShouldBeUnique
 
         try {
             $this->syncUser($user, $erp);
+            $tasks->markSynced($task, [
+                'external_id' => $user->refresh()->external_id,
+            ]);
         } catch (Throwable $e) {
             $user->forceFill([
                 'erp_sync_status' => 'failed',
                 'erp_sync_error' => $e->getMessage(),
                 'erp_sync_attempted_at' => now(),
             ])->save();
+
+            $tasks->markFailed($task, $e->getMessage());
 
             throw $e;
         }

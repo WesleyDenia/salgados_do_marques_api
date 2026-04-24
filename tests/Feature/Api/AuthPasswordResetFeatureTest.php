@@ -3,6 +3,7 @@
 namespace Tests\Feature\Api;
 
 use App\Jobs\SendResetLinkJob;
+use App\Jobs\SendWhatsAppOtpJob;
 use App\Models\PasswordReset;
 use App\Models\Setting;
 use App\Models\User;
@@ -86,6 +87,67 @@ class AuthPasswordResetFeatureTest extends TestCase
 
         $this->assertDatabaseCount('password_resets', 1);
         Queue::assertPushed(SendResetLinkJob::class, 1);
+    }
+
+    public function test_forgot_password_preserves_generic_success_for_missing_user(): void
+    {
+        Queue::fake();
+
+        $response = $this->postJson('/api/v1/auth/forgot-password', [
+            'method' => 'email',
+            'identifier' => 'missing@example.com',
+        ]);
+
+        $response->assertOk()
+            ->assertExactJson([
+                'success' => true,
+                'message' => 'Link de redefinição enviado por e-mail',
+            ]);
+
+        $this->assertDatabaseCount('password_resets', 0);
+        Queue::assertNothingPushed();
+    }
+
+    public function test_forgot_password_is_throttled_by_ip_and_normalized_identifier(): void
+    {
+        Queue::fake();
+
+        User::factory()->create(['email' => 'cliente@example.com']);
+
+        for ($i = 0; $i < 5; $i++) {
+            $this->postJson('/api/v1/auth/forgot-password', [
+                'method' => 'email',
+                'identifier' => 'CLIENTE@example.com',
+            ])->assertOk();
+        }
+
+        $this->postJson('/api/v1/auth/forgot-password', [
+            'method' => 'email',
+            'identifier' => 'cliente@example.com',
+        ])->assertStatus(429);
+
+        Queue::assertPushed(SendResetLinkJob::class, 5);
+    }
+
+    public function test_whatsapp_forgot_password_uses_more_restrictive_throttle(): void
+    {
+        Queue::fake();
+
+        User::factory()->create(['phone' => '912345678']);
+
+        for ($i = 0; $i < 3; $i++) {
+            $this->postJson('/api/v1/auth/forgot-password', [
+                'method' => 'whatsapp',
+                'identifier' => '912 345 678',
+            ])->assertOk();
+        }
+
+        $this->postJson('/api/v1/auth/forgot-password', [
+            'method' => 'whatsapp',
+            'identifier' => '912345678',
+        ])->assertStatus(429);
+
+        Queue::assertPushed(SendWhatsAppOtpJob::class, 3);
     }
 
     public function test_verify_otp_endpoint_resets_password(): void

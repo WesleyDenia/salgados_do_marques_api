@@ -41,7 +41,9 @@ class UserCouponRepository extends BaseRepository
     {
         Log::info('🔄 [UserCouponRepository] Sincronizando cupom do ERP', [
             'user_coupon_id' => $userCoupon->id,
-            'response' => $couponResponse,
+            'external_id' => $couponResponse['external_id'] ?? null,
+            'external_code' => $couponResponse['external_code'] ?? null,
+            'status' => $couponResponse['status'] ?? null,
         ]);
 
         // segurança contra sobrescrita indevida de ID
@@ -53,7 +55,7 @@ class UserCouponRepository extends BaseRepository
             Log::warning("⚠️ Inconsistência: Tentativa de sobrescrever external_id existente", [
                 'user_coupon_id' => $userCoupon->id,
                 'current' => $userCoupon->external_id,
-                'new' => $couponResponse['external_id']
+                'new' => $couponResponse['external_id'],
             ]);
 
             // Apenas retorna sem atualizar

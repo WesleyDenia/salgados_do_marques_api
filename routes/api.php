@@ -39,9 +39,12 @@ Route::prefix('v1')->group(function () {
         Route::get('partners/{partner}', [PartnerController::class, 'publicShow']);
     });
     Route::prefix('auth')->group(function () {
-        Route::post('forgot-password', [PasswordResetController::class, 'forgot']);
-        Route::post('verify-otp', [PasswordResetController::class, 'verifyOtp']);
-        Route::post('reset-password', [PasswordResetController::class, 'reset']);
+        Route::post('forgot-password', [PasswordResetController::class, 'forgot'])
+            ->middleware('throttle:password-reset-forgot');
+        Route::post('verify-otp', [PasswordResetController::class, 'verifyOtp'])
+            ->middleware('throttle:password-reset-otp');
+        Route::post('reset-password', [PasswordResetController::class, 'reset'])
+            ->middleware('throttle:password-reset-token');
     });
     Route::get('stores', [StoreController::class, 'index']);
     Route::get('google-reviews', [GoogleReviewsController::class, 'index']);

@@ -120,6 +120,14 @@
         min-width: 0;
       }
 
+      .admin-mobile-toolbar {
+        display: none;
+      }
+
+      .admin-sidebar-overlay {
+        display: none;
+      }
+
       main {
         padding: 32px 36px;
         max-width: 1320px;
@@ -254,6 +262,42 @@
 
       .action-menu-item-danger:hover {
         background: rgba(239, 68, 68, 0.12);
+      }
+
+      .mobile-menu-button {
+        display: none;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        min-width: 44px;
+        min-height: 44px;
+        padding: 10px 14px;
+        border-radius: 12px;
+        border: 1px solid #d1d5db;
+        background: #ffffff;
+        color: #1f2937;
+        box-shadow: 0 10px 25px -20px rgba(15, 23, 42, 0.35);
+        cursor: pointer;
+      }
+
+      .mobile-menu-button:hover {
+        background: #f9fafb;
+      }
+
+      .mobile-menu-icon {
+        width: 18px;
+        height: 14px;
+        display: inline-flex;
+        flex-direction: column;
+        justify-content: space-between;
+      }
+
+      .mobile-menu-icon span {
+        display: block;
+        width: 100%;
+        height: 2px;
+        border-radius: 999px;
+        background: currentColor;
       }
 
       .alert {
@@ -506,10 +550,74 @@
         }
 
         .admin-sidebar {
-          position: static;
-          min-height: auto;
-          padding: 18px 14px;
+          position: fixed;
+          inset: 0 auto 0 0;
+          width: min(84vw, 320px);
+          min-height: 100vh;
+          height: 100vh;
+          padding: 18px 14px 24px;
           gap: 18px;
+          overflow-y: auto;
+          transform: translateX(-100%);
+          transition: transform 0.22s ease;
+          z-index: 60;
+          box-shadow: 18px 0 45px rgba(15, 23, 42, 0.28);
+        }
+
+        body.admin-sidebar-open {
+          overflow: hidden;
+        }
+
+        body.admin-sidebar-open .admin-sidebar {
+          transform: translateX(0);
+        }
+
+        .admin-sidebar-overlay {
+          display: block;
+          position: fixed;
+          inset: 0;
+          background: rgba(15, 23, 42, 0.42);
+          opacity: 0;
+          pointer-events: none;
+          transition: opacity 0.22s ease;
+          z-index: 50;
+        }
+
+        body.admin-sidebar-open .admin-sidebar-overlay {
+          opacity: 1;
+          pointer-events: auto;
+        }
+
+        .admin-mobile-toolbar {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          padding: 14px 14px 0;
+          position: sticky;
+          top: 0;
+          z-index: 45;
+          background: linear-gradient(180deg, rgba(244, 244, 248, 0.98) 0%, rgba(244, 244, 248, 0.92) 100%);
+          backdrop-filter: blur(10px);
+        }
+
+        .admin-mobile-brand {
+          min-width: 0;
+        }
+
+        .admin-mobile-brand strong {
+          display: block;
+          font-size: 0.98rem;
+          line-height: 1.3;
+          color: #111827;
+        }
+
+        .admin-mobile-brand span {
+          display: block;
+          margin-top: 2px;
+          color: #6b7280;
+          font-size: 0.82rem;
+          line-height: 1.35;
         }
 
         .admin-brand p {
@@ -541,6 +649,10 @@
           padding: 18px 14px 24px;
         }
 
+        .mobile-menu-button {
+          display: inline-flex;
+        }
+
         .form-grid-product {
           grid-template-columns: 1fr;
         }
@@ -560,6 +672,10 @@
       @media (max-width: 640px) {
         main {
           padding: 14px 12px 20px;
+        }
+
+        .admin-mobile-toolbar {
+          padding: 12px 12px 0;
         }
 
         .card {
@@ -706,7 +822,9 @@
   </head>
   <body>
     <div class="admin-shell">
-      <aside class="admin-sidebar">
+      <div class="admin-sidebar-overlay" data-sidebar-overlay></div>
+
+      <aside class="admin-sidebar" id="admin-sidebar">
         <div class="admin-brand">
           <h1>Painel Administrativo</h1>
           <p>Operação direta para gerir catálogo, pedidos e conteúdos sem desperdício de espaço.</p>
@@ -747,6 +865,27 @@
       </aside>
 
       <div class="admin-content">
+        <div class="admin-mobile-toolbar">
+          <button
+            type="button"
+            class="mobile-menu-button"
+            data-sidebar-toggle
+            aria-controls="admin-sidebar"
+            aria-expanded="false"
+          >
+            <span class="mobile-menu-icon" aria-hidden="true">
+              <span></span>
+              <span></span>
+              <span></span>
+            </span>
+            <span>Menu</span>
+          </button>
+          <div class="admin-mobile-brand">
+            <strong>Painel Administrativo</strong>
+            <span>Gestão rápida no telemóvel</span>
+          </div>
+        </div>
+
         <main>
           @if (session('status'))
             <div class="alert alert-success">
@@ -763,5 +902,54 @@
         </main>
       </div>
     </div>
+    <script>
+      (() => {
+        const body = document.body;
+        const toggle = document.querySelector('[data-sidebar-toggle]');
+        const overlay = document.querySelector('[data-sidebar-overlay]');
+        const sidebar = document.getElementById('admin-sidebar');
+
+        if (!toggle || !overlay || !sidebar) {
+          return;
+        }
+
+        const closeSidebar = () => {
+          body.classList.remove('admin-sidebar-open');
+          toggle.setAttribute('aria-expanded', 'false');
+        };
+
+        const openSidebar = () => {
+          body.classList.add('admin-sidebar-open');
+          toggle.setAttribute('aria-expanded', 'true');
+        };
+
+        toggle.addEventListener('click', () => {
+          if (body.classList.contains('admin-sidebar-open')) {
+            closeSidebar();
+          } else {
+            openSidebar();
+          }
+        });
+
+        overlay.addEventListener('click', closeSidebar);
+
+        sidebar.addEventListener('click', (event) => {
+          const target = event.target;
+          if (!(target instanceof Element)) {
+            return;
+          }
+
+          if (target.closest('a, button')) {
+            closeSidebar();
+          }
+        });
+
+        window.addEventListener('resize', () => {
+          if (window.innerWidth > 860) {
+            closeSidebar();
+          }
+        });
+      })();
+    </script>
   </body>
 </html>

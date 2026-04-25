@@ -5,13 +5,17 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\OrderStatusUpdateRequest;
 use App\Models\Order;
+use App\Services\AdminFlavorService;
 use App\Services\OrderService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
 class OrderController extends Controller
 {
-    public function __construct(protected OrderService $service) {}
+    public function __construct(
+        protected OrderService $service,
+        protected AdminFlavorService $flavors,
+    ) {}
 
     public function index(Request $request)
     {
@@ -35,11 +39,19 @@ class OrderController extends Controller
     public function show(Order $order)
     {
         $order = $this->service->findForAdmin($order);
+        $flavorIds = $order->items
+            ->flatMap(function ($item) {
+                $flavors = $item->options['flavors'] ?? [];
+
+                return is_array($flavors) ? $flavors : [];
+            })
+            ->all();
 
         return view('admin.orders.show', [
             'order' => $order,
             'statusLabels' => $this->service->statusLabels(),
             'allowedTransitions' => $this->service->allowedTransitions($order),
+            'flavorNamesById' => $this->flavors->namesByIds($flavorIds),
         ]);
     }
 

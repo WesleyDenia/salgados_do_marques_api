@@ -24,6 +24,29 @@ class AdminFlavorService
             ->get(['id', 'name']);
     }
 
+    /**
+     * @param array<int, int|string> $ids
+     * @return array<int, string>
+     */
+    public function namesByIds(array $ids): array
+    {
+        $normalizedIds = collect($ids)
+            ->map(fn ($id) => (int) $id)
+            ->filter(fn (int $id) => $id > 0)
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($normalizedIds === []) {
+            return [];
+        }
+
+        return Flavor::query()
+            ->whereIn('id', $normalizedIds)
+            ->pluck('name', 'id')
+            ->all();
+    }
+
     public function create(array $data): Flavor
     {
         return Flavor::create($this->normalizePayload($data));

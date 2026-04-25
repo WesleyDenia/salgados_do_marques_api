@@ -84,8 +84,17 @@
             <td>
               <strong>{{ $item->name_snapshot }}</strong>
               @if (!empty($item->options['flavors']) && is_array($item->options['flavors']))
+                @php
+                  $resolvedFlavors = collect($item->options['flavors'])
+                    ->map(function ($flavorId) use ($flavorNamesById) {
+                      $flavorId = (int) $flavorId;
+
+                      return $flavorNamesById[$flavorId] ?? $flavorId;
+                    })
+                    ->all();
+                @endphp
                 <div style="color:#6b7280; font-size:0.9rem; margin-top:4px;">
-                  Sabores: {{ implode(', ', $item->options['flavors']) }}
+                  Sabores: {{ implode(', ', $resolvedFlavors) }}
                 </div>
               @endif
             </td>

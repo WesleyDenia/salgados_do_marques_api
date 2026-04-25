@@ -21,12 +21,14 @@
         min-height: 100vh;
         background: #f4f4f8;
         color: #1f2937;
+        overflow-x: hidden;
       }
 
       .admin-shell {
         min-height: 100vh;
         display: grid;
         grid-template-columns: 280px minmax(0, 1fr);
+        overflow-x: clip;
       }
 
       .admin-sidebar {
@@ -130,6 +132,7 @@
         border-radius: 16px;
         box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.15);
         padding: 28px;
+        min-width: 0;
       }
 
       table {
@@ -223,6 +226,7 @@
         top: calc(100% + 8px);
         right: 0;
         min-width: 168px;
+        max-width: calc(100vw - 24px);
         padding: 8px;
         border-radius: 14px;
         border: 1px solid #e5e7eb;
@@ -291,12 +295,14 @@
         gap: 16px;
         grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
         margin-bottom: 24px;
+        align-items: end;
       }
 
       .form-group {
         display: flex;
         flex-direction: column;
         gap: 6px;
+        min-width: 0;
       }
 
       label {
@@ -335,10 +341,15 @@
         align-items: center;
         gap: 8px;
         font-size: 0.95rem;
+        line-height: 1.4;
       }
 
       .form-group.align-end {
         align-self: flex-end;
+      }
+
+      .form-group.align-end .btn {
+        width: auto;
       }
 
       .badge {
@@ -397,6 +408,31 @@
         width: 100%;
         min-width: 720px;
         border-collapse: collapse;
+      }
+
+      .responsive-table-wrap {
+        overflow: visible;
+        border: 1px solid #e5e7eb;
+        border-radius: 16px;
+        background: #ffffff;
+      }
+
+      .responsive-table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+
+      .responsive-table thead {
+        background: #f9fafb;
+      }
+
+      .responsive-table th,
+      .responsive-table td {
+        padding: 12px 10px;
+        border-bottom: 1px solid #e5e7eb;
+        text-align: left;
+        font-size: 0.95rem;
+        vertical-align: top;
       }
 
       .stack-table-label {
@@ -472,15 +508,102 @@
         .admin-sidebar {
           position: static;
           min-height: auto;
-          padding: 20px 16px;
+          padding: 18px 14px;
+          gap: 18px;
+        }
+
+        .admin-brand p {
+          font-size: 0.92rem;
+        }
+
+        .admin-nav {
+          gap: 14px;
+        }
+
+        .nav-section {
+          gap: 6px;
+        }
+
+        .nav-section-label {
+          padding: 0 6px;
+        }
+
+        .nav-link:hover,
+        .nav-link-button:hover {
+          transform: none;
+        }
+
+        .sidebar-footer {
+          padding-top: 0;
         }
 
         main {
-          padding: 18px 14px;
+          padding: 18px 14px 24px;
         }
 
         .form-grid-product {
           grid-template-columns: 1fr;
+        }
+
+        .store-schedule-row,
+        .store-exception-row {
+          grid-template-columns: 1fr !important;
+          align-items: stretch !important;
+        }
+
+        .store-schedule-row .form-group,
+        .store-exception-row .form-group {
+          margin: 0;
+        }
+      }
+
+      @media (max-width: 640px) {
+        main {
+          padding: 14px 12px 20px;
+        }
+
+        .card {
+          padding: 20px;
+          border-radius: 14px;
+        }
+
+        .form-actions {
+          flex-direction: column;
+        }
+
+        .form-actions .btn {
+          width: 100%;
+        }
+
+        .form-grid {
+          gap: 14px;
+        }
+
+        .pagination {
+          flex-direction: column;
+          align-items: stretch;
+        }
+
+        .pagination-links {
+          width: 100%;
+        }
+
+        .filter-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .form-group.align-end {
+          align-self: stretch;
+        }
+
+        .form-group.align-end .btn {
+          width: 100%;
+        }
+
+        .action-menu-panel {
+          left: auto;
+          right: 0;
+          min-width: min(220px, calc(100vw - 24px));
         }
       }
 
@@ -529,6 +652,53 @@
 
         .stack-table-label {
           display: block;
+        }
+
+        .responsive-table,
+        .responsive-table thead,
+        .responsive-table tbody,
+        .responsive-table tr,
+        .responsive-table th,
+        .responsive-table td {
+          display: block;
+          width: 100%;
+        }
+
+        .responsive-table thead {
+          display: none;
+        }
+
+        .responsive-table tbody {
+          padding: 12px;
+        }
+
+        .responsive-table tr {
+          border: 1px solid #e5e7eb;
+          border-radius: 14px;
+          padding: 14px;
+          background: #ffffff;
+        }
+
+        .responsive-table tr + tr {
+          margin-top: 12px;
+        }
+
+        .responsive-table td {
+          padding: 0;
+          border: none;
+        }
+
+        .responsive-table td + td {
+          margin-top: 12px;
+        }
+
+        .responsive-table .action-menu {
+          display: inline-block;
+        }
+
+        .responsive-table .action-menu-trigger {
+          width: 44px;
+          height: 44px;
         }
       }
     </style>

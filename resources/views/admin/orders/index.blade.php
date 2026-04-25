@@ -63,65 +63,85 @@
       </div>
     </form>
 
-    <table>
-      <thead>
-        <tr>
-          <th>#</th>
-          <th>Cliente</th>
-          <th>Loja</th>
-          <th>Retirada</th>
-          <th>Total</th>
-          <th>Status</th>
-          <th>Criado em</th>
-          <th style="width:76px;">Ações</th>
-        </tr>
-      </thead>
-      <tbody>
-        @forelse ($orders as $order)
+    <div class="responsive-table-wrap">
+      <table class="responsive-table">
+        <thead>
           <tr>
-            <td>#{{ $order->id }}</td>
-            <td>
-              <strong>{{ $order->user?->name ?? '—' }}</strong>
-              <div style="color:#6b7280; font-size:0.9rem; margin-top:4px;">
-                {{ $order->user?->email ?? '—' }}
-              </div>
-            </td>
-            <td>{{ $order->store?->name ?? '—' }}</td>
-            <td>{{ $order->scheduled_at?->format('d/m/Y H:i') ?? '—' }}</td>
-            <td>€ {{ number_format((float) $order->total, 2, ',', '.') }}</td>
-            <td>
-              @if (in_array($order->status, ['done', 'accepted', 'ready'], true))
-                <span class="badge badge-success">{{ $statusLabels[$order->status] ?? $order->status }}</span>
-              @else
-                <span class="badge badge-muted">{{ $statusLabels[$order->status] ?? $order->status }}</span>
-              @endif
-            </td>
-            <td>{{ $order->created_at?->format('d/m/Y H:i') ?? '—' }}</td>
-            <td>
-              <details class="action-menu">
-                <summary class="btn action-menu-trigger" aria-label="Abrir ações da encomenda">
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-                    <circle cx="8" cy="3" r="1.4" />
-                    <circle cx="8" cy="8" r="1.4" />
-                    <circle cx="8" cy="13" r="1.4" />
-                  </svg>
-                </summary>
-
-                <div class="action-menu-panel">
-                  <a class="btn action-menu-item" href="{{ route('admin.orders.show', $order) }}">Detalhes</a>
+            <th>#</th>
+            <th>Cliente</th>
+            <th>Loja</th>
+            <th>Retirada</th>
+            <th>Total</th>
+            <th>Status</th>
+            <th>Criado em</th>
+            <th style="width:76px;">Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          @forelse ($orders as $order)
+            <tr>
+              <td>
+                <span class="stack-table-label">#</span>
+                #{{ $order->id }}
+              </td>
+              <td>
+                <span class="stack-table-label">Cliente</span>
+                <strong>{{ $order->user?->name ?? '—' }}</strong>
+                <div style="color:#6b7280; font-size:0.9rem; margin-top:4px;">
+                  {{ $order->user?->email ?? '—' }}
                 </div>
-              </details>
-            </td>
-          </tr>
-        @empty
-          <tr>
-            <td colspan="8" style="text-align:center; padding:32px 0; color:#6b7280;">
-              Nenhuma encomenda encontrada.
-            </td>
-          </tr>
-        @endforelse
-      </tbody>
-    </table>
+              </td>
+              <td>
+                <span class="stack-table-label">Loja</span>
+                {{ $order->store?->name ?? '—' }}
+              </td>
+              <td>
+                <span class="stack-table-label">Retirada</span>
+                {{ $order->scheduled_at?->format('d/m/Y H:i') ?? '—' }}
+              </td>
+              <td>
+                <span class="stack-table-label">Total</span>
+                € {{ number_format((float) $order->total, 2, ',', '.') }}
+              </td>
+              <td>
+                <span class="stack-table-label">Status</span>
+                @if (in_array($order->status, ['done', 'accepted', 'ready'], true))
+                  <span class="badge badge-success">{{ $statusLabels[$order->status] ?? $order->status }}</span>
+                @else
+                  <span class="badge badge-muted">{{ $statusLabels[$order->status] ?? $order->status }}</span>
+                @endif
+              </td>
+              <td>
+                <span class="stack-table-label">Criado em</span>
+                {{ $order->created_at?->format('d/m/Y H:i') ?? '—' }}
+              </td>
+              <td>
+                <span class="stack-table-label">Ações</span>
+                <details class="action-menu">
+                  <summary class="btn action-menu-trigger" aria-label="Abrir ações da encomenda">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                      <circle cx="8" cy="3" r="1.4" />
+                      <circle cx="8" cy="8" r="1.4" />
+                      <circle cx="8" cy="13" r="1.4" />
+                    </svg>
+                  </summary>
+
+                  <div class="action-menu-panel">
+                    <a class="btn action-menu-item" href="{{ route('admin.orders.show', $order) }}">Detalhes</a>
+                  </div>
+                </details>
+              </td>
+            </tr>
+          @empty
+            <tr>
+              <td colspan="8" style="text-align:center; padding:32px 0; color:#6b7280;">
+                Nenhuma encomenda encontrada.
+              </td>
+            </tr>
+          @endforelse
+        </tbody>
+      </table>
+    </div>
 
     <div style="margin-top:18px;">
       {{ $orders->links() }}

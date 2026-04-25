@@ -84,8 +84,9 @@
         </div>
       </form>
 
-      <table>
-        <thead>
+      <div class="responsive-table-wrap">
+        <table class="responsive-table">
+          <thead>
           <tr>
             <th>Cliente</th>
             <th>Contacto</th>
@@ -96,48 +97,65 @@
             <th>Origem</th>
             <th>Captado em</th>
           </tr>
-        </thead>
-        <tbody>
-          @forelse ($testers as $tester)
-            <tr>
-              <td>
-                <strong>{{ $tester->name }}</strong><br>
-                <span style="color:#6b7280;">#{{ $tester->id }}</span>
-              </td>
-              <td>
-                <div>{{ $tester->email }}</div>
-                <div style="color:#6b7280;">{{ $tester->phone }}</div>
-              </td>
-              <td>{{ $tester->operating_system === 'android' ? 'Android' : 'iPhone' }}</td>
-              <td>
-                @if ($tester->status === \App\Models\AppTester::STATUS_TESTING)
-                  <span class="badge badge-success">Testando</span>
-                @elseif ($tester->status === \App\Models\AppTester::STATUS_ACCOUNT_CREATED)
-                  <span class="badge badge-success" style="background:rgba(59,130,246,0.15); color:#1d4ed8;">Conta criada</span>
-                @else
-                  <span class="badge badge-muted">Registrado</span>
-                @endif
-              </td>
-              <td>
-                @if ($tester->is_android_eligible)
-                  <span class="badge badge-success">Elegível</span>
-                @else
-                  <span class="badge badge-muted">Lista futura</span>
-                @endif
-              </td>
-              <td>{{ optional($tester->consent_at)->format('d/m/Y H:i') }}</td>
-              <td>{{ $tester->source_path ?: '/testers' }}</td>
-              <td>{{ $tester->created_at->format('d/m/Y H:i') }}</td>
-            </tr>
-          @empty
-            <tr>
-              <td colspan="8" style="text-align:center; padding:32px 0; color:#6b7280;">
-                Ainda não há testers captados.
-              </td>
-            </tr>
-          @endforelse
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            @forelse ($testers as $tester)
+              <tr>
+                <td>
+                  <span class="stack-table-label">Cliente</span>
+                  <strong>{{ $tester->name }}</strong><br>
+                  <span style="color:#6b7280;">#{{ $tester->id }}</span>
+                </td>
+                <td>
+                  <span class="stack-table-label">Contacto</span>
+                  <div>{{ $tester->email }}</div>
+                  <div style="color:#6b7280;">{{ $tester->phone }}</div>
+                </td>
+                <td>
+                  <span class="stack-table-label">Sistema</span>
+                  {{ $tester->operating_system === 'android' ? 'Android' : 'iPhone' }}
+                </td>
+                <td>
+                  <span class="stack-table-label">Status</span>
+                  @if ($tester->status === \App\Models\AppTester::STATUS_TESTING)
+                    <span class="badge badge-success">Testando</span>
+                  @elseif ($tester->status === \App\Models\AppTester::STATUS_ACCOUNT_CREATED)
+                    <span class="badge badge-success" style="background:rgba(59,130,246,0.15); color:#1d4ed8;">Conta criada</span>
+                  @else
+                    <span class="badge badge-muted">Registrado</span>
+                  @endif
+                </td>
+                <td>
+                  <span class="stack-table-label">Fase atual</span>
+                  @if ($tester->is_android_eligible)
+                    <span class="badge badge-success">Elegível</span>
+                  @else
+                    <span class="badge badge-muted">Lista futura</span>
+                  @endif
+                </td>
+                <td>
+                  <span class="stack-table-label">Consentimento</span>
+                  {{ optional($tester->consent_at)->format('d/m/Y H:i') }}
+                </td>
+                <td>
+                  <span class="stack-table-label">Origem</span>
+                  {{ $tester->source_path ?: '/testers' }}
+                </td>
+                <td>
+                  <span class="stack-table-label">Captado em</span>
+                  {{ $tester->created_at->format('d/m/Y H:i') }}
+                </td>
+              </tr>
+            @empty
+              <tr>
+                <td colspan="8" style="text-align:center; padding:32px 0; color:#6b7280;">
+                  Ainda não há testers captados.
+                </td>
+              </tr>
+            @endforelse
+          </tbody>
+        </table>
+      </div>
 
       <div style="margin-top:18px;">
         {{ $testers->links() }}

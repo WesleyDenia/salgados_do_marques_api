@@ -72,56 +72,77 @@
         </div>
       </form>
 
-      <table>
-        <thead>
-          <tr>
-            <th>Usuário</th>
-            <th>Contacto</th>
-            <th>Perfil</th>
-            <th>Coinxinhas</th>
-            <th>Cupons</th>
-            <th>Encomendas</th>
-            <th>Último login</th>
-            <th>Status</th>
-            <th style="width:120px;">Ações</th>
-          </tr>
-        </thead>
-        <tbody>
-          @forelse ($users as $user)
+      <div class="responsive-table-wrap">
+        <table class="responsive-table">
+          <thead>
             <tr>
-              <td>
-                <strong>{{ $user->name }}</strong><br>
-                <span style="color:#6b7280;">#{{ $user->id }}</span>
-              </td>
-              <td>
-                <div>{{ $user->email }}</div>
-                <div style="color:#6b7280;">{{ $user->phone ?: '—' }}</div>
-              </td>
-              <td>{{ ucfirst($user->role) }}</td>
-              <td>{{ number_format((int) ($user->loyaltyAccount?->points ?? 0), 0, ',', '.') }}</td>
-              <td>{{ $user->user_coupons_count }}</td>
-              <td>{{ $user->orders_count }}</td>
-              <td>{{ $user->last_login?->format('d/m/Y H:i') ?? '—' }}</td>
-              <td>
-                @if ($user->active)
-                  <span class="badge badge-success">Ativo</span>
-                @else
-                  <span class="badge badge-muted">Inativo</span>
-                @endif
-              </td>
-              <td>
-                <a class="btn btn-secondary" href="{{ route('admin.users.show', $user) }}">Abrir</a>
-              </td>
+              <th>Usuário</th>
+              <th>Contacto</th>
+              <th>Perfil</th>
+              <th>Coinxinhas</th>
+              <th>Cupons</th>
+              <th>Encomendas</th>
+              <th>Último login</th>
+              <th>Status</th>
+              <th style="width:120px;">Ações</th>
             </tr>
-          @empty
-            <tr>
-              <td colspan="9" style="text-align:center; padding:32px 0; color:#6b7280;">
-                Nenhum usuário encontrado.
-              </td>
-            </tr>
-          @endforelse
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            @forelse ($users as $user)
+              <tr>
+                <td>
+                  <span class="stack-table-label">Usuário</span>
+                  <strong>{{ $user->name }}</strong><br>
+                  <span style="color:#6b7280;">#{{ $user->id }}</span>
+                </td>
+                <td>
+                  <span class="stack-table-label">Contacto</span>
+                  <div>{{ $user->email }}</div>
+                  <div style="color:#6b7280;">{{ $user->phone ?: '—' }}</div>
+                </td>
+                <td>
+                  <span class="stack-table-label">Perfil</span>
+                  {{ ucfirst($user->role) }}
+                </td>
+                <td>
+                  <span class="stack-table-label">Coinxinhas</span>
+                  {{ number_format((int) ($user->loyaltyAccount?->points ?? 0), 0, ',', '.') }}
+                </td>
+                <td>
+                  <span class="stack-table-label">Cupons</span>
+                  {{ $user->user_coupons_count }}
+                </td>
+                <td>
+                  <span class="stack-table-label">Encomendas</span>
+                  {{ $user->orders_count }}
+                </td>
+                <td>
+                  <span class="stack-table-label">Último login</span>
+                  {{ $user->last_login?->format('d/m/Y H:i') ?? '—' }}
+                </td>
+                <td>
+                  <span class="stack-table-label">Status</span>
+                  @if ($user->active)
+                    <span class="badge badge-success">Ativo</span>
+                  @else
+                    <span class="badge badge-muted">Inativo</span>
+                  @endif
+                </td>
+                <td>
+                  <span class="stack-table-label">Ações</span>
+                  <a class="btn btn-secondary" href="{{ route('admin.users.show', $user) }}">Abrir</a>
+                </td>
+              </tr>
+            @empty
+              <tr>
+                <td colspan="9" style="text-align:center; padding:32px 0; color:#6b7280;">
+                  Nenhum usuário encontrado.
+                </td>
+              </tr>
+            @endforelse
+          </tbody>
+        </table>
+      </div>
 
       <div style="margin-top:18px;">
         {{ $users->links() }}

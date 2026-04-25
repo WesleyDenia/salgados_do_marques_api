@@ -59,7 +59,8 @@
 
       @if ($activeTab === 'clientes')
         <h3 style="margin:0 0 16px; font-size:1.2rem;">Clientes pendentes de sincronização</h3>
-        <table>
+        <div class="responsive-table-wrap">
+        <table class="responsive-table">
           <thead>
             <tr>
               <th>Cliente</th>
@@ -76,15 +77,21 @@
             @forelse ($missingUsers as $user)
               <tr>
                 <td>
+                  <span class="stack-table-label">Cliente</span>
                   <strong>{{ $user->name }}</strong><br>
                   <span style="color:#6b7280;">#{{ $user->id }}</span>
                 </td>
                 <td>
+                  <span class="stack-table-label">Contacto</span>
                   <div>{{ $user->email }}</div>
                   <div style="color:#6b7280;">{{ $user->phone ?: '—' }}</div>
                 </td>
-                <td>{{ $user->nif ?: '—' }}</td>
                 <td>
+                  <span class="stack-table-label">NIF</span>
+                  {{ $user->nif ?: '—' }}
+                </td>
+                <td>
+                  <span class="stack-table-label">Status ERP</span>
                   @if ($user->erp_sync_status === 'synced')
                     <span class="badge badge-success">Sincronizado</span>
                   @elseif ($user->erp_sync_status === 'failed')
@@ -96,16 +103,24 @@
                   @endif
                   <div style="margin-top:4px; color:#6b7280;">Tentativas: {{ (int) $user->erp_sync_attempts }}</div>
                 </td>
-                <td>{{ $user->erp_sync_attempted_at?->format('d/m/Y H:i') ?? '—' }}</td>
+                <td>
+                  <span class="stack-table-label">Última tentativa</span>
+                  {{ $user->erp_sync_attempted_at?->format('d/m/Y H:i') ?? '—' }}
+                </td>
                 <td style="max-width:420px;">
+                  <span class="stack-table-label">Erro</span>
                   @if ($user->erp_sync_error)
-                    <code style="white-space:normal; color:#991b1b;">{{ $user->erp_sync_error }}</code>
+                    <code style="white-space:normal; word-break:break-word; color:#991b1b;">{{ $user->erp_sync_error }}</code>
                   @else
                     —
                   @endif
                 </td>
-                <td>{{ $user->created_at?->format('d/m/Y H:i') ?? '—' }}</td>
                 <td>
+                  <span class="stack-table-label">Criado em</span>
+                  {{ $user->created_at?->format('d/m/Y H:i') ?? '—' }}
+                </td>
+                <td>
+                  <span class="stack-table-label">Ações</span>
                   <div style="display:flex; gap:8px; flex-wrap:wrap;">
                     <a class="btn btn-secondary" href="{{ route('admin.users.show', $user) }}">Abrir</a>
                     <form method="POST" action="{{ route('admin.queue.users.sync', $user) }}">
@@ -124,6 +139,7 @@
             @endforelse
           </tbody>
         </table>
+        </div>
         <div style="margin-top:18px;">
           {{ $missingUsers->appends(['tab' => 'clientes'])->links() }}
         </div>
@@ -157,7 +173,8 @@
             <a class="btn btn-secondary" href="{{ route('admin.queue.index', ['tab' => 'cupons']) }}">Limpar</a>
           </div>
         </form>
-        <table>
+        <div class="responsive-table-wrap">
+        <table class="responsive-table">
           <thead>
             <tr>
               <th>Vendus</th>
@@ -174,10 +191,12 @@
             @forelse ($couponImports as $import)
               <tr>
                 <td>
+                  <span class="stack-table-label">Vendus</span>
                   <strong>{{ $import->external_code ?: 'Sem código' }}</strong><br>
                   <span style="color:#6b7280;">ID {{ $import->external_id ?: '—' }}</span>
                 </td>
                 <td>
+                  <span class="stack-table-label">Status</span>
                   @if ($import->sync_status === 'processed')
                     <span class="badge badge-success">Processado</span>
                   @elseif ($import->sync_status === 'failed')
@@ -192,10 +211,12 @@
                   <div style="margin-top:4px; color:#6b7280;">Tentativas: {{ (int) $import->sync_attempts }}</div>
                 </td>
                 <td>
+                  <span class="stack-table-label">Uso</span>
                   <div>{{ $import->vendus_status ?: '—' }}</div>
                   <div style="color:#6b7280;">{{ $import->date_used?->format('d/m/Y H:i') ?? '—' }}</div>
                 </td>
                 <td>
+                  <span class="stack-table-label">User</span>
                   @php
                     $matchedUserCoupon = $import->userCoupon ?: $import->matchedUserCoupon;
                     $matchedUser = $matchedUserCoupon?->user;
@@ -208,6 +229,7 @@
                   @endif
                 </td>
                 <td>
+                  <span class="stack-table-label">Cupom local</span>
                   @if ($matchedUserCoupon)
                     #{{ $matchedUserCoupon->id }}
                   @else
@@ -215,16 +237,21 @@
                   @endif
                 </td>
                 <td style="max-width:420px;">
+                  <span class="stack-table-label">Erro</span>
                   @if ($import->sync_error)
-                    <code style="white-space:normal; color:#991b1b;">{{ $import->sync_error }}</code>
+                    <code style="white-space:normal; word-break:break-word; color:#991b1b;">{{ $import->sync_error }}</code>
                   @elseif ($import->manual_note)
                     <span style="color:#6b7280;">{{ $import->manual_note }}</span>
                   @else
                     —
                   @endif
                 </td>
-                <td>{{ $import->downloaded_at?->format('d/m/Y H:i') ?? '—' }}</td>
                 <td>
+                  <span class="stack-table-label">Baixado em</span>
+                  {{ $import->downloaded_at?->format('d/m/Y H:i') ?? '—' }}
+                </td>
+                <td>
+                  <span class="stack-table-label">Ações</span>
                   <div style="display:flex; gap:8px; flex-wrap:wrap;">
                     @if (!in_array($import->sync_status, ['processed', 'manually_closed'], true))
                       <form method="POST" action="{{ route('admin.queue.coupon-imports.retry', $import) }}">
@@ -251,12 +278,14 @@
             @endforelse
           </tbody>
         </table>
+        </div>
         <div style="margin-top:18px;">
           {{ $couponImports->appends(array_merge(request()->except('coupons_page'), ['tab' => 'cupons']))->links() }}
         </div>
       @elseif ($activeTab === 'jobs')
         <h3 style="margin:0 0 16px; font-size:1.2rem;">Tasks ERP ativas</h3>
-        <table>
+        <div class="responsive-table-wrap">
+        <table class="responsive-table">
           <thead>
             <tr>
               <th>Operação</th>
@@ -271,10 +300,12 @@
             @forelse ($queuedTasks as $task)
               <tr>
                 <td>
+                  <span class="stack-table-label">Operação</span>
                   <strong>{{ $task->operation }}</strong><br>
                   <span style="color:#6b7280;">#{{ $task->id }}</span>
                 </td>
                 <td>
+                  <span class="stack-table-label">Entidade</span>
                   @if ($task->entity_type === 'user')
                     <a href="{{ route('admin.users.show', $task->entity_id) }}">Usuário #{{ $task->entity_id }}</a>
                   @elseif ($task->entity_type === 'user_coupon')
@@ -286,10 +317,22 @@
                   @endif
                   <div style="color:#6b7280;">{{ $task->external_code ?: $task->external_id ?: '—' }}</div>
                 </td>
-                <td><span class="badge badge-muted">{{ $task->status }}</span></td>
-                <td>{{ $task->attempts }}</td>
-                <td>{{ $task->queued_at?->format('d/m/Y H:i') ?? '—' }}</td>
-                <td>{{ $task->started_at?->format('d/m/Y H:i') ?? '—' }}</td>
+                <td>
+                  <span class="stack-table-label">Status</span>
+                  <span class="badge badge-muted">{{ $task->status }}</span>
+                </td>
+                <td>
+                  <span class="stack-table-label">Tentativas</span>
+                  {{ $task->attempts }}
+                </td>
+                <td>
+                  <span class="stack-table-label">Enfileirada em</span>
+                  {{ $task->queued_at?->format('d/m/Y H:i') ?? '—' }}
+                </td>
+                <td>
+                  <span class="stack-table-label">Iniciada em</span>
+                  {{ $task->started_at?->format('d/m/Y H:i') ?? '—' }}
+                </td>
               </tr>
             @empty
               <tr>
@@ -300,12 +343,14 @@
             @endforelse
           </tbody>
         </table>
+        </div>
         <div style="margin-top:18px;">
           {{ $queuedTasks->appends(['tab' => 'jobs'])->links() }}
         </div>
       @elseif ($activeTab === 'falhas')
         <h3 style="margin:0 0 16px; font-size:1.2rem;">Falhas de sincronização ERP</h3>
-        <table>
+        <div class="responsive-table-wrap">
+        <table class="responsive-table">
           <thead>
             <tr>
               <th>Operação</th>
@@ -320,10 +365,12 @@
             @forelse ($failedTasks as $task)
               <tr>
                 <td>
+                  <span class="stack-table-label">Operação</span>
                   <strong>{{ $task->operation }}</strong><br>
                   <span style="color:#6b7280;">#{{ $task->id }}</span>
                 </td>
                 <td>
+                  <span class="stack-table-label">Entidade</span>
                   @if ($task->entity_type === 'user')
                     <a href="{{ route('admin.users.show', $task->entity_id) }}">Usuário #{{ $task->entity_id }}</a>
                   @elseif ($task->entity_type === 'user_coupon')
@@ -335,12 +382,20 @@
                   @endif
                   <div style="color:#6b7280;">{{ $task->external_code ?: $task->external_id ?: '—' }}</div>
                 </td>
-                <td><span class="badge" style="background:rgba(239,68,68,0.15); color:#991b1b;">{{ $task->status }}</span></td>
-                <td>{{ $task->finished_at?->format('d/m/Y H:i') ?? $task->updated_at?->format('d/m/Y H:i') ?? '—' }}</td>
-                <td style="max-width:520px;">
-                  <code style="white-space:normal; color:#991b1b;">{{ $task->last_error ?: 'Erro sem detalhe.' }}</code>
+                <td>
+                  <span class="stack-table-label">Status</span>
+                  <span class="badge" style="background:rgba(239,68,68,0.15); color:#991b1b;">{{ $task->status }}</span>
                 </td>
                 <td>
+                  <span class="stack-table-label">Falhou em</span>
+                  {{ $task->finished_at?->format('d/m/Y H:i') ?? $task->updated_at?->format('d/m/Y H:i') ?? '—' }}
+                </td>
+                <td style="max-width:520px;">
+                  <span class="stack-table-label">Erro</span>
+                  <code style="white-space:normal; word-break:break-word; color:#991b1b;">{{ $task->last_error ?: 'Erro sem detalhe.' }}</code>
+                </td>
+                <td>
+                  <span class="stack-table-label">Ações</span>
                   <div style="display:flex; gap:8px; flex-wrap:wrap;">
                     @if ($task->status !== 'manual_review')
                       <form method="POST" action="{{ route('admin.queue.tasks.retry', $task) }}">
@@ -376,6 +431,7 @@
             @endforelse
           </tbody>
         </table>
+        </div>
         <div style="margin-top:18px;">
           {{ $failedTasks->appends(['tab' => 'falhas'])->links() }}
         </div>

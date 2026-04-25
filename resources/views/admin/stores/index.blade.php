@@ -49,8 +49,9 @@
       </div>
     </form>
 
-    <table>
-      <thead>
+    <div class="responsive-table-wrap">
+      <table class="responsive-table">
+        <thead>
           <tr>
             <th>#</th>
             <th>Nome</th>
@@ -64,78 +65,102 @@
             <th>Atualizado em</th>
             <th style="width:76px;">Ações</th>
           </tr>
-      </thead>
-      <tbody>
-        @forelse ($stores as $store)
-          <tr>
-            <td>{{ $store->id }}</td>
-            <td>{{ $store->name }}</td>
-            <td>{{ $store->city }}</td>
-            <td>{{ ucfirst($store->type) }}</td>
-            <td>{{ $store->phone ?? '—' }}</td>
-            <td>
-              @if ($store->is_active)
-                <span class="badge badge-success">Ativa</span>
-              @else
-                <span class="badge badge-muted">Inativa</span>
-              @endif
-            </td>
-            <td>
-              @if ($store->accepts_orders)
-                <span class="badge badge-success">Aceita</span>
-              @else
-                <span class="badge badge-muted">Não</span>
-              @endif
-            </td>
-            <td>
-              @if ($storeService->isEligibleForPickup($store))
-                <span class="badge badge-success">Sim</span>
-              @else
-                <span class="badge badge-muted">Não</span>
-              @endif
-            </td>
-            <td>
-              @if ($store->default_store)
-                <span class="badge badge-success">Sim</span>
-              @else
-                <span class="badge badge-muted">Não</span>
-              @endif
-            </td>
-            <td>{{ $store->updated_at?->format('d/m/Y H:i') ?? '—' }}</td>
-            <td>
-              <details class="action-menu">
-                <summary class="btn action-menu-trigger" aria-label="Abrir ações da loja">
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-                    <circle cx="8" cy="3" r="1.4" />
-                    <circle cx="8" cy="8" r="1.4" />
-                    <circle cx="8" cy="13" r="1.4" />
-                  </svg>
-                </summary>
+        </thead>
+        <tbody>
+          @forelse ($stores as $store)
+            <tr>
+              <td>
+                <span class="stack-table-label">#</span>
+                {{ $store->id }}
+              </td>
+              <td>
+                <span class="stack-table-label">Nome</span>
+                {{ $store->name }}
+              </td>
+              <td>
+                <span class="stack-table-label">Cidade</span>
+                {{ $store->city }}
+              </td>
+              <td>
+                <span class="stack-table-label">Tipo</span>
+                {{ ucfirst($store->type) }}
+              </td>
+              <td>
+                <span class="stack-table-label">Telefone</span>
+                {{ $store->phone ?? '—' }}
+              </td>
+              <td>
+                <span class="stack-table-label">Status</span>
+                @if ($store->is_active)
+                  <span class="badge badge-success">Ativa</span>
+                @else
+                  <span class="badge badge-muted">Inativa</span>
+                @endif
+              </td>
+              <td>
+                <span class="stack-table-label">Pedidos</span>
+                @if ($store->accepts_orders)
+                  <span class="badge badge-success">Aceita</span>
+                @else
+                  <span class="badge badge-muted">Não</span>
+                @endif
+              </td>
+              <td>
+                <span class="stack-table-label">Agenda</span>
+                @if ($storeService->isEligibleForPickup($store))
+                  <span class="badge badge-success">Sim</span>
+                @else
+                  <span class="badge badge-muted">Não</span>
+                @endif
+              </td>
+              <td>
+                <span class="stack-table-label">Padrão</span>
+                @if ($store->default_store)
+                  <span class="badge badge-success">Sim</span>
+                @else
+                  <span class="badge badge-muted">Não</span>
+                @endif
+              </td>
+              <td>
+                <span class="stack-table-label">Atualizado em</span>
+                {{ $store->updated_at?->format('d/m/Y H:i') ?? '—' }}
+              </td>
+              <td>
+                <span class="stack-table-label">Ações</span>
+                <details class="action-menu">
+                  <summary class="btn action-menu-trigger" aria-label="Abrir ações da loja">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                      <circle cx="8" cy="3" r="1.4" />
+                      <circle cx="8" cy="8" r="1.4" />
+                      <circle cx="8" cy="13" r="1.4" />
+                    </svg>
+                  </summary>
 
-                <div class="action-menu-panel">
-                  <a class="btn action-menu-item" href="{{ route('admin.stores.edit', $store) }}">Editar</a>
-                  <form
-                    action="{{ route('admin.stores.destroy', $store) }}"
-                    method="POST"
-                    onsubmit="return confirm('Remover esta loja?');"
-                  >
-                    @csrf
-                    @method('DELETE')
-                    <button type="submit" class="btn action-menu-item action-menu-item-danger">Excluir</button>
-                  </form>
-                </div>
-              </details>
-            </td>
-          </tr>
-        @empty
-          <tr>
-            <td colspan="11" style="text-align:center; padding:32px 0; color:#6b7280;">
-              Nenhuma loja encontrada.
-            </td>
-          </tr>
-        @endforelse
-      </tbody>
-    </table>
+                  <div class="action-menu-panel">
+                    <a class="btn action-menu-item" href="{{ route('admin.stores.edit', $store) }}">Editar</a>
+                    <form
+                      action="{{ route('admin.stores.destroy', $store) }}"
+                      method="POST"
+                      onsubmit="return confirm('Remover esta loja?');"
+                    >
+                      @csrf
+                      @method('DELETE')
+                      <button type="submit" class="btn action-menu-item action-menu-item-danger">Excluir</button>
+                    </form>
+                  </div>
+                </details>
+              </td>
+            </tr>
+          @empty
+            <tr>
+              <td colspan="11" style="text-align:center; padding:32px 0; color:#6b7280;">
+                Nenhuma loja encontrada.
+              </td>
+            </tr>
+          @endforelse
+        </tbody>
+      </table>
+    </div>
 
     <div style="margin-top:18px;">
       {{ $stores->links() }}

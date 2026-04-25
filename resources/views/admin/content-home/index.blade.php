@@ -17,8 +17,9 @@
       <a class="btn btn-primary" href="{{ route('admin.content-home.create') }}">Novo conteúdo</a>
     </div>
 
-    <table>
-      <thead>
+    <div class="responsive-table-wrap">
+      <table class="responsive-table">
+        <thead>
         <tr>
           <th>#</th>
           <th>Ordem</th>
@@ -30,58 +31,82 @@
           <th>Publicação</th>
           <th style="width:76px;">Ações</th>
         </tr>
-      </thead>
-      <tbody id="sortable-content-home">
-        @forelse ($items as $item)
-          <tr data-id="{{ $item->id }}">
-            <td>{{ $item->id }}</td>
-            <td style="cursor:grab;">⋮⋮ <span data-order-label>{{ $item->display_order }}</span></td>
-            <td>{{ $item->title ?? '—' }}</td>
-            <td>{{ $item->type }}</td>
-            <td>{{ $item->layout }}</td>
-            <td>
-              @if ($item->is_active)
-                <span class="badge badge-success">Ativo</span>
-              @else
-                <span class="badge badge-muted">Inativo</span>
-              @endif
-            </td>
-            <td>{{ $item->component_name ?? '—' }}</td>
-            <td>{{ $item->publish_at ? $item->publish_at->format('d/m/Y H:i') : '—' }}</td>
-            <td>
-              <details class="action-menu">
-                <summary class="btn action-menu-trigger" aria-label="Abrir ações do conteúdo">
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-                    <circle cx="8" cy="3" r="1.4" />
-                    <circle cx="8" cy="8" r="1.4" />
-                    <circle cx="8" cy="13" r="1.4" />
-                  </svg>
-                </summary>
+        </thead>
+        <tbody id="sortable-content-home">
+          @forelse ($items as $item)
+            <tr data-id="{{ $item->id }}">
+              <td>
+                <span class="stack-table-label">#</span>
+                {{ $item->id }}
+              </td>
+              <td style="cursor:grab;">
+                <span class="stack-table-label">Ordem</span>
+                ⋮⋮ <span data-order-label>{{ $item->display_order }}</span>
+              </td>
+              <td>
+                <span class="stack-table-label">Título</span>
+                {{ $item->title ?? '—' }}
+              </td>
+              <td>
+                <span class="stack-table-label">Tipo</span>
+                {{ $item->type }}
+              </td>
+              <td>
+                <span class="stack-table-label">Layout</span>
+                {{ $item->layout }}
+              </td>
+              <td>
+                <span class="stack-table-label">Ativo</span>
+                @if ($item->is_active)
+                  <span class="badge badge-success">Ativo</span>
+                @else
+                  <span class="badge badge-muted">Inativo</span>
+                @endif
+              </td>
+              <td>
+                <span class="stack-table-label">Componente</span>
+                {{ $item->component_name ?? '—' }}
+              </td>
+              <td>
+                <span class="stack-table-label">Publicação</span>
+                {{ $item->publish_at ? $item->publish_at->format('d/m/Y H:i') : '—' }}
+              </td>
+              <td>
+                <span class="stack-table-label">Ações</span>
+                <details class="action-menu">
+                  <summary class="btn action-menu-trigger" aria-label="Abrir ações do conteúdo">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                      <circle cx="8" cy="3" r="1.4" />
+                      <circle cx="8" cy="8" r="1.4" />
+                      <circle cx="8" cy="13" r="1.4" />
+                    </svg>
+                  </summary>
 
-                <div class="action-menu-panel">
-                  <a class="btn action-menu-item" href="{{ route('admin.content-home.edit', $item) }}">Editar</a>
-                  <form
-                    action="{{ route('admin.content-home.destroy', $item) }}"
-                    method="POST"
-                    onsubmit="return confirm('Remover este conteúdo?');"
-                  >
-                    @csrf
-                    @method('DELETE')
-                    <button type="submit" class="btn action-menu-item action-menu-item-danger">Excluir</button>
-                  </form>
-                </div>
-              </details>
-            </td>
-          </tr>
-        @empty
-          <tr>
-            <td colspan="9" style="text-align:center; padding:32px 0; color:#6b7280;">
-              Nenhum conteúdo cadastrado ainda.
-            </td>
-          </tr>
-        @endforelse
-      </tbody>
-    </table>
+                  <div class="action-menu-panel">
+                    <a class="btn action-menu-item" href="{{ route('admin.content-home.edit', $item) }}">Editar</a>
+                    <form
+                      action="{{ route('admin.content-home.destroy', $item) }}"
+                      method="POST"
+                      onsubmit="return confirm('Remover este conteúdo?');"
+                    >
+                      @csrf
+                      @method('DELETE')
+                      <button type="submit" class="btn action-menu-item action-menu-item-danger">Excluir</button>
+                    </form>
+                  </div>
+                </details>
+              </td>
+            </tr>
+          @empty
+            <tr>
+              <td colspan="9" style="text-align:center; padding:32px 0; color:#6b7280;">
+                Nenhum conteúdo cadastrado ainda.
+              </td>
+            </tr>
+          @endforelse
+        </tbody>
+      </table>
+    </div>
   </div>
 
   <script src="{{ asset('vendor/sortablejs/sortable.min.js') }}"></script>

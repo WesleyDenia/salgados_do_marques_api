@@ -14,8 +14,9 @@
       <a class="btn btn-primary" href="{{ route('admin.categories.create') }}">Nova categoria</a>
     </div>
 
-    <table>
-      <thead>
+    <div class="responsive-table-wrap">
+      <table class="responsive-table">
+        <thead>
         <tr>
           <th style="width:80px;">Ordem</th>
           <th>Nome</th>
@@ -24,62 +25,75 @@
           <th>Status</th>
           <th style="width:76px;">Ações</th>
         </tr>
-      </thead>
-      <tbody id="sortable-categories">
-        @forelse ($categories as $category)
-          <tr data-id="{{ $category->id }}">
-            <td style="cursor:grab;">⋮⋮ {{ $category->display_order }}</td>
-            <td>
-              <strong>{{ $category->name }}</strong>
-              @if ($category->description)
-                <div style="color:#6b7280; font-size:0.9rem; margin-top:4px;">
-                  {{ \Illuminate\Support\Str::limit($category->description, 120) }}
-                </div>
-              @endif
-            </td>
-            <td>{{ $category->external_id ?? '—' }}</td>
-            <td>{{ $category->products_count }}</td>
-            <td>
-              @if ($category->active)
-                <span class="badge badge-success">Ativa</span>
-              @else
-                <span class="badge badge-muted">Inativa</span>
-              @endif
-            </td>
-            <td>
-              <details class="action-menu">
-                <summary class="btn action-menu-trigger" aria-label="Abrir ações da categoria">
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-                    <circle cx="8" cy="3" r="1.4" />
-                    <circle cx="8" cy="8" r="1.4" />
-                    <circle cx="8" cy="13" r="1.4" />
-                  </svg>
-                </summary>
+        </thead>
+        <tbody id="sortable-categories">
+          @forelse ($categories as $category)
+            <tr data-id="{{ $category->id }}">
+              <td style="cursor:grab;">
+                <span class="stack-table-label">Ordem</span>
+                ⋮⋮ {{ $category->display_order }}
+              </td>
+              <td>
+                <span class="stack-table-label">Nome</span>
+                <strong>{{ $category->name }}</strong>
+                @if ($category->description)
+                  <div style="color:#6b7280; font-size:0.9rem; margin-top:4px;">
+                    {{ \Illuminate\Support\Str::limit($category->description, 120) }}
+                  </div>
+                @endif
+              </td>
+              <td>
+                <span class="stack-table-label">ID externo</span>
+                {{ $category->external_id ?? '—' }}
+              </td>
+              <td>
+                <span class="stack-table-label">Produtos</span>
+                {{ $category->products_count }}
+              </td>
+              <td>
+                <span class="stack-table-label">Status</span>
+                @if ($category->active)
+                  <span class="badge badge-success">Ativa</span>
+                @else
+                  <span class="badge badge-muted">Inativa</span>
+                @endif
+              </td>
+              <td>
+                <span class="stack-table-label">Ações</span>
+                <details class="action-menu">
+                  <summary class="btn action-menu-trigger" aria-label="Abrir ações da categoria">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                      <circle cx="8" cy="3" r="1.4" />
+                      <circle cx="8" cy="8" r="1.4" />
+                      <circle cx="8" cy="13" r="1.4" />
+                    </svg>
+                  </summary>
 
-                <div class="action-menu-panel">
-                  <a class="btn action-menu-item" href="{{ route('admin.categories.edit', $category) }}">Editar</a>
-                  <form
-                    action="{{ route('admin.categories.destroy', $category) }}"
-                    method="POST"
-                    onsubmit="return confirm('Remover esta categoria?');"
-                  >
-                    @csrf
-                    @method('DELETE')
-                    <button type="submit" class="btn action-menu-item action-menu-item-danger">Excluir</button>
-                  </form>
-                </div>
-              </details>
-            </td>
-          </tr>
-        @empty
-          <tr>
-            <td colspan="6" style="text-align:center; padding:32px 0; color:#6b7280;">
-              Nenhuma categoria cadastrada.
-            </td>
-          </tr>
-        @endforelse
-      </tbody>
-    </table>
+                  <div class="action-menu-panel">
+                    <a class="btn action-menu-item" href="{{ route('admin.categories.edit', $category) }}">Editar</a>
+                    <form
+                      action="{{ route('admin.categories.destroy', $category) }}"
+                      method="POST"
+                      onsubmit="return confirm('Remover esta categoria?');"
+                    >
+                      @csrf
+                      @method('DELETE')
+                      <button type="submit" class="btn action-menu-item action-menu-item-danger">Excluir</button>
+                    </form>
+                  </div>
+                </details>
+              </td>
+            </tr>
+          @empty
+            <tr>
+              <td colspan="6" style="text-align:center; padding:32px 0; color:#6b7280;">
+                Nenhuma categoria cadastrada.
+              </td>
+            </tr>
+          @endforelse
+        </tbody>
+      </table>
+    </div>
   </div>
 
   <script src="{{ asset('vendor/sortablejs/sortable.min.js') }}"></script>

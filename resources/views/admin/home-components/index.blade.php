@@ -14,8 +14,9 @@
       <a class="btn btn-primary" href="{{ route('admin.home-components.create') }}">Novo componente</a>
     </div>
 
-    <table>
-      <thead>
+    <div class="responsive-table-wrap">
+      <table class="responsive-table">
+        <thead>
         <tr>
           <th>Rótulo</th>
           <th>Nome técnico</th>
@@ -23,50 +24,62 @@
           <th>Estado</th>
           <th style="width:76px;">Ações</th>
         </tr>
-      </thead>
-      <tbody>
-        @forelse ($components as $component)
-          <tr>
-            <td>{{ $component->label }}</td>
-            <td><code>{{ $component->key }}</code></td>
-            <td>{{ $component->description ?: '—' }}</td>
-            <td>
-              @if ($component->is_active)
-                <span class="badge badge-success">Ativo</span>
-              @else
-                <span class="badge badge-muted">Inativo</span>
-              @endif
-            </td>
-            <td>
-              <details class="action-menu">
-                <summary class="btn action-menu-trigger" aria-label="Abrir ações do componente">
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-                    <circle cx="8" cy="3" r="1.4" />
-                    <circle cx="8" cy="8" r="1.4" />
-                    <circle cx="8" cy="13" r="1.4" />
-                  </svg>
-                </summary>
+        </thead>
+        <tbody>
+          @forelse ($components as $component)
+            <tr>
+              <td>
+                <span class="stack-table-label">Rótulo</span>
+                {{ $component->label }}
+              </td>
+              <td style="word-break:break-word;">
+                <span class="stack-table-label">Nome técnico</span>
+                <code style="white-space:normal;">{{ $component->key }}</code>
+              </td>
+              <td>
+                <span class="stack-table-label">Descrição</span>
+                {{ $component->description ?: '—' }}
+              </td>
+              <td>
+                <span class="stack-table-label">Estado</span>
+                @if ($component->is_active)
+                  <span class="badge badge-success">Ativo</span>
+                @else
+                  <span class="badge badge-muted">Inativo</span>
+                @endif
+              </td>
+              <td>
+                <span class="stack-table-label">Ações</span>
+                <details class="action-menu">
+                  <summary class="btn action-menu-trigger" aria-label="Abrir ações do componente">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                      <circle cx="8" cy="3" r="1.4" />
+                      <circle cx="8" cy="8" r="1.4" />
+                      <circle cx="8" cy="13" r="1.4" />
+                    </svg>
+                  </summary>
 
-                <div class="action-menu-panel">
-                  <a class="btn action-menu-item" href="{{ route('admin.home-components.edit', $component) }}">Editar</a>
-                  <form method="POST" action="{{ route('admin.home-components.destroy', $component) }}" onsubmit="return confirm('Remover este componente do catálogo?');">
-                    @csrf
-                    @method('DELETE')
-                    <button type="submit" class="btn action-menu-item action-menu-item-danger">Excluir</button>
-                  </form>
-                </div>
-              </details>
-            </td>
-          </tr>
-        @empty
-          <tr>
-            <td colspan="5" style="text-align:center; padding:32px 0; color:#6b7280;">
-              Nenhum componente registado.
-            </td>
-          </tr>
-        @endforelse
-      </tbody>
-    </table>
+                  <div class="action-menu-panel">
+                    <a class="btn action-menu-item" href="{{ route('admin.home-components.edit', $component) }}">Editar</a>
+                    <form method="POST" action="{{ route('admin.home-components.destroy', $component) }}" onsubmit="return confirm('Remover este componente do catálogo?');">
+                      @csrf
+                      @method('DELETE')
+                      <button type="submit" class="btn action-menu-item action-menu-item-danger">Excluir</button>
+                    </form>
+                  </div>
+                </details>
+              </td>
+            </tr>
+          @empty
+            <tr>
+              <td colspan="5" style="text-align:center; padding:32px 0; color:#6b7280;">
+                Nenhum componente registado.
+              </td>
+            </tr>
+          @endforelse
+        </tbody>
+      </table>
+    </div>
 
     <div style="margin-top:18px;">
       {{ $components->links() }}

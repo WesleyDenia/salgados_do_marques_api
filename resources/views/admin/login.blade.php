@@ -6,8 +6,14 @@
     <title>Painel Administrativo - Login</title>
     <style>
       :root {
-        color-scheme: light dark;
+        color-scheme: light;
         font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
       }
 
       body {
@@ -16,20 +22,24 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        background: #f7f7f8;
+        padding: 24px;
+        background:
+          radial-gradient(circle at top, rgba(145, 2, 2, 0.08), transparent 34%),
+          linear-gradient(180deg, #fafafa 0%, #f2f4f8 100%);
         color: #1e1e20;
+        overflow-x: hidden;
       }
 
       .card {
-        width: min(400px, 90vw);
+        width: min(420px, 100%);
         background: #ffffff;
-        border-radius: 16px;
-        padding: 32px;
-        box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
+        border-radius: 18px;
+        padding: clamp(20px, 5vw, 32px);
+        box-shadow: 0 24px 56px rgba(15, 23, 42, 0.12);
       }
 
       h1 {
-        font-size: 1.6rem;
+        font-size: clamp(1.35rem, 4.5vw, 1.65rem);
         margin-bottom: 16px;
         text-align: center;
       }
@@ -53,7 +63,7 @@
         padding: 12px;
         border-radius: 10px;
         border: 1px solid #d1d5db;
-        font-size: 1rem;
+        font-size: 16px;
         transition: border-color 0.15s ease, box-shadow 0.15s ease;
       }
 
@@ -114,6 +124,25 @@
         font-size: 0.85rem;
         text-align: center;
         color: #9ca3af;
+      }
+
+      @media (max-width: 520px) {
+        body {
+          padding: 16px;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .card {
+          width: 100%;
+          border-radius: 16px;
+          max-height: calc(100vh - 32px);
+          overflow: auto;
+        }
+
+        p.subtitle {
+          margin-bottom: 20px;
+        }
       }
     </style>
   </head>

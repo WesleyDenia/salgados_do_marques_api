@@ -178,7 +178,7 @@
           @php
             $dayConfig = $weeklySchedule[$dayKey] ?? ['is_open' => false, 'start_time' => null, 'end_time' => null];
           @endphp
-          <div style="display:grid; grid-template-columns: minmax(180px, 1.2fr) repeat(3, minmax(120px, 1fr)); gap:12px; align-items:end; padding:12px; border:1px solid #e5e7eb; border-radius:12px;">
+          <div class="store-schedule-row" style="display:grid; grid-template-columns: minmax(180px, 1.2fr) repeat(3, minmax(120px, 1fr)); gap:12px; align-items:end; padding:12px; border:1px solid #e5e7eb; border-radius:12px;">
             <div>
               <label class="checkbox-row">
                 <input type="hidden" name="pickup_weekly_schedule[{{ $dayKey }}][is_open]" value="0" />
@@ -233,7 +233,7 @@
       </p>
       <div style="display:grid; gap:12px;">
         @foreach ($dateExceptions as $index => $exception)
-          <div style="display:grid; grid-template-columns: repeat(4, minmax(120px, 1fr)); gap:12px; align-items:end; padding:12px; border:1px solid #e5e7eb; border-radius:12px;">
+          <div class="store-exception-row" style="display:grid; grid-template-columns: repeat(4, minmax(120px, 1fr)); gap:12px; align-items:end; padding:12px; border:1px solid #e5e7eb; border-radius:12px;">
             <div class="form-group" style="margin:0;">
               <label for="pickup_date_exceptions_{{ $index }}_date">Data</label>
               <input

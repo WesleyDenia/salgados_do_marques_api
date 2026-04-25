@@ -102,7 +102,7 @@
           Usuário ativo
         </label>
 
-        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+        <div class="form-actions" style="margin-top:0;">
           <button type="submit" class="btn btn-primary">Salvar alterações</button>
           <a href="{{ route('admin.users.show', $user) }}" class="btn btn-secondary">Cancelar</a>
         </div>

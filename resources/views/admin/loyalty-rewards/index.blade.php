@@ -14,8 +14,9 @@
       <a class="btn btn-primary" href="{{ route('admin.loyalty-rewards.create') }}">Nova recompensa</a>
     </div>
 
-    <table>
-      <thead>
+    <div class="responsive-table-wrap">
+      <table class="responsive-table">
+        <thead>
         <tr>
           <th>Nome</th>
           <th>Pontos necessários</th>
@@ -23,54 +24,66 @@
           <th>Status</th>
           <th style="width:76px;">Ações</th>
         </tr>
-      </thead>
-      <tbody>
-        @forelse ($rewards as $reward)
-          <tr>
-            <td>{{ $reward->name }}</td>
-            <td>{{ $reward->threshold }}</td>
-            <td>{{ number_format((float) $reward->value, 2, ',', '.') }}</td>
-            <td>
-              @if ($reward->active)
-                <span class="badge badge-success">Ativo</span>
-              @else
-                <span class="badge badge-muted">Inativo</span>
-              @endif
-            </td>
-            <td>
-              <details class="action-menu">
-                <summary class="btn action-menu-trigger" aria-label="Abrir ações da recompensa">
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-                    <circle cx="8" cy="3" r="1.4" />
-                    <circle cx="8" cy="8" r="1.4" />
-                    <circle cx="8" cy="13" r="1.4" />
-                  </svg>
-                </summary>
+        </thead>
+        <tbody>
+          @forelse ($rewards as $reward)
+            <tr>
+              <td>
+                <span class="stack-table-label">Nome</span>
+                {{ $reward->name }}
+              </td>
+              <td>
+                <span class="stack-table-label">Pontos necessários</span>
+                {{ $reward->threshold }}
+              </td>
+              <td>
+                <span class="stack-table-label">Valor (€)</span>
+                {{ number_format((float) $reward->value, 2, ',', '.') }}
+              </td>
+              <td>
+                <span class="stack-table-label">Status</span>
+                @if ($reward->active)
+                  <span class="badge badge-success">Ativo</span>
+                @else
+                  <span class="badge badge-muted">Inativo</span>
+                @endif
+              </td>
+              <td>
+                <span class="stack-table-label">Ações</span>
+                <details class="action-menu">
+                  <summary class="btn action-menu-trigger" aria-label="Abrir ações da recompensa">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                      <circle cx="8" cy="3" r="1.4" />
+                      <circle cx="8" cy="8" r="1.4" />
+                      <circle cx="8" cy="13" r="1.4" />
+                    </svg>
+                  </summary>
 
-                <div class="action-menu-panel">
-                  <a class="btn action-menu-item" href="{{ route('admin.loyalty-rewards.edit', $reward) }}">Editar</a>
-                  <form
-                    action="{{ route('admin.loyalty-rewards.destroy', $reward) }}"
-                    method="POST"
-                    onsubmit="return confirm('Remover esta recompensa?');"
-                  >
-                    @csrf
-                    @method('DELETE')
-                    <button type="submit" class="btn action-menu-item action-menu-item-danger">Excluir</button>
-                  </form>
-                </div>
-              </details>
-            </td>
-          </tr>
-        @empty
-          <tr>
-            <td colspan="5" style="text-align:center; padding:32px 0; color:#6b7280;">
-              Nenhuma recompensa cadastrada.
-            </td>
-          </tr>
-        @endforelse
-      </tbody>
-    </table>
+                  <div class="action-menu-panel">
+                    <a class="btn action-menu-item" href="{{ route('admin.loyalty-rewards.edit', $reward) }}">Editar</a>
+                    <form
+                      action="{{ route('admin.loyalty-rewards.destroy', $reward) }}"
+                      method="POST"
+                      onsubmit="return confirm('Remover esta recompensa?');"
+                    >
+                      @csrf
+                      @method('DELETE')
+                      <button type="submit" class="btn action-menu-item action-menu-item-danger">Excluir</button>
+                    </form>
+                  </div>
+                </details>
+              </td>
+            </tr>
+          @empty
+            <tr>
+              <td colspan="5" style="text-align:center; padding:32px 0; color:#6b7280;">
+                Nenhuma recompensa cadastrada.
+              </td>
+            </tr>
+          @endforelse
+        </tbody>
+      </table>
+    </div>
 
     <div style="margin-top:18px;">
       {{ $rewards->links() }}

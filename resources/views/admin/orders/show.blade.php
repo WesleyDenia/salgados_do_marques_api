@@ -187,9 +187,6 @@
 
     <div class="card">
       <h3 class="detail-section-title">Itens da encomenda</h3>
-      <p class="detail-section-note">
-        A lista abaixo preserva os detalhes do pedido, mas adapta-se a ecrãs estreitos sem quebrar o layout.
-      </p>
 
       <div class="responsive-table-wrap detail-table-wrap">
         <table class="responsive-table">
@@ -217,8 +214,13 @@
                         })
                         ->all();
                     @endphp
-                    <div style="color:#6b7280; font-size:0.9rem; margin-top:4px; overflow-wrap:anywhere;">
-                      Sabores: {{ implode(', ', $resolvedFlavors) }}
+                    <div style="color:#40444c; font-size:1rem; margin-top:4px; overflow-wrap:anywhere;">
+                      Sabores:
+                      <ul style="margin:4px 0 0; padding-left:1.1rem; list-style:disc;">
+                        @foreach ($resolvedFlavors as $resolvedFlavor)
+                          <li style="margin:2px 0; overflow-wrap:anywhere;">{{ $resolvedFlavor }}</li>
+                        @endforeach
+                      </ul>
                     </div>
                   @endif
                 </td>

@@ -120,35 +120,7 @@
           <a href="{{ route('admin.orders.index') }}" class="btn btn-secondary">Voltar</a>
         </div>
       </div>
-
-      <div class="detail-meta-grid" style="margin-top:20px;">
-        <div class="detail-meta-card">
-          <div class="detail-meta-label">Cliente</div>
-          <div class="detail-meta-value">{{ $order->user?->name ?? '—' }}</div>
-          <div style="margin-top:2px; color:#6b7280; font-size:0.9rem;">{{ $order->user?->email ?? '—' }}</div>
-        </div>
-        <div class="detail-meta-card">
-          <div class="detail-meta-label">Loja</div>
-          <div class="detail-meta-value">{{ $order->store?->name ?? '—' }}</div>
-          <div style="margin-top:2px; color:#6b7280; font-size:0.9rem;">{{ $order->store?->address ?? '—' }}</div>
-        </div>
-        <div class="detail-meta-card">
-          <div class="detail-meta-label">Retirada</div>
-          <div class="detail-meta-value">{{ $order->scheduled_at?->format('d/m/Y H:i') ?? '—' }}</div>
-        </div>
-        <div class="detail-meta-card">
-          <div class="detail-meta-label">Total</div>
-          <div class="detail-meta-value">€ {{ number_format((float) $order->total, 2, ',', '.') }}</div>
-        </div>
-      </div>
     </div>
-
-    @if ($order->notes)
-      <div class="card">
-        <div class="detail-meta-label">Observações</div>
-        <div style="margin-top:4px;">{{ $order->notes }}</div>
-      </div>
-    @endif
 
     <div class="card">
       <h3 class="detail-section-title">Atualizar status</h3>
@@ -182,6 +154,36 @@
         </div>
       </form>
     </div>
+
+    <div class="card">
+      <div class="detail-meta-grid" style="margin-top:20px;">
+        <div class="detail-meta-card">
+          <div class="detail-meta-label">Cliente</div>
+          <div class="detail-meta-value">{{ $order->user?->name ?? '—' }}</div>
+          <div style="margin-top:2px; color:#6b7280; font-size:0.9rem;">{{ $order->user?->email ?? '—' }}</div>
+        </div>
+        <div class="detail-meta-card">
+          <div class="detail-meta-label">Loja</div>
+          <div class="detail-meta-value">{{ $order->store?->name ?? '—' }}</div>
+          <div style="margin-top:2px; color:#6b7280; font-size:0.9rem;">{{ $order->store?->address ?? '—' }}</div>
+        </div>
+        <div class="detail-meta-card">
+          <div class="detail-meta-label">Retirada</div>
+          <div class="detail-meta-value">{{ $order->scheduled_at?->format('d/m/Y H:i') ?? '—' }}</div>
+        </div>
+        <div class="detail-meta-card">
+          <div class="detail-meta-label">Total</div>
+          <div class="detail-meta-value">€ {{ number_format((float) $order->total, 2, ',', '.') }}</div>
+        </div>
+      </div>
+    </div>
+
+    @if ($order->notes)
+      <div class="card">
+        <div class="detail-meta-label">Observações</div>
+        <div style="margin-top:4px;">{{ $order->notes }}</div>
+      </div>
+    @endif
 
     <div class="card">
       <h3 class="detail-section-title">Itens da encomenda</h3>

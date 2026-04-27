@@ -8,6 +8,7 @@ use App\Models\ProductVariant;
 use App\Models\WhatsAppQueueItem;
 use App\Models\User;
 use App\Jobs\SendOrderPlacedWhatsAppJob;
+use App\Services\AdminFlavorService;
 use App\Repositories\OrderRepository;
 use App\Repositories\ProductRepository;
 use App\Services\Notifications\WhatsAppMessageFormatter;
@@ -41,6 +42,7 @@ class OrderService
     public function __construct(
         protected OrderRepository $repository,
         protected ProductRepository $products,
+        protected AdminFlavorService $flavors,
         protected SettingService $settings,
         protected StoreService $stores,
         protected WhatsAppMessageFormatter $messages,
@@ -136,7 +138,14 @@ class OrderService
         if ($user->phone) {
             try {
                 $recipient = $this->whatsappOrderRecipient();
-                $flavorNamesById = $this->buildFlavorNamesById($products);
+                $flavorIds = $items
+                    ->flatMap(fn (array $item) => isset($item['flavors']) && is_array($item['flavors']) ? $item['flavors'] : [])
+                    ->map(fn ($flavorId) => (int) $flavorId)
+                    ->filter(fn (int $flavorId) => $flavorId > 0)
+                    ->unique()
+                    ->values()
+                    ->all();
+                $flavorNamesById = $this->flavors->namesByIds($flavorIds);
                 $message = $this->messages->orderPlacedSnapshot(
                     (string) $user->name,
                     (string) $user->phone,
@@ -409,14 +418,4 @@ class OrderService
         })->all();
     }
 
-    /**
-     * @param Collection<int, Product> $products
-     * @return array<int, string>
-     */
-    protected function buildFlavorNamesById(Collection $products): array
-    {
-        return $products
-            ->flatMap(fn (Product $product) => $product->allowedFlavors->pluck('name', 'id')->all())
-            ->all();
-    }
 }

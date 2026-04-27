@@ -7,6 +7,7 @@ use App\Models\WhatsAppQueueItem;
 use App\Repositories\OrderRepository;
 use App\Repositories\ProductRepository;
 use App\Jobs\SendOrderPlacedWhatsAppJob;
+use App\Services\AdminFlavorService;
 use App\Services\OrderService;
 use App\Services\Notifications\WhatsAppMessageFormatter;
 use App\Services\SettingService;
@@ -24,6 +25,7 @@ class OrderServiceTest extends TestCase
         return new OrderService(
             $repository,
             Mockery::mock(ProductRepository::class),
+            Mockery::mock(AdminFlavorService::class),
             Mockery::mock(SettingService::class),
             Mockery::mock(StoreService::class),
             Mockery::mock(WhatsAppMessageFormatter::class),
@@ -85,6 +87,7 @@ class OrderServiceTest extends TestCase
         $service = new OrderService(
             $repository,
             $products,
+            Mockery::mock(AdminFlavorService::class),
             $settings,
             $stores,
             Mockery::mock(WhatsAppMessageFormatter::class),
@@ -109,12 +112,14 @@ class OrderServiceTest extends TestCase
         $products = Mockery::mock(ProductRepository::class);
         $settings = Mockery::mock(SettingService::class);
         $stores = Mockery::mock(StoreService::class);
+        $flavors = Mockery::mock(AdminFlavorService::class);
         $messages = Mockery::mock(WhatsAppMessageFormatter::class);
         $queue = Mockery::mock(WhatsAppQueueService::class);
 
         $service = Mockery::mock(OrderService::class, [
             $repository,
             $products,
+            $flavors,
             $settings,
             $stores,
             $messages,
@@ -130,6 +135,10 @@ class OrderServiceTest extends TestCase
             'scheduling_window_days' => 15,
         ]);
         $settings->shouldReceive('get')->once()->with('WHATSAPP_ORDER_TO', '')->andReturn('+351123456789');
+        $flavors->shouldReceive('namesByIds')
+            ->once()
+            ->with([])
+            ->andReturn([]);
 
         $user = new \App\Models\User();
         $user->id = 10;

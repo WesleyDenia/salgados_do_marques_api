@@ -4,12 +4,7 @@ namespace Tests\Unit;
 
 use App\Contracts\Notifications\WhatsAppClient;
 use App\Jobs\SendOrderPlacedWhatsAppJob;
-use App\Models\Order;
-use App\Models\OrderItem;
-use App\Models\Store;
-use App\Models\User;
-use App\Services\SettingService;
-use Carbon\Carbon;
+use App\Models\WhatsAppQueueItem;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Mockery;
 use Tests\TestCase;
@@ -18,89 +13,70 @@ class SendOrderPlacedWhatsAppJobTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_it_sends_the_expected_message_for_a_new_order(): void
+    public function test_it_sends_the_stored_message_and_marks_the_queue_item_as_sent(): void
     {
-        $user = User::create([
-            'name' => 'Joao Silva',
-            'email' => 'joao@example.com',
-            'password' => bcrypt('password'),
+        $item = WhatsAppQueueItem::create([
+            'type' => WhatsAppQueueItem::TYPE_ORDER_PLACED,
+            'entity_type' => 'order',
+            'entity_id' => 99,
+            'recipient_name' => 'Joao Silva',
             'phone' => '351911928481',
-            'role' => 'cliente',
-            'active' => true,
-        ]);
-
-        $store = Store::create([
-            'name' => 'Loja Centro',
-            'address' => 'Rua A, 1',
-            'city' => 'Lisboa',
-            'latitude' => 38.7223,
-            'longitude' => -9.1393,
-            'phone' => '210000000',
-            'type' => 'principal',
-            'is_active' => true,
-            'accepts_orders' => true,
-            'default_store' => true,
-            'pickup_weekly_schedule' => null,
-            'pickup_date_exceptions' => null,
-        ]);
-
-        $order = Order::create([
-            'user_id' => $user->id,
-            'store_id' => $store->id,
-            'status' => 'placed',
-            'scheduled_at' => Carbon::create(2026, 1, 15, 12, 30, 0, 'UTC'),
-            'total' => 12.5,
-            'notes' => null,
-        ]);
-
-        OrderItem::create([
-            'order_id' => $order->id,
-            'product_id' => null,
-            'variant_id' => null,
-            'name_snapshot' => 'Coxinha',
-            'price_snapshot' => 2.50,
-            'quantity' => 3,
-            'options' => ['flavors' => [1, 2]],
-            'total' => 7.50,
-        ]);
-
-        OrderItem::create([
-            'order_id' => $order->id,
-            'product_id' => null,
-            'variant_id' => null,
-            'name_snapshot' => 'Pastel',
-            'price_snapshot' => 5.00,
-            'quantity' => 1,
-            'options' => null,
-            'total' => 5.00,
+            'message' => "Nome: Joao Silva\nTel: 351911928481\nData/Hora: 15/01/2026 12:30\nPedido:\n3x Coxinha",
+            'status' => WhatsAppQueueItem::STATUS_QUEUED,
+            'queued_at' => now(),
         ]);
 
         $whatsAppClient = Mockery::mock(WhatsAppClient::class);
         $whatsAppClient->shouldReceive('sendMessage')
             ->once()
-            ->with(
-                '351911928481',
-                "Nome: Joao Silva\n"
-                    . "Tel: 351911928481\n"
-                    . "Data/Hora: 15/01/2026 12:30\n"
-                    . "Pedido:\n"
-                    . "3x Coxinha (sabores: 1, 2)\n"
-                    . "1x Pastel"
-            )
+            ->with('351911928481', $item->message)
             ->andReturn(true);
+        $whatsAppClient->shouldReceive('lastError')->andReturnNull();
 
-        $settings = Mockery::mock(SettingService::class);
-        $settings->shouldReceive('get')
-            ->with('order_timezone', Mockery::any())
-            ->andReturn('UTC');
-        $settings->shouldReceive('get')
-            ->with('ORDER_TIMEZONE', Mockery::any())
-            ->andReturn('UTC');
+        $job = new SendOrderPlacedWhatsAppJob($item->id);
 
-        $job = new SendOrderPlacedWhatsAppJob($order->id);
         $this->app->instance(WhatsAppClient::class, $whatsAppClient);
-        $this->app->instance(SettingService::class, $settings);
 
         $this->app->call([$job, 'handle']);
+
+        $item->refresh();
+
+        $this->assertSame(WhatsAppQueueItem::STATUS_SENT, $item->status);
+        $this->assertNotNull($item->sent_at);
+    }
+
+    public function test_it_marks_the_queue_item_as_failed_when_sending_fails(): void
+    {
+        $item = WhatsAppQueueItem::create([
+            'type' => WhatsAppQueueItem::TYPE_ORDER_PLACED,
+            'entity_type' => 'order',
+            'entity_id' => 100,
+            'recipient_name' => 'Joao Silva',
+            'phone' => '351911928481',
+            'message' => 'Mensagem de teste',
+            'status' => WhatsAppQueueItem::STATUS_QUEUED,
+            'queued_at' => now(),
+        ]);
+
+        $whatsAppClient = Mockery::mock(WhatsAppClient::class);
+        $whatsAppClient->shouldReceive('sendMessage')
+            ->once()
+            ->andReturn(false);
+        $whatsAppClient->shouldReceive('lastError')
+            ->andReturn('HTTP 401: Unauthorized');
+
+        $job = new SendOrderPlacedWhatsAppJob($item->id);
+        $this->app->instance(WhatsAppClient::class, $whatsAppClient);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('HTTP 401: Unauthorized');
+
+        try {
+            $this->app->call([$job, 'handle']);
+        } finally {
+            $item->refresh();
+            $this->assertSame(WhatsAppQueueItem::STATUS_FAILED, $item->status);
+            $this->assertSame('HTTP 401: Unauthorized', $item->last_error);
+        }
     }
 }

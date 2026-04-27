@@ -5,10 +5,12 @@ namespace App\Services;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\ProductVariant;
+use App\Models\WhatsAppQueueItem;
 use App\Models\User;
 use App\Jobs\SendOrderPlacedWhatsAppJob;
 use App\Repositories\OrderRepository;
 use App\Repositories\ProductRepository;
+use App\Services\Notifications\WhatsAppMessageFormatter;
 use Carbon\Carbon;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection;
@@ -40,6 +42,8 @@ class OrderService
         protected ProductRepository $products,
         protected SettingService $settings,
         protected StoreService $stores,
+        protected WhatsAppMessageFormatter $messages,
+        protected WhatsAppQueueService $whatsAppQueue,
     ) {}
 
     public function orderSettings(): array
@@ -123,9 +127,27 @@ class OrderService
             $lineItems
         );
 
-        SendOrderPlacedWhatsAppJob::dispatch($order->id)
-            ->onQueue('notifications')
-            ->afterCommit();
+        if ($user->phone) {
+            $message = $this->messages->orderPlacedSnapshot(
+                (string) $user->name,
+                (string) $user->phone,
+                $scheduled->copy()->timezone($orderSettings['timezone']),
+                $lineItems
+            );
+
+            $queueItem = $this->whatsAppQueue->enqueue([
+                'type' => WhatsAppQueueItem::TYPE_ORDER_PLACED,
+                'entity_type' => 'order',
+                'entity_id' => $order->id,
+                'recipient_name' => $user->name,
+                'phone' => $user->phone,
+                'message' => $message,
+            ]);
+
+            SendOrderPlacedWhatsAppJob::dispatch($queueItem->id)
+                ->onQueue('notifications')
+                ->afterCommit();
+        }
 
         return $order;
     }

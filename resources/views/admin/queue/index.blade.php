@@ -7,6 +7,7 @@
   $tabs = [
     'clientes' => ['label' => 'Clientes', 'count' => $stats['missing_users']],
     'cupons' => ['label' => 'Cupons Vendus', 'count' => $stats['coupon_imports_pending'] + $stats['coupon_imports_failed']],
+    'whatsapp' => ['label' => 'WhatsApp', 'count' => $stats['whatsapp_open']],
     'jobs' => ['label' => 'Tasks ativas', 'count' => $stats['queued_tasks']],
     'falhas' => ['label' => 'Tasks com falha', 'count' => $stats['failed_tasks']],
   ];
@@ -41,6 +42,14 @@
       <div class="card">
         <div style="font-size:0.85rem; text-transform:uppercase; letter-spacing:0.08em; color:#9ca3af;">Falhas de fila</div>
         <div style="font-size:2rem; font-weight:700; margin-top:8px;">{{ $stats['failed_tasks'] }}</div>
+      </div>
+      <div class="card">
+        <div style="font-size:0.85rem; text-transform:uppercase; letter-spacing:0.08em; color:#9ca3af;">WhatsApp em aberto</div>
+        <div style="font-size:2rem; font-weight:700; margin-top:8px;">{{ $stats['whatsapp_open'] }}</div>
+      </div>
+      <div class="card">
+        <div style="font-size:0.85rem; text-transform:uppercase; letter-spacing:0.08em; color:#9ca3af;">WhatsApp com erro</div>
+        <div style="font-size:2rem; font-weight:700; margin-top:8px;">{{ $stats['whatsapp_failed'] }}</div>
       </div>
     </div>
 
@@ -281,6 +290,132 @@
         </div>
         <div style="margin-top:18px;">
           {{ $couponImports->appends(array_merge(request()->except('coupons_page'), ['tab' => 'cupons']))->links() }}
+        </div>
+      @elseif ($activeTab === 'whatsapp')
+        <h3 style="margin:0 0 16px; font-size:1.2rem;">Fila WhatsApp</h3>
+        <form method="GET" action="{{ route('admin.queue.index') }}" class="filter-grid" style="align-items:end;">
+          <input type="hidden" name="tab" value="whatsapp">
+          <div class="form-group">
+            <label for="whatsapp_type">Tipo</label>
+            <select id="whatsapp_type" name="whatsapp_type">
+              <option value="">Todos</option>
+              @foreach ($whatsappTypeOptions as $type => $label)
+                <option value="{{ $type }}" @selected($whatsappFilters['type'] === $type)>{{ $label }}</option>
+              @endforeach
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="whatsapp_status">Status</label>
+            <select id="whatsapp_status" name="whatsapp_status">
+              <option value="">Todos exceto baixa manual</option>
+              @foreach ($whatsappStatusOptions as $status => $label)
+                <option value="{{ $status }}" @selected($whatsappFilters['status'] === $status)>{{ $label }}</option>
+              @endforeach
+            </select>
+          </div>
+          <div class="form-group" style="flex-direction:row; gap:10px;">
+            <button class="btn btn-primary" type="submit">Filtrar</button>
+            <a class="btn btn-secondary" href="{{ route('admin.queue.index', ['tab' => 'whatsapp']) }}">Limpar</a>
+          </div>
+        </form>
+        <div class="responsive-table-wrap">
+        <table class="responsive-table">
+          <thead>
+            <tr>
+              <th>Tipo</th>
+              <th>Destino</th>
+              <th>Mensagem</th>
+              <th>Status</th>
+              <th>Erro</th>
+              <th>Enfileirada em</th>
+              <th style="width:230px;">Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            @forelse ($whatsappItems as $item)
+              <tr>
+                <td>
+                  <span class="stack-table-label">Tipo</span>
+                  <strong>{{ $whatsappTypeOptions[$item->type] ?? $item->type }}</strong><br>
+                  <span style="color:#6b7280;">#{{ $item->id }}</span>
+                </td>
+                <td>
+                  <span class="stack-table-label">Destino</span>
+                  @if ($item->entity_type === 'order')
+                    <a href="{{ route('admin.orders.show', $item->entity_id) }}">Pedido #{{ $item->entity_id }}</a>
+                  @elseif ($item->entity_type === 'user')
+                    <a href="{{ route('admin.users.show', $item->entity_id) }}">Cliente #{{ $item->entity_id }}</a>
+                  @else
+                    {{ $item->entity_type ?: '—' }} #{{ $item->entity_id ?: '—' }}
+                  @endif
+                  <div style="color:#6b7280;">{{ $item->recipient_name ?: '—' }}</div>
+                  <div style="color:#6b7280;">{{ $item->phone }}</div>
+                </td>
+                <td style="max-width:420px;">
+                  <span class="stack-table-label">Mensagem</span>
+                  <code style="white-space:normal; word-break:break-word;">{{ \Illuminate\Support\Str::limit($item->message, 240) }}</code>
+                </td>
+                <td>
+                  <span class="stack-table-label">Status</span>
+                  @if ($item->status === 'sent')
+                    <span class="badge badge-success">Enviado</span>
+                  @elseif ($item->status === 'failed')
+                    <span class="badge" style="background:rgba(239,68,68,0.15); color:#991b1b;">Erro</span>
+                  @elseif ($item->status === 'manually_closed')
+                    <span class="badge badge-muted">Baixa manual</span>
+                  @elseif ($item->status === 'processing')
+                    <span class="badge" style="background:rgba(245,158,11,0.15); color:#92400e;">Processando</span>
+                  @else
+                    <span class="badge badge-muted">Enfileirado</span>
+                  @endif
+                  <div style="margin-top:4px; color:#6b7280;">Tentativas: {{ (int) $item->attempts }}</div>
+                </td>
+                <td style="max-width:420px;">
+                  <span class="stack-table-label">Erro</span>
+                  @if ($item->last_error)
+                    <code style="white-space:normal; word-break:break-word; color:#991b1b;">{{ $item->last_error }}</code>
+                  @elseif ($item->manual_note)
+                    <span style="color:#6b7280;">{{ $item->manual_note }}</span>
+                  @else
+                    —
+                  @endif
+                </td>
+                <td>
+                  <span class="stack-table-label">Enfileirada em</span>
+                  {{ $item->queued_at?->format('d/m/Y H:i') ?? '—' }}
+                  <div style="color:#6b7280;">Processada: {{ $item->started_at?->format('d/m/Y H:i') ?? '—' }}</div>
+                </td>
+                <td>
+                  <span class="stack-table-label">Ações</span>
+                  <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                    @if ($item->status === 'failed')
+                      <form method="POST" action="{{ route('admin.queue.whatsapp.retry', $item) }}">
+                        @csrf
+                        <button class="btn btn-primary" type="submit">Reenfileirar</button>
+                      </form>
+                    @endif
+                    @if (!in_array($item->status, ['sent', 'manually_closed'], true))
+                      <form method="POST" action="{{ route('admin.queue.whatsapp.close', $item) }}" onsubmit="return confirm('Dar baixa manual nesta mensagem WhatsApp?');">
+                        @csrf
+                        <input type="hidden" name="manual_note" value="Baixa manual pelo painel administrativo.">
+                        <button class="btn btn-secondary" type="submit">Baixa manual</button>
+                      </form>
+                    @endif
+                  </div>
+                </td>
+              </tr>
+            @empty
+              <tr>
+                <td colspan="7" style="text-align:center; padding:32px 0; color:#6b7280;">
+                  Nenhuma mensagem WhatsApp na fila.
+                </td>
+              </tr>
+            @endforelse
+          </tbody>
+        </table>
+        </div>
+        <div style="margin-top:18px;">
+          {{ $whatsappItems->appends(array_merge(request()->except('whatsapp_page'), ['tab' => 'whatsapp']))->links() }}
         </div>
       @elseif ($activeTab === 'jobs')
         <h3 style="margin:0 0 16px; font-size:1.2rem;">Tasks ERP ativas</h3>

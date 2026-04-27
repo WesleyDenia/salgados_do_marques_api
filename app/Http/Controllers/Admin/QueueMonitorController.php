@@ -4,17 +4,23 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\CloseCouponImportRequest;
+use App\Http\Requests\Admin\CloseWhatsAppQueueItemRequest;
 use App\Http\Requests\Admin\UpdateErpSyncTaskStatusRequest;
 use App\Jobs\CreateVendusDiscountCardJob;
+use App\Jobs\SendOrderPlacedWhatsAppJob;
+use App\Jobs\SendWhatsAppOtpJob;
 use App\Jobs\ProcessVendusDiscountCardImportJob;
 use App\Jobs\SyncCustomerToErpJob;
 use App\Models\ErpSyncTask;
 use App\Models\UserCoupon;
 use App\Models\User;
+use App\Models\WhatsAppQueueItem;
 use App\Models\VendusDiscountCardImport;
 use App\Repositories\ErpSyncTaskRepository;
+use App\Repositories\WhatsAppQueueItemRepository;
 use App\Repositories\UserCouponRepository;
 use App\Services\ErpSyncTaskService;
+use App\Services\WhatsAppQueueService;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 
@@ -24,6 +30,8 @@ class QueueMonitorController extends Controller
         protected ErpSyncTaskRepository $tasks,
         protected ErpSyncTaskService $taskService,
         protected UserCouponRepository $userCoupons,
+        protected WhatsAppQueueItemRepository $whatsAppQueueItems,
+        protected WhatsAppQueueService $whatsAppQueue,
     ) {
     }
 
@@ -38,10 +46,26 @@ class QueueMonitorController extends Controller
 
         $queuedTaskStatuses = [ErpSyncTask::STATUS_PENDING, ErpSyncTask::STATUS_QUEUED, ErpSyncTask::STATUS_PROCESSING];
         $failedTaskStatuses = [ErpSyncTask::STATUS_FAILED, ErpSyncTask::STATUS_MANUAL_REVIEW];
+        $whatsappStatusOptions = [
+            WhatsAppQueueItem::STATUS_QUEUED => 'Enfileirado',
+            WhatsAppQueueItem::STATUS_PROCESSING => 'Processando',
+            WhatsAppQueueItem::STATUS_SENT => 'Enviado',
+            WhatsAppQueueItem::STATUS_FAILED => 'Erro',
+            WhatsAppQueueItem::STATUS_MANUALLY_CLOSED => 'Baixa manual',
+        ];
+        $whatsappTypeOptions = [
+            WhatsAppQueueItem::TYPE_OTP => 'OTP',
+            WhatsAppQueueItem::TYPE_ORDER_PLACED => 'Pedido',
+        ];
 
         $couponFilters = [
             'code' => trim((string) $request->query('coupon_code', '')),
             'status' => (string) $request->query('coupon_status', ''),
+        ];
+
+        $whatsappFilters = [
+            'type' => (string) $request->query('whatsapp_type', ''),
+            'status' => (string) $request->query('whatsapp_status', ''),
         ];
 
         $couponStatusOptions = [
@@ -57,6 +81,14 @@ class QueueMonitorController extends Controller
             $couponFilters['status'] = '';
         }
 
+        if (!array_key_exists($whatsappFilters['status'], $whatsappStatusOptions)) {
+            $whatsappFilters['status'] = '';
+        }
+
+        if (!array_key_exists($whatsappFilters['type'], $whatsappTypeOptions)) {
+            $whatsappFilters['type'] = '';
+        }
+
         $couponImportsQuery = VendusDiscountCardImport::query()
             ->with(['userCoupon.user', 'matchedUserCoupon.user'])
             ->when($couponFilters['code'] !== '', function ($query) use ($couponFilters) {
@@ -70,6 +102,19 @@ class QueueMonitorController extends Controller
             ->orderByDesc('downloaded_at')
             ->orderByDesc('created_at');
 
+        $whatsappStatuses = $whatsappFilters['status'] !== ''
+            ? [$whatsappFilters['status']]
+            : null;
+        $whatsappTypes = $whatsappFilters['type'] !== ''
+            ? [$whatsappFilters['type']]
+            : null;
+
+        $whatsappItemsQuery = $this->whatsAppQueueItems->queryForAdmin($whatsappStatuses, $whatsappTypes);
+
+        if ($whatsappFilters['status'] === '') {
+            $whatsappItemsQuery->where('status', '!=', WhatsAppQueueItem::STATUS_MANUALLY_CLOSED);
+        }
+
         return view('admin.queue.index', [
             'stats' => [
                 'missing_users' => (clone $missingUsersQuery)->count(),
@@ -82,6 +127,14 @@ class QueueMonitorController extends Controller
                     VendusDiscountCardImport::STATUS_QUEUED,
                     VendusDiscountCardImport::STATUS_PROCESSING,
                 ])->count(),
+                'whatsapp_open' => WhatsAppQueueItem::whereIn('status', [
+                    WhatsAppQueueItem::STATUS_QUEUED,
+                    WhatsAppQueueItem::STATUS_PROCESSING,
+                    WhatsAppQueueItem::STATUS_FAILED,
+                ])->count(),
+                'whatsapp_failed' => WhatsAppQueueItem::where('status', WhatsAppQueueItem::STATUS_FAILED)->count(),
+                'whatsapp_sent' => WhatsAppQueueItem::where('status', WhatsAppQueueItem::STATUS_SENT)->count(),
+                'whatsapp_manual_closed' => WhatsAppQueueItem::where('status', WhatsAppQueueItem::STATUS_MANUALLY_CLOSED)->count(),
             ],
             'missingUsers' => $missingUsersQuery
                 ->paginate(15, ['*'], 'users_page')
@@ -97,6 +150,12 @@ class QueueMonitorController extends Controller
                 ->withQueryString(),
             'couponFilters' => $couponFilters,
             'couponStatusOptions' => $couponStatusOptions,
+            'whatsappItems' => $whatsappItemsQuery
+                ->paginate(15, ['*'], 'whatsapp_page')
+                ->withQueryString(),
+            'whatsappFilters' => $whatsappFilters,
+            'whatsappStatusOptions' => $whatsappStatusOptions,
+            'whatsappTypeOptions' => $whatsappTypeOptions,
         ]);
     }
 
@@ -243,5 +302,43 @@ class QueueMonitorController extends Controller
         ])->save();
 
         return back()->with('status', "Baixa manual aplicada ao cupom Vendus #{$import->id}.");
+    }
+
+    public function retryWhatsAppMessage(WhatsAppQueueItem $item): RedirectResponse
+    {
+        if ($item->status !== WhatsAppQueueItem::STATUS_FAILED) {
+            return back()->with('status', 'Apenas mensagens com erro podem ser reenfileiradas.');
+        }
+
+        if (!in_array($item->type, [WhatsAppQueueItem::TYPE_OTP, WhatsAppQueueItem::TYPE_ORDER_PLACED], true)) {
+            return back()->with('status', 'Este tipo de mensagem WhatsApp ainda não suporta reprocessamento.');
+        }
+
+        $this->whatsAppQueue->markQueued($item);
+
+        if ($item->type === WhatsAppQueueItem::TYPE_OTP) {
+            SendWhatsAppOtpJob::dispatch($item->id)->onQueue('notifications');
+        } elseif ($item->type === WhatsAppQueueItem::TYPE_ORDER_PLACED) {
+            SendOrderPlacedWhatsAppJob::dispatch($item->id)->onQueue('notifications');
+        }
+
+        return back()->with('status', "Mensagem WhatsApp #{$item->id} reenfileirada.");
+    }
+
+    public function closeWhatsAppMessage(CloseWhatsAppQueueItemRequest $request, WhatsAppQueueItem $item): RedirectResponse
+    {
+        if ($item->status === WhatsAppQueueItem::STATUS_SENT) {
+            return back()->with('status', 'Mensagens já enviadas não podem ser baixadas manualmente.');
+        }
+
+        $data = $request->validated();
+
+        $this->whatsAppQueue->markManuallyClosed(
+            $item,
+            $data['manual_note'] ?? 'Baixa manual aplicada no painel administrativo.',
+            $request->user()?->id
+        );
+
+        return back()->with('status', "Baixa manual aplicada à mensagem WhatsApp #{$item->id}.");
     }
 }

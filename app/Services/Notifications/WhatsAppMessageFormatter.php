@@ -11,7 +11,17 @@ class WhatsAppMessageFormatter
     {
         $scheduledAt = Carbon::parse($order->scheduled_at, 'UTC')->timezone($timezone);
 
-        $items = $order->items->map(function ($item): string {
+        return $this->orderPlacedSnapshot(
+            (string) ($order->user?->name ?? '-'),
+            (string) ($order->user?->phone ?? '-'),
+            $scheduledAt,
+            $order->items
+        );
+    }
+
+    public function orderPlacedSnapshot(string $name, string $phone, Carbon $scheduledAt, iterable $items): string
+    {
+        $lines = collect($items)->map(function ($item): string {
             $line = sprintf('%dx %s', (int) $item->quantity, (string) $item->name_snapshot);
 
             if (filled($item->options['flavors'] ?? null)) {
@@ -22,11 +32,11 @@ class WhatsAppMessageFormatter
         })->implode("\n");
 
         return implode("\n", [
-            'Nome: ' . ($order->user?->name ?? '-'),
-            'Tel: ' . ($order->user?->phone ?? '-'),
+            'Nome: ' . $name,
+            'Tel: ' . $phone,
             'Data/Hora: ' . $scheduledAt->format('d/m/Y H:i'),
             'Pedido:',
-            $items !== '' ? $items : '-',
+            $lines !== '' ? $lines : '-',
         ]);
     }
 

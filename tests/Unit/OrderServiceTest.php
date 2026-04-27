@@ -3,12 +3,15 @@
 namespace Tests\Unit;
 
 use App\Models\Order;
+use App\Models\WhatsAppQueueItem;
 use App\Repositories\OrderRepository;
 use App\Repositories\ProductRepository;
 use App\Jobs\SendOrderPlacedWhatsAppJob;
 use App\Services\OrderService;
+use App\Services\Notifications\WhatsAppMessageFormatter;
 use App\Services\SettingService;
 use App\Services\StoreService;
+use App\Services\WhatsAppQueueService;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Validation\ValidationException;
 use Mockery;
@@ -23,6 +26,8 @@ class OrderServiceTest extends TestCase
             Mockery::mock(ProductRepository::class),
             Mockery::mock(SettingService::class),
             Mockery::mock(StoreService::class),
+            Mockery::mock(WhatsAppMessageFormatter::class),
+            Mockery::mock(WhatsAppQueueService::class),
         );
     }
 
@@ -77,7 +82,14 @@ class OrderServiceTest extends TestCase
         $settings->shouldReceive('get')->once()->with('ORDER_TIMEZONE', 'UTC')->andReturn('Europe/Madrid');
         $settings->shouldReceive('get')->once()->with('ORDER_SCHEDULING_WINDOW_DAYS', 15)->andReturn('30');
 
-        $service = new OrderService($repository, $products, $settings, $stores);
+        $service = new OrderService(
+            $repository,
+            $products,
+            $settings,
+            $stores,
+            Mockery::mock(WhatsAppMessageFormatter::class),
+            Mockery::mock(WhatsAppQueueService::class),
+        );
 
         $this->assertSame([
             'start_time' => '12:30',
@@ -97,12 +109,16 @@ class OrderServiceTest extends TestCase
         $products = Mockery::mock(ProductRepository::class);
         $settings = Mockery::mock(SettingService::class);
         $stores = Mockery::mock(StoreService::class);
+        $messages = Mockery::mock(WhatsAppMessageFormatter::class);
+        $queue = Mockery::mock(WhatsAppQueueService::class);
 
         $service = Mockery::mock(OrderService::class, [
             $repository,
             $products,
             $settings,
             $stores,
+            $messages,
+            $queue,
         ])->makePartial();
 
         $service->shouldReceive('orderSettings')->andReturn([
@@ -118,6 +134,7 @@ class OrderServiceTest extends TestCase
         $user->id = 10;
         $user->name = 'Joao';
         $user->email = 'joao@example.com';
+        $user->phone = '351911928481';
         $store = new \App\Models\Store(['id' => 20, 'name' => 'Loja', 'accepts_orders' => true]);
         $product = new \App\Models\Product(['id' => 30, 'name' => 'Coxinha', 'price' => 2.50]);
         $product->setRelation('allowedFlavors', new \Illuminate\Database\Eloquent\Collection());
@@ -139,6 +156,17 @@ class OrderServiceTest extends TestCase
             ->once()
             ->andReturn($createdOrder);
 
+        $messages->shouldReceive('orderPlacedSnapshot')
+            ->once()
+            ->andReturn("Nome: Joao\nTel: 351911928481\nData/Hora: 15/01/2026 12:30\nPedido:\n2x Coxinha");
+
+        $queueItem = new WhatsAppQueueItem(['id' => 555]);
+        $queueItem->id = 555;
+
+        $queue->shouldReceive('enqueue')
+            ->once()
+            ->andReturn($queueItem);
+
         $service->createForUser($user, [
             'store_id' => 20,
             'scheduled_at' => '2026-01-15 12:30:00',
@@ -150,6 +178,6 @@ class OrderServiceTest extends TestCase
             ],
         ]);
 
-        Queue::assertPushed(SendOrderPlacedWhatsAppJob::class, fn (SendOrderPlacedWhatsAppJob $job) => $job->orderId === 99);
+        Queue::assertPushed(SendOrderPlacedWhatsAppJob::class, fn (SendOrderPlacedWhatsAppJob $job) => $job->queueItemId === 555);
     }
 }

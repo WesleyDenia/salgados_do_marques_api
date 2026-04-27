@@ -5,6 +5,7 @@ namespace Tests\Unit;
 use App\Jobs\SendResetLinkJob;
 use App\Jobs\SendWhatsAppOtpJob;
 use App\Models\PasswordReset;
+use App\Models\WhatsAppQueueItem;
 use App\Models\User;
 use App\Services\PasswordResetService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -20,7 +21,7 @@ class PasswordResetServiceTest extends TestCase
     {
         Queue::fake();
 
-        User::factory()->create([
+        $user = User::factory()->create([
             'email' => 'cliente@example.com',
             'phone' => '912345678',
         ]);
@@ -51,7 +52,7 @@ class PasswordResetServiceTest extends TestCase
     {
         Queue::fake();
 
-        User::factory()->create([
+        $user = User::factory()->create([
             'email' => 'cliente@example.com',
             'phone' => '912345678',
         ]);
@@ -76,6 +77,14 @@ class PasswordResetServiceTest extends TestCase
 
         Queue::assertPushedOn('notifications', SendWhatsAppOtpJob::class);
         Queue::assertPushed(SendWhatsAppOtpJob::class, 1);
+
+        $this->assertDatabaseHas('whatsapp_queue_items', [
+            'type' => WhatsAppQueueItem::TYPE_OTP,
+            'entity_type' => 'user',
+            'entity_id' => $user->id,
+            'phone' => '912345678',
+            'status' => WhatsAppQueueItem::STATUS_QUEUED,
+        ]);
     }
 
     public function test_verify_otp_updates_password_and_clears_resets(): void

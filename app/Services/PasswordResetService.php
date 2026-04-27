@@ -6,12 +6,20 @@ use App\Jobs\SendResetLinkJob;
 use App\Jobs\SendWhatsAppOtpJob;
 use App\Models\PasswordReset;
 use App\Models\User;
+use App\Models\WhatsAppQueueItem;
+use App\Services\Notifications\WhatsAppMessageFormatter;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 
 class PasswordResetService
 {
+    public function __construct(
+        protected WhatsAppMessageFormatter $messages,
+        protected WhatsAppQueueService $whatsAppQueue,
+    ) {
+    }
+
     public function forgot(array $data): array
     {
         $method = $data['method'];
@@ -36,7 +44,17 @@ class PasswordResetService
             ]);
 
             if ($method === 'whatsapp') {
-                SendWhatsAppOtpJob::dispatch($identifier, $plainToken)->onQueue('notifications');
+                $message = $this->messages->otp($plainToken);
+                $queueItem = $this->whatsAppQueue->enqueue([
+                    'type' => WhatsAppQueueItem::TYPE_OTP,
+                    'entity_type' => 'user',
+                    'entity_id' => $user->id,
+                    'recipient_name' => $user->name,
+                    'phone' => $identifier,
+                    'message' => $message,
+                ]);
+
+                SendWhatsAppOtpJob::dispatch($queueItem->id)->onQueue('notifications');
             } else {
                 dispatch(new SendResetLinkJob($identifier, $plainToken));
             }

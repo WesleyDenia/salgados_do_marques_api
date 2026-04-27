@@ -3,15 +3,13 @@
 namespace App\Jobs;
 
 use App\Contracts\Notifications\WhatsAppClient;
-use App\Models\Order;
-use App\Services\SettingService;
-use App\Services\Notifications\WhatsAppMessageFormatter;
+use App\Models\WhatsAppQueueItem;
+use App\Services\WhatsAppQueueService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Log;
 use RuntimeException;
 
 class SendOrderPlacedWhatsAppJob implements ShouldQueue
@@ -25,7 +23,7 @@ class SendOrderPlacedWhatsAppJob implements ShouldQueue
 
     public int $timeout = 30;
 
-    public function __construct(public int $orderId)
+    public function __construct(public int $queueItemId)
     {
     }
 
@@ -34,43 +32,25 @@ class SendOrderPlacedWhatsAppJob implements ShouldQueue
         return [30, 120, 300];
     }
 
-    public function handle(
-        WhatsAppClient $whatsAppClient,
-        SettingService $settings,
-        WhatsAppMessageFormatter $messages
-    ): void
+    public function handle(WhatsAppClient $whatsAppClient, WhatsAppQueueService $queue): void
     {
-        $order = Order::query()
-            ->with(['items', 'user'])
-            ->find($this->orderId);
+        $item = WhatsAppQueueItem::query()->find($this->queueItemId);
 
-        if (!$order) {
+        if (!$item || $item->status === WhatsAppQueueItem::STATUS_MANUALLY_CLOSED || $item->status === WhatsAppQueueItem::STATUS_SENT) {
             return;
         }
 
-        $phone = (string) ($order->user?->phone ?? '');
+        $queue->markProcessing($item);
+        $sent = $whatsAppClient->sendMessage((string) $item->phone, (string) $item->message);
 
-        if ($phone === '') {
-            Log::warning('[SendOrderPlacedWhatsAppJob] Pedido sem telefone do cliente', [
-                'order_id' => $order->id,
-            ]);
-
+        if ($sent) {
+            $queue->markSent($item);
             return;
         }
 
-        $message = $messages->orderPlaced($order, $this->resolveTimezone($settings));
-        $sent = $whatsAppClient->sendMessage($phone, $message);
+        $error = $whatsAppClient->lastError() ?: 'Nao foi possivel enviar a mensagem do pedido.';
+        $queue->markFailed($item, $error);
 
-        if (!$sent) {
-            throw new RuntimeException('Nao foi possivel enviar a mensagem do pedido.');
-        }
-    }
-
-    protected function resolveTimezone(SettingService $settings): string
-    {
-        return (string) $settings->get(
-            'ORDER_TIMEZONE',
-            $settings->get('order_timezone', config('app.timezone', 'Europe/Lisbon'))
-        );
+        throw new RuntimeException($error);
     }
 }

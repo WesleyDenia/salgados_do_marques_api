@@ -5,9 +5,11 @@ namespace Tests\Unit;
 use App\Models\Order;
 use App\Repositories\OrderRepository;
 use App\Repositories\ProductRepository;
+use App\Jobs\SendOrderPlacedWhatsAppJob;
 use App\Services\OrderService;
 use App\Services\SettingService;
 use App\Services\StoreService;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Validation\ValidationException;
 use Mockery;
 use Tests\TestCase;
@@ -85,5 +87,69 @@ class OrderServiceTest extends TestCase
             'timezone' => 'Europe/Madrid',
             'scheduling_window_days' => 30,
         ], $service->orderSettings());
+    }
+
+    public function test_it_dispatches_whatsapp_notification_after_creating_order(): void
+    {
+        Queue::fake();
+
+        $repository = Mockery::mock(OrderRepository::class);
+        $products = Mockery::mock(ProductRepository::class);
+        $settings = Mockery::mock(SettingService::class);
+        $stores = Mockery::mock(StoreService::class);
+
+        $service = Mockery::mock(OrderService::class, [
+            $repository,
+            $products,
+            $settings,
+            $stores,
+        ])->makePartial();
+
+        $service->shouldReceive('orderSettings')->andReturn([
+            'start_time' => '12:00',
+            'end_time' => '20:00',
+            'minimum_minutes' => 30,
+            'cancel_minutes' => 60,
+            'timezone' => 'UTC',
+            'scheduling_window_days' => 15,
+        ]);
+
+        $user = new \App\Models\User();
+        $user->id = 10;
+        $user->name = 'Joao';
+        $user->email = 'joao@example.com';
+        $store = new \App\Models\Store(['id' => 20, 'name' => 'Loja', 'accepts_orders' => true]);
+        $product = new \App\Models\Product(['id' => 30, 'name' => 'Coxinha', 'price' => 2.50]);
+        $product->setRelation('allowedFlavors', new \Illuminate\Database\Eloquent\Collection());
+        $stores->shouldReceive('findById')->once()->with(20)->andReturn($store);
+        $stores->shouldReceive('validateScheduledPickup')
+            ->once()
+            ->with($store, Mockery::type(\Carbon\Carbon::class), Mockery::type('array'));
+        $products->shouldReceive('findActiveForOrder')
+            ->once()
+            ->andReturn(new \Illuminate\Database\Eloquent\Collection([30 => $product]));
+        $products->shouldReceive('findActiveVariantsForOrder')
+            ->once()
+            ->andReturn(new \Illuminate\Database\Eloquent\Collection());
+
+        $createdOrder = new Order();
+        $createdOrder->id = 99;
+
+        $repository->shouldReceive('createWithItems')
+            ->once()
+            ->andReturn($createdOrder);
+
+        $service->createForUser($user, [
+            'store_id' => 20,
+            'scheduled_at' => '2026-01-15 12:30:00',
+            'items' => [
+                [
+                    'product_id' => 30,
+                    'quantity' => 2,
+                ],
+            ],
+        ]);
+
+        Queue::assertPushed(SendOrderPlacedWhatsAppJob::class, fn (SendOrderPlacedWhatsAppJob $job) => $job->orderId === 99);
     }
 }

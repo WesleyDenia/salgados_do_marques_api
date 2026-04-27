@@ -16,18 +16,18 @@ services:
     secrets:
       - db_password
       - mail_password
-      - vendus_api_key
-      - wapify_key
+      - vendus_api_key      
       - google_api_key
+      - whatsapp_token
     environment:
       APP_ENV: production
       APP_DEBUG: "false"
       APP_URL: https://api.salgadosdomarques.pt
       DB_PASSWORD_FILE: /run/secrets/db_password
       MAIL_PASSWORD_FILE: /run/secrets/mail_password
-      VENDUS_API_KEY_FILE: /run/secrets/vendus_api_key
-      WAPIFY_API_KEY_FILE: /run/secrets/wapify_key
+      VENDUS_API_KEY_FILE: /run/secrets/vendus_api_key      
       GOOGLE_API_KEY_FILE: /run/secrets/google_api_key
+      WHATSAPP_TOKEN: /run/secrets/whatsapp_token
     networks:
       - backend
 
@@ -53,11 +53,11 @@ secrets:
   mail_password:
     file: ./docker/secrets/mail_password.txt
   vendus_api_key:
-    file: ./docker/secrets/vendus_api_key.txt
-  wapify_key:
-    file: ./docker/secrets/wapify_key.txt
+    file: ./docker/secrets/vendus_api_key.txt  
   google_api_key:
     file: ./docker/secrets/google_api_key.txt
+  whatsapp_token:
+    file: ./docker/secrets/whatsapp_token.txt
 
 networks:
   backend:

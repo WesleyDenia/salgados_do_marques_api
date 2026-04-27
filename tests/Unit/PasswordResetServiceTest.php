@@ -74,6 +74,7 @@ class PasswordResetServiceTest extends TestCase
         $this->assertSame('whatsapp', $reset->method);
         $this->assertSame('912345678', $reset->phone);
 
+        Queue::assertPushedOn('notifications', SendWhatsAppOtpJob::class);
         Queue::assertPushed(SendWhatsAppOtpJob::class, 1);
     }
 

@@ -147,6 +147,7 @@ class AuthPasswordResetFeatureTest extends TestCase
             'identifier' => '912345678',
         ])->assertStatus(429);
 
+        Queue::assertPushedOn('notifications', SendWhatsAppOtpJob::class);
         Queue::assertPushed(SendWhatsAppOtpJob::class, 3);
     }
 

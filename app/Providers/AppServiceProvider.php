@@ -4,8 +4,8 @@ namespace App\Providers;
 
 use App\Contracts\Notifications\WhatsAppClient;
 use App\Models\User;
-use App\Services\Notifications\WapifyWhatsAppClient;
 use App\Services\PasswordResetService;
+use App\Services\Notifications\SalgadosWhatsAppClient;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\Paginator;
@@ -20,7 +20,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        $this->app->bind(WhatsAppClient::class, WapifyWhatsAppClient::class);
+        $this->app->bind(WhatsAppClient::class, SalgadosWhatsAppClient::class);
     }
 
     /**

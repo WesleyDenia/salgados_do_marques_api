@@ -6,6 +6,7 @@ use App\Models\Order;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\User;
+use App\Jobs\SendOrderPlacedWhatsAppJob;
 use App\Repositories\OrderRepository;
 use App\Repositories\ProductRepository;
 use Carbon\Carbon;
@@ -114,13 +115,19 @@ class OrderService
 
         $lineItems = $this->buildOrderLineItems($items, $products, $variants);
 
-        return $this->repository->createWithItems(
+        $order = $this->repository->createWithItems(
             $user->id,
             (int) $data['store_id'],
             $scheduled->copy()->timezone('UTC'),
             $data['notes'] ?? null,
             $lineItems
         );
+
+        SendOrderPlacedWhatsAppJob::dispatch($order->id)
+            ->onQueue('notifications')
+            ->afterCommit();
+
+        return $order;
     }
 
     public function availabilityDates(array $data): array

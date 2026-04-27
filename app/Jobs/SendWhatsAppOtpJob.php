@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Contracts\Notifications\WhatsAppClient;
+use App\Services\Notifications\WhatsAppMessageFormatter;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -20,18 +21,13 @@ class SendWhatsAppOtpJob implements ShouldQueue
     {
     }
 
-    public function handle(WhatsAppClient $whatsAppClient): void
+    public function handle(WhatsAppClient $whatsAppClient, WhatsAppMessageFormatter $messages): void
     {
-        $message = sprintf(
-            'Seu código de verificação Coinxinhas - Salgados do Marquês é %s. Ele expira em 15 minutos.',
-            $this->token
-        );
+        $message = $messages->otp($this->token);
 
         $sent = $whatsAppClient->sendMessage($this->phone, $message);
-        $maskedToken = substr($this->token, 0, 2) . str_repeat('*', max(strlen($this->token) - 2, 0));
 
         if ($sent) {
-           
             return;
         }
     }

@@ -36,7 +36,7 @@ class PasswordResetService
             ]);
 
             if ($method === 'whatsapp') {
-                dispatch(new SendWhatsAppOtpJob($identifier, $plainToken));
+                SendWhatsAppOtpJob::dispatch($identifier, $plainToken)->onQueue('notifications');
             } else {
                 dispatch(new SendResetLinkJob($identifier, $plainToken));
             }

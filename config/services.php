@@ -44,6 +44,12 @@ return [
         'api_key' => env('WAPIFY_API_KEY'),
         'verify_ssl' => env('WAPIFY_VERIFY_SSL', true),
     ],
+    'whatsapp' => [
+        'base_url' => env('WHATSAPP_BASE_URL', 'http://127.0.0.1:3000'),
+        'internal_token' => env('WHATSAPP_INTERNAL_TOKEN'),
+        'verify_ssl' => env('WHATSAPP_VERIFY_SSL', true),
+        'timeout' => env('WHATSAPP_TIMEOUT', 10),
+    ],
     'google_places' => [
         'base_url' => env('GOOGLE_PLACES_BASE_URL', 'https://places.googleapis.com/v1'),
         'api_key' => env('GOOGLE_PLACES_API_KEY'),

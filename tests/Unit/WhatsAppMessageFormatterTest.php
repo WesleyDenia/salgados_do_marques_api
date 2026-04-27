@@ -60,4 +60,37 @@ class WhatsAppMessageFormatterTest extends TestCase
             $formatter->orderPlaced($order, 'UTC')
         );
     }
+
+    public function test_it_formats_order_message_from_array_items(): void
+    {
+        $formatter = new WhatsAppMessageFormatter();
+
+        $scheduledAt = Carbon::create(2026, 1, 15, 12, 30, 0, 'UTC');
+
+        $this->assertSame(
+            "Nome: Joao Silva\n"
+                . "Tel: 351911928481\n"
+                . "Data/Hora: 15/01/2026 12:30\n"
+                . "Pedido:\n"
+                . "3x Coxinha (sabores: 1, 2)\n"
+                . "1x Pastel",
+            $formatter->orderPlacedSnapshot(
+                'Joao Silva',
+                '351911928481',
+                $scheduledAt,
+                [
+                    [
+                        'quantity' => 3,
+                        'name_snapshot' => 'Coxinha',
+                        'options' => ['flavors' => [1, 2]],
+                    ],
+                    [
+                        'quantity' => 1,
+                        'name_snapshot' => 'Pastel',
+                        'options' => null,
+                    ],
+                ]
+            )
+        );
+    }
 }

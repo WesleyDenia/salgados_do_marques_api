@@ -16,6 +16,7 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Collection as SupportCollection;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Facades\Log;
 
 class OrderService
 {
@@ -128,25 +129,33 @@ class OrderService
         );
 
         if ($user->phone) {
-            $message = $this->messages->orderPlacedSnapshot(
-                (string) $user->name,
-                (string) $user->phone,
-                $scheduled->copy()->timezone($orderSettings['timezone']),
-                $lineItems
-            );
+            try {
+                $message = $this->messages->orderPlacedSnapshot(
+                    (string) $user->name,
+                    (string) $user->phone,
+                    $scheduled->copy()->timezone($orderSettings['timezone']),
+                    $lineItems
+                );
 
-            $queueItem = $this->whatsAppQueue->enqueue([
-                'type' => WhatsAppQueueItem::TYPE_ORDER_PLACED,
-                'entity_type' => 'order',
-                'entity_id' => $order->id,
-                'recipient_name' => $user->name,
-                'phone' => $user->phone,
-                'message' => $message,
-            ]);
+                $queueItem = $this->whatsAppQueue->enqueue([
+                    'type' => WhatsAppQueueItem::TYPE_ORDER_PLACED,
+                    'entity_type' => 'order',
+                    'entity_id' => $order->id,
+                    'recipient_name' => $user->name,
+                    'phone' => $user->phone,
+                    'message' => $message,
+                ]);
 
-            SendOrderPlacedWhatsAppJob::dispatch($queueItem->id)
-                ->onQueue('notifications')
-                ->afterCommit();
+                SendOrderPlacedWhatsAppJob::dispatch($queueItem->id)
+                    ->onQueue('notifications')
+                    ->afterCommit();
+            } catch (\Throwable $exception) {
+                Log::warning('[OrderService] Falha ao enfileirar WhatsApp do pedido', [
+                    'order_id' => $order->id,
+                    'user_id' => $user->id,
+                    'message' => $exception->getMessage(),
+                ]);
+            }
         }
 
         return $order;

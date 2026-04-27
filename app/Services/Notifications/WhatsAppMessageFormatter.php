@@ -4,6 +4,7 @@ namespace App\Services\Notifications;
 
 use App\Models\Order;
 use Carbon\Carbon;
+use Illuminate\Support\Arr;
 
 class WhatsAppMessageFormatter
 {
@@ -22,10 +23,15 @@ class WhatsAppMessageFormatter
     public function orderPlacedSnapshot(string $name, string $phone, Carbon $scheduledAt, iterable $items): string
     {
         $lines = collect($items)->map(function ($item): string {
-            $line = sprintf('%dx %s', (int) $item->quantity, (string) $item->name_snapshot);
+            $quantity = (int) data_get($item, 'quantity', 0);
+            $nameSnapshot = (string) data_get($item, 'name_snapshot', '-');
+            $options = data_get($item, 'options', []);
+            $flavors = Arr::get($options, 'flavors', []);
 
-            if (filled($item->options['flavors'] ?? null)) {
-                $line .= sprintf(' (sabores: %s)', implode(', ', array_map('strval', $item->options['flavors'])));
+            $line = sprintf('%dx %s', $quantity, $nameSnapshot);
+
+            if (filled($flavors)) {
+                $line .= sprintf(' (sabores: %s)', implode(', ', array_map('strval', (array) $flavors)));
             }
 
             return $line;

@@ -4,7 +4,6 @@ namespace App\Services\Notifications;
 
 use App\Models\Order;
 use Carbon\Carbon;
-use Illuminate\Support\Arr;
 
 class WhatsAppMessageFormatter
 {
@@ -20,21 +19,34 @@ class WhatsAppMessageFormatter
         );
     }
 
-    public function orderPlacedSnapshot(string $name, string $phone, Carbon $scheduledAt, iterable $items): string
+    public function orderPlacedSnapshot(
+        string $name,
+        string $phone,
+        Carbon $scheduledAt,
+        iterable $items,
+        array $flavorNamesById = []
+    ): string
     {
-        $lines = collect($items)->map(function ($item): string {
+        $lines = collect($items)->flatMap(function ($item) use ($flavorNamesById): array {
             $quantity = (int) data_get($item, 'quantity', 0);
             $nameSnapshot = (string) data_get($item, 'name_snapshot', '-');
             $options = data_get($item, 'options', []);
-            $flavors = Arr::get($options, 'flavors', []);
+            $flavors = collect(data_get($options, 'flavors', []))
+                ->map(fn ($flavorId) => (int) $flavorId)
+                ->filter(fn (int $flavorId) => $flavorId > 0)
+                ->values();
 
-            $line = sprintf('%dx %s', $quantity, $nameSnapshot);
+            $lines = [
+                sprintf('%dx %s', $quantity, $nameSnapshot),
+            ];
 
-            if (filled($flavors)) {
-                $line .= sprintf(' (sabores: %s)', implode(', ', array_map('strval', (array) $flavors)));
+            if ($flavors->isNotEmpty()) {
+                foreach ($flavors as $flavorId) {
+                    $lines[] = ' - ' . ($flavorNamesById[$flavorId] ?? ('Sabor #' . $flavorId));
+                }
             }
 
-            return $line;
+            return $lines;
         })->implode("\n");
 
         return implode("\n", [

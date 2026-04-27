@@ -86,6 +86,11 @@ class OrderService
         return $this->repository->findForUser($order);
     }
 
+    public function whatsappOrderRecipient(): string
+    {
+        return trim((string) $this->settings->get('WHATSAPP_ORDER_TO', ''));
+    }
+
     public function createForUser(User $user, array $data): Order
     {
         $orderSettings = $this->orderSettings();
@@ -130,11 +135,14 @@ class OrderService
 
         if ($user->phone) {
             try {
+                $recipient = $this->whatsappOrderRecipient();
+                $flavorNamesById = $this->buildFlavorNamesById($products);
                 $message = $this->messages->orderPlacedSnapshot(
                     (string) $user->name,
                     (string) $user->phone,
                     $scheduled->copy()->timezone($orderSettings['timezone']),
-                    $lineItems
+                    $lineItems,
+                    $flavorNamesById
                 );
 
                 $queueItem = $this->whatsAppQueue->enqueue([
@@ -142,13 +150,17 @@ class OrderService
                     'entity_type' => 'order',
                     'entity_id' => $order->id,
                     'recipient_name' => $user->name,
-                    'phone' => $user->phone,
+                    'phone' => $recipient,
                     'message' => $message,
                 ]);
 
-                SendOrderPlacedWhatsAppJob::dispatch($queueItem->id)
-                    ->onQueue('notifications')
-                    ->afterCommit();
+                if ($recipient === '') {
+                    $this->whatsAppQueue->markFailed($queueItem, 'WHATSAPP_ORDER_TO não configurado.');
+                } else {
+                    SendOrderPlacedWhatsAppJob::dispatch($queueItem->id)
+                        ->onQueue('notifications')
+                        ->afterCommit();
+                }
             } catch (\Throwable $exception) {
                 Log::warning('[OrderService] Falha ao enfileirar WhatsApp do pedido', [
                     'order_id' => $order->id,
@@ -395,5 +407,16 @@ class OrderService
                 'total' => $lineTotal,
             ];
         })->all();
+    }
+
+    /**
+     * @param Collection<int, Product> $products
+     * @return array<int, string>
+     */
+    protected function buildFlavorNamesById(Collection $products): array
+    {
+        return $products
+            ->flatMap(fn (Product $product) => $product->allowedFlavors->pluck('name', 'id')->all())
+            ->all();
     }
 }

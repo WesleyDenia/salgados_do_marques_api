@@ -55,9 +55,20 @@ class WhatsAppMessageFormatterTest extends TestCase
                 . "Tel: 351911928481\n"
                 . "Data/Hora: 15/01/2026 12:30\n"
                 . "Pedido:\n"
-                . "3x Coxinha (sabores: 1, 2)\n"
+                . "3x Coxinha\n"
+                . " - Pack Mix\n"
+                . " - Pack Doce\n"
                 . "1x Pastel",
-            $formatter->orderPlaced($order, 'UTC')
+            $formatter->orderPlacedSnapshot(
+                'Joao Silva',
+                '351911928481',
+                Carbon::create(2026, 1, 15, 12, 30, 0, 'UTC'),
+                $order->items,
+                [
+                    1 => 'Pack Mix',
+                    2 => 'Pack Doce',
+                ]
+            )
         );
     }
 
@@ -72,7 +83,9 @@ class WhatsAppMessageFormatterTest extends TestCase
                 . "Tel: 351911928481\n"
                 . "Data/Hora: 15/01/2026 12:30\n"
                 . "Pedido:\n"
-                . "3x Coxinha (sabores: 1, 2)\n"
+                . "3x Coxinha\n"
+                . " - Pack Mix\n"
+                . " - Pack Doce\n"
                 . "1x Pastel",
             $formatter->orderPlacedSnapshot(
                 'Joao Silva',
@@ -89,6 +102,10 @@ class WhatsAppMessageFormatterTest extends TestCase
                         'name_snapshot' => 'Pastel',
                         'options' => null,
                     ],
+                ],
+                [
+                    1 => 'Pack Mix',
+                    2 => 'Pack Doce',
                 ]
             )
         );

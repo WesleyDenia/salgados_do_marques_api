@@ -40,6 +40,13 @@ class SendOrderPlacedWhatsAppJob implements ShouldQueue
             return;
         }
 
+        if (trim((string) $item->phone) === '') {
+            $error = 'WHATSAPP_ORDER_TO não configurado.';
+            $queue->markFailed($item, $error);
+
+            throw new RuntimeException($error);
+        }
+
         $queue->markProcessing($item);
         $sent = $whatsAppClient->sendMessage((string) $item->phone, (string) $item->message);
 

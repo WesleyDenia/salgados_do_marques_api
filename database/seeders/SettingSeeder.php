@@ -63,6 +63,12 @@ class SettingSeeder extends Seeder
                 'type' => 'integer',
                 'editable' => true,
             ],
+            [
+                'key' => 'WHATSAPP_ORDER_TO',
+                'value' => '',
+                'type' => 'string',
+                'editable' => true,
+            ],
         ];
 
         foreach ($defaults as $setting) {

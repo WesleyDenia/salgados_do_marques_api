@@ -129,6 +129,7 @@ class OrderServiceTest extends TestCase
             'timezone' => 'UTC',
             'scheduling_window_days' => 15,
         ]);
+        $settings->shouldReceive('get')->once()->with('WHATSAPP_ORDER_TO', '')->andReturn('+351123456789');
 
         $user = new \App\Models\User();
         $user->id = 10;
@@ -158,6 +159,13 @@ class OrderServiceTest extends TestCase
 
         $messages->shouldReceive('orderPlacedSnapshot')
             ->once()
+            ->with(
+                'Joao',
+                '351911928481',
+                Mockery::type(\Carbon\Carbon::class),
+                Mockery::type('array'),
+                Mockery::type('array')
+            )
             ->andReturn("Nome: Joao\nTel: 351911928481\nData/Hora: 15/01/2026 12:30\nPedido:\n2x Coxinha");
 
         $queueItem = new WhatsAppQueueItem(['id' => 555]);
@@ -165,6 +173,10 @@ class OrderServiceTest extends TestCase
 
         $queue->shouldReceive('enqueue')
             ->once()
+            ->with(Mockery::on(function (array $payload): bool {
+                return ($payload['phone'] ?? null) === '+351123456789'
+                    && ($payload['type'] ?? null) === \App\Models\WhatsAppQueueItem::TYPE_ORDER_PLACED;
+            }))
             ->andReturn($queueItem);
 
         $service->createForUser($user, [

@@ -252,7 +252,10 @@ class OrderService
 
     public function paginateForAdmin(array $filters, int $perPage = 20): LengthAwarePaginator
     {
-        return $this->repository->paginateForAdmin($filters, $perPage);
+        return $this->repository->paginateForAdmin(
+            $this->normalizeAdminFilters($filters),
+            $perPage
+        );
     }
 
     public function findForAdmin(Order $order): Order
@@ -336,6 +339,25 @@ class OrderService
         }
 
         return $store;
+    }
+
+    /**
+     * @param array<string, mixed> $filters
+     * @return array<string, mixed>
+     */
+    protected function normalizeAdminFilters(array $filters): array
+    {
+        $timezone = $this->orderSettings()['timezone'];
+
+        foreach (['scheduled_from', 'scheduled_to'] as $key) {
+            if (empty($filters[$key])) {
+                continue;
+            }
+
+            $filters[$key] = Carbon::parse((string) $filters[$key], $timezone)->timezone('UTC');
+        }
+
+        return $filters;
     }
 
     /**

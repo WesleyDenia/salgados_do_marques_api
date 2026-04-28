@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
@@ -38,5 +40,24 @@ class Order extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function scheduledAtForDisplay(string $timezone = 'Europe/Lisbon'): ?CarbonInterface
+    {
+        $rawScheduledAt = $this->getRawOriginal('scheduled_at');
+
+        if ($rawScheduledAt === null || $rawScheduledAt === '') {
+            return $this->scheduled_at?->copy()->timezone($timezone);
+        }
+
+        if ($rawScheduledAt instanceof CarbonInterface) {
+            return $rawScheduledAt->copy()->timezone($timezone);
+        }
+
+        if (!is_string($rawScheduledAt)) {
+            return null;
+        }
+
+        return Carbon::parse($rawScheduledAt, 'UTC')->timezone($timezone);
     }
 }

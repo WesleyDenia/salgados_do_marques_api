@@ -25,7 +25,7 @@ class OrderController extends Controller
             'status' => ['nullable', Rule::in($statusKeys)],
             'store_id' => ['nullable', 'integer', 'exists:stores,id'],
             'scheduled_from' => ['nullable', 'date'],
-            'scheduled_to' => ['nullable', 'date', 'after_or_equal:scheduled_from'],
+            'scheduled_to' => ['nullable', 'date'],
         ]);
 
         return view('admin.orders.index', [

@@ -97,7 +97,7 @@
               </td>
               <td>
                 <span class="stack-table-label">Retirada</span>
-                {{ $order->scheduled_at?->format('d/m/Y H:i') ?? '—' }}
+                {{ $order->scheduledAtForDisplay()?->format('d/m/Y H:i') ?? '—' }}
               </td>
               <td>
                 <span class="stack-table-label">Total</span>

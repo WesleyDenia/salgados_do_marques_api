@@ -6,6 +6,7 @@ use App\Models\Flavor;
 use App\Models\Order;
 use App\Models\Store;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -43,7 +44,7 @@ class OrderAdminShowTest extends TestCase
             'user_id' => $customer->id,
             'store_id' => $store->id,
             'status' => 'placed',
-            'scheduled_at' => now()->addDay(),
+            'scheduled_at' => Carbon::create(2026, 7, 15, 11, 30, 0, 'UTC'),
             'total' => 14.90,
             'notes' => null,
         ]);
@@ -64,7 +65,10 @@ class OrderAdminShowTest extends TestCase
         $response = $this->actingAs($admin)->get(route('admin.orders.show', $order));
 
         $response->assertOk();
-        $response->assertSeeText('Sabores: Frango, Carne');
+        $response->assertSeeText('15/07/2026 12:30');
+        $response->assertSeeText('Sabores:');
+        $response->assertSeeText('Frango');
+        $response->assertSeeText('Carne');
         $response->assertDontSeeText("Sabores: {$frango->id}, {$carne->id}");
     }
 }

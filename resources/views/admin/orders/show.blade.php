@@ -169,7 +169,7 @@
         </div>
         <div class="detail-meta-card">
           <div class="detail-meta-label">Retirada</div>
-          <div class="detail-meta-value">{{ $order->scheduled_at?->format('d/m/Y H:i') ?? '—' }}</div>
+          <div class="detail-meta-value">{{ $order->scheduledAtForDisplay()?->format('d/m/Y H:i') ?? '—' }}</div>
         </div>
         <div class="detail-meta-card">
           <div class="detail-meta-label">Total</div>

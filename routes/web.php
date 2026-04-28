@@ -17,6 +17,7 @@ use App\Http\Controllers\Admin\FlavorController;
 use App\Http\Controllers\Admin\HomeComponentController;
 use App\Http\Controllers\Admin\AppTesterController as AdminAppTesterController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
+use App\Http\Controllers\Admin\WhatsAppController as AdminWhatsAppController;
 use App\Http\Controllers\Admin\QueueMonitorController;
 
 Route::get('/', function () {
@@ -57,6 +58,7 @@ Route::middleware(['auth', 'can:manage'])
         Route::resource('stores', StoreController::class)->except('show');
         Route::resource('settings', AdminSettingController::class)->only(['index', 'create', 'store', 'edit', 'update']);
         Route::get('app-testers', [AdminAppTesterController::class, 'index'])->name('app-testers.index');
+        Route::get('whatsapp', [AdminWhatsAppController::class, 'index'])->name('whatsapp.index');
         Route::get('queue', [QueueMonitorController::class, 'index'])->name('queue.index');
         Route::post('queue/users/{user}/sync', [QueueMonitorController::class, 'enqueueUser'])->name('queue.users.sync');
         Route::post('queue/coupon-imports/{import}/retry', [QueueMonitorController::class, 'retryCouponImport'])->name('queue.coupon-imports.retry');

@@ -8,6 +8,7 @@
     $snapshot = $session['session'] ?? [];
     $status = (string) ($snapshot['status'] ?? ($isReady ? 'ready' : 'offline'));
     $qrDataUrl = (string) ($snapshot['qrDataUrl'] ?? '');
+    $qrGeneratedAt = $snapshot['qrGeneratedAt'] ?? null;
   @endphp
 
   <div style="display:grid; gap:24px;">
@@ -60,7 +61,7 @@
       <div class="card">
         <div style="font-size:0.85rem; text-transform:uppercase; letter-spacing:0.08em; color:#9ca3af;">Último QR</div>
         <div style="font-size:1.2rem; font-weight:700; margin-top:8px;">
-          {{ $snapshot['qrGeneratedAt'] ? \Carbon\Carbon::parse($snapshot['qrGeneratedAt'])->format('d/m/Y H:i') : '—' }}
+          {{ $qrGeneratedAt ? \Carbon\Carbon::parse($qrGeneratedAt)->format('d/m/Y H:i') : '—' }}
         </div>
       </div>
     </div>

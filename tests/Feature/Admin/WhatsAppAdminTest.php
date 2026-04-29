@@ -49,6 +49,37 @@ class WhatsAppAdminTest extends TestCase
         $response->assertSeeText('Health Check');
     }
 
+    public function test_admin_whatsapp_page_renders_without_qr_generated_at(): void
+    {
+        config()->set('services.whatsapp.base_url', 'http://salgados-whatsapp:3000');
+        config()->set('services.whatsapp.internal_token', 'token-interno');
+
+        $this->app->instance(OrderService::class, Mockery::mock(OrderService::class));
+
+        Http::fake([
+            'http://salgados-whatsapp:3000/session' => Http::response([
+                'ok' => true,
+                'whatsappReady' => false,
+                'session' => [
+                    'status' => 'offline',
+                    'ready' => false,
+                    'initialized' => false,
+                    'hasQr' => false,
+                    'qrDataUrl' => '',
+                    'lastError' => null,
+                ],
+            ], 200),
+        ]);
+
+        $admin = User::factory()->create(['role' => 'admin']);
+
+        $response = $this->actingAs($admin)->get(route('admin.whatsapp.index'));
+
+        $response->assertOk();
+        $response->assertSeeText('Último QR');
+        $response->assertSeeText('—');
+    }
+
     public function test_admin_whatsapp_health_check_sends_conectado_message(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);

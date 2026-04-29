@@ -19,7 +19,13 @@
             Estado da sessão do serviço Node e QR code para autenticação sem acesso direto ao terminal do servidor.
           </p>
         </div>
-        <a class="btn btn-secondary" href="{{ route('admin.whatsapp.index') }}">Atualizar</a>
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+          <form method="POST" action="{{ route('admin.whatsapp.health-check') }}">
+            @csrf
+            <button class="btn btn-primary" type="submit">Health Check</button>
+          </form>
+          <a class="btn btn-secondary" href="{{ route('admin.whatsapp.index') }}">Atualizar</a>
+        </div>
       </div>
     </div>
 
@@ -67,7 +73,7 @@
             Se o serviço estiver sem sessão ativa, escaneie este QR com o WhatsApp principal. A imagem vem do container Node e é proxada pelo backend.
           </p>
         </div>
-        <a class="btn btn-primary" href="{{ route('admin.queue.index', ['tab' => 'whatsapp']) }}">Ver fila WhatsApp</a>
+        <a class="btn btn-primary" href="{{ route('admin.queue.index', ['tab' => 'whatsapp-enviados']) }}">Ver fila WhatsApp</a>
       </div>
 
       @if ($qrDataUrl !== '' && !$isReady)

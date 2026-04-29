@@ -1,13 +1,14 @@
 @extends('admin.layout')
 
-@section('title', 'Fila ERP')
+@section('title', 'Fila ERP e WhatsApp')
 
 @php
-  $activeTab = request('tab', 'clientes');
+  $activeTab = $activeTab ?? request('tab', 'clientes');
   $tabs = [
     'clientes' => ['label' => 'Clientes', 'count' => $stats['missing_users']],
     'cupons' => ['label' => 'Cupons Vendus', 'count' => $stats['coupon_imports_pending'] + $stats['coupon_imports_failed']],
-    'whatsapp' => ['label' => 'WhatsApp', 'count' => $stats['whatsapp_open']],
+    'whatsapp-enviados' => ['label' => 'Whats Enviados', 'count' => $stats['whatsapp_sent_open']],
+    'whatsapp-recebidos' => ['label' => 'Whats Recebidos', 'count' => $stats['whatsapp_received_open']],
     'jobs' => ['label' => 'Tasks ativas', 'count' => $stats['queued_tasks']],
     'falhas' => ['label' => 'Tasks com falha', 'count' => $stats['failed_tasks']],
   ];
@@ -20,7 +21,7 @@
         <div>
           <h2 style="margin:0; font-size:1.5rem;">Fila de sincronização ERP</h2>
           <p style="margin:8px 0 0; color:#6b7280; max-width:860px;">
-            Gestão centralizada de sincronizações Vendus, incluindo clientes, cupons, jobs pendentes e falhas.
+            Gestão centralizada de sincronizações Vendus e mensagens WhatsApp, incluindo clientes, cupons, jobs pendentes e falhas.
           </p>
         </div>
       </div>
@@ -44,12 +45,12 @@
         <div style="font-size:2rem; font-weight:700; margin-top:8px;">{{ $stats['failed_tasks'] }}</div>
       </div>
       <div class="card">
-        <div style="font-size:0.85rem; text-transform:uppercase; letter-spacing:0.08em; color:#9ca3af;">WhatsApp em aberto</div>
-        <div style="font-size:2rem; font-weight:700; margin-top:8px;">{{ $stats['whatsapp_open'] }}</div>
+        <div style="font-size:0.85rem; text-transform:uppercase; letter-spacing:0.08em; color:#9ca3af;">Whats enviados em aberto</div>
+        <div style="font-size:2rem; font-weight:700; margin-top:8px;">{{ $stats['whatsapp_sent_open'] }}</div>
       </div>
       <div class="card">
-        <div style="font-size:0.85rem; text-transform:uppercase; letter-spacing:0.08em; color:#9ca3af;">WhatsApp com erro</div>
-        <div style="font-size:2rem; font-weight:700; margin-top:8px;">{{ $stats['whatsapp_failed'] }}</div>
+        <div style="font-size:0.85rem; text-transform:uppercase; letter-spacing:0.08em; color:#9ca3af;">Whats recebidos em aberto</div>
+        <div style="font-size:2rem; font-weight:700; margin-top:8px;">{{ $stats['whatsapp_received_open'] }}</div>
       </div>
     </div>
 
@@ -291,31 +292,34 @@
         <div style="margin-top:18px;">
           {{ $couponImports->appends(array_merge(request()->except('coupons_page'), ['tab' => 'cupons']))->links() }}
         </div>
-      @elseif ($activeTab === 'whatsapp')
-        <h3 style="margin:0 0 16px; font-size:1.2rem;">Fila WhatsApp</h3>
+      @elseif ($activeTab === 'whatsapp-enviados')
+        <h3 style="margin:0 0 16px; font-size:1.2rem;">WhatsApp Enviados</h3>
+        <p style="margin:-6px 0 16px; color:#6b7280;">
+          Mensagens de saída continuam a seguir o fluxo atual de reprocessamento.
+        </p>
         <form method="GET" action="{{ route('admin.queue.index') }}" class="filter-grid" style="align-items:end;">
-          <input type="hidden" name="tab" value="whatsapp">
+          <input type="hidden" name="tab" value="whatsapp-enviados">
           <div class="form-group">
-            <label for="whatsapp_type">Tipo</label>
-            <select id="whatsapp_type" name="whatsapp_type">
+            <label for="whatsapp_sent_type">Tipo</label>
+            <select id="whatsapp_sent_type" name="whatsapp_sent_type">
               <option value="">Todos</option>
-              @foreach ($whatsappTypeOptions as $type => $label)
-                <option value="{{ $type }}" @selected($whatsappFilters['type'] === $type)>{{ $label }}</option>
+              @foreach ($whatsappSentTypeOptions as $type => $label)
+                <option value="{{ $type }}" @selected($whatsappSentFilters['type'] === $type)>{{ $label }}</option>
               @endforeach
             </select>
           </div>
           <div class="form-group">
-            <label for="whatsapp_status">Status</label>
-            <select id="whatsapp_status" name="whatsapp_status">
+            <label for="whatsapp_sent_status">Status</label>
+            <select id="whatsapp_sent_status" name="whatsapp_sent_status">
               <option value="">Todos exceto baixa manual</option>
               @foreach ($whatsappStatusOptions as $status => $label)
-                <option value="{{ $status }}" @selected($whatsappFilters['status'] === $status)>{{ $label }}</option>
+                <option value="{{ $status }}" @selected($whatsappSentFilters['status'] === $status)>{{ $label }}</option>
               @endforeach
             </select>
           </div>
           <div class="form-group" style="flex-direction:row; gap:10px;">
             <button class="btn btn-primary" type="submit">Filtrar</button>
-            <a class="btn btn-secondary" href="{{ route('admin.queue.index', ['tab' => 'whatsapp']) }}">Limpar</a>
+            <a class="btn btn-secondary" href="{{ route('admin.queue.index', ['tab' => 'whatsapp-enviados']) }}">Limpar</a>
           </div>
         </form>
         <div class="responsive-table-wrap">
@@ -332,11 +336,11 @@
             </tr>
           </thead>
           <tbody>
-            @forelse ($whatsappItems as $item)
+            @forelse ($whatsappSentItems as $item)
               <tr>
                 <td>
                   <span class="stack-table-label">Tipo</span>
-                  <strong>{{ $whatsappTypeOptions[$item->type] ?? $item->type }}</strong><br>
+                  <strong>{{ $whatsappSentTypeOptions[$item->type] ?? $item->type }}</strong><br>
                   <span style="color:#6b7280;">#{{ $item->id }}</span>
                 </td>
                 <td>
@@ -407,7 +411,7 @@
             @empty
               <tr>
                 <td colspan="7" style="text-align:center; padding:32px 0; color:#6b7280;">
-                  Nenhuma mensagem WhatsApp na fila.
+                  Nenhuma mensagem WhatsApp enviada.
                 </td>
               </tr>
             @endforelse
@@ -415,7 +419,107 @@
         </table>
         </div>
         <div style="margin-top:18px;">
-          {{ $whatsappItems->appends(array_merge(request()->except('whatsapp_page'), ['tab' => 'whatsapp']))->links() }}
+          {{ $whatsappSentItems->appends(array_merge(request()->except('whatsapp_sent_page'), ['tab' => 'whatsapp-enviados']))->links() }}
+        </div>
+      @elseif ($activeTab === 'whatsapp-recebidos')
+        <h3 style="margin:0 0 16px; font-size:1.2rem;">WhatsApp Recebidos</h3>
+        <p style="margin:-6px 0 16px; color:#6b7280;">
+          Mensagens recebidas entram enfileiradas para análise posterior.
+        </p>
+        <form method="GET" action="{{ route('admin.queue.index') }}" class="filter-grid" style="align-items:end;">
+          <input type="hidden" name="tab" value="whatsapp-recebidos">
+          <div class="form-group">
+            <label for="whatsapp_received_status">Status</label>
+            <select id="whatsapp_received_status" name="whatsapp_received_status">
+              <option value="">Todos exceto baixa manual</option>
+              @foreach ($whatsappReceivedStatusOptions as $status => $label)
+                <option value="{{ $status }}" @selected($whatsappReceivedFilters['status'] === $status)>{{ $label }}</option>
+              @endforeach
+            </select>
+          </div>
+          <div class="form-group" style="flex-direction:row; gap:10px;">
+            <button class="btn btn-primary" type="submit">Filtrar</button>
+            <a class="btn btn-secondary" href="{{ route('admin.queue.index', ['tab' => 'whatsapp-recebidos']) }}">Limpar</a>
+          </div>
+        </form>
+        <div class="responsive-table-wrap">
+        <table class="responsive-table">
+          <thead>
+            <tr>
+              <th>Remetente</th>
+              <th>Mensagem</th>
+              <th>Status</th>
+              <th>Detalhes</th>
+              <th>Recebida em</th>
+              <th style="width:230px;">Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            @forelse ($whatsappReceivedItems as $item)
+              <tr>
+                <td>
+                  <span class="stack-table-label">Remetente</span>
+                  <strong>{{ $item->recipient_name ?: 'Sem nome' }}</strong><br>
+                  <span style="color:#6b7280;">#{{ $item->id }}</span>
+                  <div style="color:#6b7280;">{{ $item->phone }}</div>
+                </td>
+                <td style="max-width:420px;">
+                  <span class="stack-table-label">Mensagem</span>
+                  <code style="white-space:normal; word-break:break-word;">{{ \Illuminate\Support\Str::limit($item->message, 240) }}</code>
+                </td>
+                <td>
+                  <span class="stack-table-label">Status</span>
+                  @if ($item->status === 'failed')
+                    <span class="badge" style="background:rgba(239,68,68,0.15); color:#991b1b;">Erro</span>
+                  @elseif ($item->status === 'manually_closed')
+                    <span class="badge badge-muted">Baixa manual</span>
+                  @elseif ($item->status === 'processing')
+                    <span class="badge" style="background:rgba(245,158,11,0.15); color:#92400e;">Processando</span>
+                  @else
+                    <span class="badge badge-muted">Enfileirado</span>
+                  @endif
+                  <div style="margin-top:4px; color:#6b7280;">Tentativas: {{ (int) $item->attempts }}</div>
+                </td>
+                <td style="max-width:420px;">
+                  <span class="stack-table-label">Detalhes</span>
+                  @if (is_array($item->payload))
+                    <div style="color:#6b7280;">Chat: {{ $item->payload['chat_id'] ?? $item->payload['from'] ?? '—' }}</div>
+                    <div style="color:#6b7280;">Mensagem ID: {{ $item->external_message_id ?: ($item->payload['message_id'] ?? '—') }}</div>
+                    <div style="color:#6b7280;">Tipo: {{ $item->payload['type'] ?? '—' }}</div>
+                  @else
+                    —
+                  @endif
+                </td>
+                <td>
+                  <span class="stack-table-label">Recebida em</span>
+                  {{ $item->received_at?->format('d/m/Y H:i') ?? $item->queued_at?->format('d/m/Y H:i') ?? '—' }}
+                  <div style="color:#6b7280;">Enfileirada: {{ $item->queued_at?->format('d/m/Y H:i') ?? '—' }}</div>
+                </td>
+                <td>
+                  <span class="stack-table-label">Ações</span>
+                  <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                    @if (!in_array($item->status, ['sent', 'manually_closed'], true))
+                      <form method="POST" action="{{ route('admin.queue.whatsapp.close', $item) }}" onsubmit="return confirm('Dar baixa manual nesta mensagem recebida?');">
+                        @csrf
+                        <input type="hidden" name="manual_note" value="Baixa manual pelo painel administrativo.">
+                        <button class="btn btn-secondary" type="submit">Baixa manual</button>
+                      </form>
+                    @endif
+                  </div>
+                </td>
+              </tr>
+            @empty
+              <tr>
+                <td colspan="6" style="text-align:center; padding:32px 0; color:#6b7280;">
+                  Nenhuma mensagem WhatsApp recebida.
+                </td>
+              </tr>
+            @endforelse
+          </tbody>
+        </table>
+        </div>
+        <div style="margin-top:18px;">
+          {{ $whatsappReceivedItems->appends(array_merge(request()->except('whatsapp_received_page'), ['tab' => 'whatsapp-recebidos']))->links() }}
         </div>
       @elseif ($activeTab === 'jobs')
         <h3 style="margin:0 0 16px; font-size:1.2rem;">Tasks ERP ativas</h3>

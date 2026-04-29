@@ -9,8 +9,12 @@ class WhatsAppQueueItem extends Model
 {
     protected $table = 'whatsapp_queue_items';
 
+    public const TYPE_RECEIVED = 'received';
     public const TYPE_OTP = 'otp';
     public const TYPE_ORDER_PLACED = 'order_placed';
+
+    public const DIRECTION_OUTBOUND = 'outbound';
+    public const DIRECTION_INBOUND = 'inbound';
 
     public const STATUS_QUEUED = 'queued';
     public const STATUS_PROCESSING = 'processing';
@@ -26,11 +30,14 @@ class WhatsAppQueueItem extends Model
 
     protected $fillable = [
         'type',
+        'direction',
         'entity_type',
         'entity_id',
         'recipient_name',
         'phone',
+        'external_message_id',
         'message',
+        'payload',
         'status',
         'attempts',
         'last_error',
@@ -39,6 +46,7 @@ class WhatsAppQueueItem extends Model
         'started_at',
         'finished_at',
         'sent_at',
+        'received_at',
         'manual_note',
         'manually_closed_at',
         'created_by',
@@ -47,11 +55,13 @@ class WhatsAppQueueItem extends Model
 
     protected $casts = [
         'entity_id' => 'integer',
+        'payload' => 'array',
         'attempts' => 'integer',
         'queued_at' => 'datetime',
         'started_at' => 'datetime',
         'finished_at' => 'datetime',
         'sent_at' => 'datetime',
+        'received_at' => 'datetime',
         'manually_closed_at' => 'datetime',
     ];
 

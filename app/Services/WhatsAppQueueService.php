@@ -14,10 +14,34 @@ class WhatsAppQueueService
 
     public function enqueue(array $attributes): WhatsAppQueueItem
     {
-        return WhatsAppQueueItem::create(array_merge([
+        return $this->createItem([
+            'direction' => WhatsAppQueueItem::DIRECTION_OUTBOUND,
             'status' => WhatsAppQueueItem::STATUS_QUEUED,
             'queued_at' => now(),
-        ], $this->filterNulls($attributes)));
+        ], $attributes);
+    }
+
+    public function enqueueReceived(array $attributes): WhatsAppQueueItem
+    {
+        $externalMessageId = $attributes['external_message_id'] ?? null;
+
+        if (is_string($externalMessageId) && $externalMessageId !== '') {
+            $existing = WhatsAppQueueItem::query()
+                ->where('external_message_id', $externalMessageId)
+                ->first();
+
+            if ($existing) {
+                return $existing;
+            }
+        }
+
+        return $this->createItem([
+            'type' => WhatsAppQueueItem::TYPE_RECEIVED,
+            'direction' => WhatsAppQueueItem::DIRECTION_INBOUND,
+            'status' => WhatsAppQueueItem::STATUS_QUEUED,
+            'queued_at' => now(),
+            'received_at' => now(),
+        ], $attributes);
     }
 
     public function markQueued(WhatsAppQueueItem $item): WhatsAppQueueItem
@@ -97,5 +121,13 @@ class WhatsAppQueueService
     protected function filterNulls(array $attributes): array
     {
         return array_filter($attributes, fn ($value) => $value !== null);
+    }
+
+    protected function createItem(array $defaults, array $attributes): WhatsAppQueueItem
+    {
+        return WhatsAppQueueItem::create(array_merge(
+            $defaults,
+            $this->filterNulls($attributes),
+        ));
     }
 }

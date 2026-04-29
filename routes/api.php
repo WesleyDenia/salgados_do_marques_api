@@ -26,7 +26,8 @@ use App\Http\Controllers\Api\V1\{
     OrderAdminController,
     FlavorController,
     PartnerController,
-    PartnerCampaignValidationController
+    PartnerCampaignValidationController,
+    WhatsAppWebhookController
 };
 
 Route::prefix('v1')->group(function () {
@@ -48,6 +49,7 @@ Route::prefix('v1')->group(function () {
     });
     Route::get('stores', [StoreController::class, 'index']);
     Route::get('google-reviews', [GoogleReviewsController::class, 'index']);
+    Route::post('webhooks/whatsapp/messages', [WhatsAppWebhookController::class, 'store']);
 
     Route::middleware('auth:sanctum')->group(function () {
         Route::get('orders/settings', [OrderController::class, 'settings']);

@@ -27,12 +27,13 @@ class QueueMonitorWhatsAppTest extends TestCase
         config(['view.compiled' => $compiledPath]);
     }
 
-    public function test_queue_monitor_lists_failed_whatsapp_messages_from_persisted_state(): void
+    public function test_queue_monitor_lists_failed_whatsapp_sent_messages_from_persisted_state(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);
 
         WhatsAppQueueItem::create([
             'type' => WhatsAppQueueItem::TYPE_OTP,
+            'direction' => WhatsAppQueueItem::DIRECTION_OUTBOUND,
             'entity_type' => 'user',
             'entity_id' => 10,
             'recipient_name' => 'Cliente Teste',
@@ -43,12 +44,40 @@ class QueueMonitorWhatsAppTest extends TestCase
             'finished_at' => now(),
         ]);
 
-        $response = $this->actingAs($admin)->get('/admin/queue?tab=whatsapp');
+        $response = $this->actingAs($admin)->get('/admin/queue?tab=whatsapp-enviados');
 
         $response->assertOk()
-            ->assertSee('Fila WhatsApp')
-            ->assertSee('OTP')
-            ->assertSee('HTTP 401: Unauthorized');
+            ->assertSeeText('WhatsApp Enviados')
+            ->assertSeeText('OTP')
+            ->assertSeeText('HTTP 401: Unauthorized');
+    }
+
+    public function test_queue_monitor_lists_received_whatsapp_messages_from_persisted_state(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+
+        WhatsAppQueueItem::create([
+            'type' => WhatsAppQueueItem::TYPE_RECEIVED,
+            'direction' => WhatsAppQueueItem::DIRECTION_INBOUND,
+            'recipient_name' => 'Cliente Teste',
+            'phone' => '351911928481',
+            'message' => 'Mensagem recebida',
+            'status' => WhatsAppQueueItem::STATUS_QUEUED,
+            'payload' => [
+                'message_id' => 'msg-123',
+                'chat_id' => '351911928481@c.us',
+                'type' => 'chat',
+            ],
+            'queued_at' => now(),
+            'received_at' => now(),
+        ]);
+
+        $response = $this->actingAs($admin)->get('/admin/queue?tab=whatsapp-recebidos');
+
+        $response->assertOk()
+            ->assertSeeText('WhatsApp Recebidos')
+            ->assertSeeText('Cliente Teste')
+            ->assertSeeText('Mensagem recebida');
     }
 
     public function test_retry_whatsapp_message_requeues_otp_items(): void
@@ -59,6 +88,7 @@ class QueueMonitorWhatsAppTest extends TestCase
 
         $item = WhatsAppQueueItem::create([
             'type' => WhatsAppQueueItem::TYPE_OTP,
+            'direction' => WhatsAppQueueItem::DIRECTION_OUTBOUND,
             'entity_type' => 'user',
             'entity_id' => 10,
             'recipient_name' => 'Cliente Teste',
@@ -88,6 +118,7 @@ class QueueMonitorWhatsAppTest extends TestCase
 
         $item = WhatsAppQueueItem::create([
             'type' => WhatsAppQueueItem::TYPE_ORDER_PLACED,
+            'direction' => WhatsAppQueueItem::DIRECTION_OUTBOUND,
             'entity_type' => 'order',
             'entity_id' => 99,
             'recipient_name' => 'Cliente Teste',
@@ -109,19 +140,19 @@ class QueueMonitorWhatsAppTest extends TestCase
         ]);
     }
 
-    public function test_close_whatsapp_message_marks_item_as_manual_closed(): void
+    public function test_close_whatsapp_message_marks_received_item_as_manual_closed(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);
 
         $item = WhatsAppQueueItem::create([
-            'type' => WhatsAppQueueItem::TYPE_ORDER_PLACED,
-            'entity_type' => 'order',
-            'entity_id' => 99,
+            'type' => WhatsAppQueueItem::TYPE_RECEIVED,
+            'direction' => WhatsAppQueueItem::DIRECTION_INBOUND,
             'recipient_name' => 'Cliente Teste',
             'phone' => '351911928481',
-            'message' => 'Mensagem de pedido',
+            'message' => 'Mensagem recebida',
             'status' => WhatsAppQueueItem::STATUS_QUEUED,
             'queued_at' => now(),
+            'received_at' => now(),
         ]);
 
         $response = $this->actingAs($admin)->post(route('admin.queue.whatsapp.close', $item), [

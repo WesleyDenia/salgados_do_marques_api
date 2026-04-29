@@ -37,6 +37,11 @@ class QueueMonitorController extends Controller
 
     public function index(Request $request)
     {
+        $activeTab = (string) $request->query('tab', 'clientes');
+        if ($activeTab === 'whatsapp') {
+            $activeTab = 'whatsapp-enviados';
+        }
+
         $missingUsersQuery = User::query()
             ->where(function ($query) {
                 $query->whereNull('external_id')
@@ -46,6 +51,10 @@ class QueueMonitorController extends Controller
 
         $queuedTaskStatuses = [ErpSyncTask::STATUS_PENDING, ErpSyncTask::STATUS_QUEUED, ErpSyncTask::STATUS_PROCESSING];
         $failedTaskStatuses = [ErpSyncTask::STATUS_FAILED, ErpSyncTask::STATUS_MANUAL_REVIEW];
+        $whatsappSentTypeOptions = [
+            WhatsAppQueueItem::TYPE_OTP => 'OTP',
+            WhatsAppQueueItem::TYPE_ORDER_PLACED => 'Pedido',
+        ];
         $whatsappStatusOptions = [
             WhatsAppQueueItem::STATUS_QUEUED => 'Enfileirado',
             WhatsAppQueueItem::STATUS_PROCESSING => 'Processando',
@@ -53,19 +62,21 @@ class QueueMonitorController extends Controller
             WhatsAppQueueItem::STATUS_FAILED => 'Erro',
             WhatsAppQueueItem::STATUS_MANUALLY_CLOSED => 'Baixa manual',
         ];
-        $whatsappTypeOptions = [
-            WhatsAppQueueItem::TYPE_OTP => 'OTP',
-            WhatsAppQueueItem::TYPE_ORDER_PLACED => 'Pedido',
-        ];
+        $whatsappReceivedStatusOptions = $whatsappStatusOptions;
+        unset($whatsappReceivedStatusOptions[WhatsAppQueueItem::STATUS_SENT]);
 
         $couponFilters = [
             'code' => trim((string) $request->query('coupon_code', '')),
             'status' => (string) $request->query('coupon_status', ''),
         ];
 
-        $whatsappFilters = [
-            'type' => (string) $request->query('whatsapp_type', ''),
-            'status' => (string) $request->query('whatsapp_status', ''),
+        $whatsappSentFilters = [
+            'type' => trim((string) $request->query('whatsapp_sent_type', '')),
+            'status' => (string) $request->query('whatsapp_sent_status', ''),
+        ];
+
+        $whatsappReceivedFilters = [
+            'status' => (string) $request->query('whatsapp_received_status', ''),
         ];
 
         $couponStatusOptions = [
@@ -81,12 +92,16 @@ class QueueMonitorController extends Controller
             $couponFilters['status'] = '';
         }
 
-        if (!array_key_exists($whatsappFilters['status'], $whatsappStatusOptions)) {
-            $whatsappFilters['status'] = '';
+        if (!array_key_exists($whatsappSentFilters['status'], $whatsappStatusOptions)) {
+            $whatsappSentFilters['status'] = '';
         }
 
-        if (!array_key_exists($whatsappFilters['type'], $whatsappTypeOptions)) {
-            $whatsappFilters['type'] = '';
+        if (!array_key_exists($whatsappSentFilters['type'], $whatsappSentTypeOptions)) {
+            $whatsappSentFilters['type'] = '';
+        }
+
+        if (!array_key_exists($whatsappReceivedFilters['status'], $whatsappReceivedStatusOptions)) {
+            $whatsappReceivedFilters['status'] = '';
         }
 
         $couponImportsQuery = VendusDiscountCardImport::query()
@@ -102,20 +117,38 @@ class QueueMonitorController extends Controller
             ->orderByDesc('downloaded_at')
             ->orderByDesc('created_at');
 
-        $whatsappStatuses = $whatsappFilters['status'] !== ''
-            ? [$whatsappFilters['status']]
+        $whatsappSentStatuses = $whatsappSentFilters['status'] !== ''
+            ? [$whatsappSentFilters['status']]
             : null;
-        $whatsappTypes = $whatsappFilters['type'] !== ''
-            ? [$whatsappFilters['type']]
+        $whatsappSentTypes = $whatsappSentFilters['type'] !== ''
+            ? [$whatsappSentFilters['type']]
+            : null;
+        $whatsappReceivedStatuses = $whatsappReceivedFilters['status'] !== ''
+            ? [$whatsappReceivedFilters['status']]
             : null;
 
-        $whatsappItemsQuery = $this->whatsAppQueueItems->queryForAdmin($whatsappStatuses, $whatsappTypes);
+        $whatsappSentItemsQuery = $this->whatsAppQueueItems->queryForAdmin(
+            $whatsappSentStatuses,
+            $whatsappSentTypes,
+            [WhatsAppQueueItem::DIRECTION_OUTBOUND]
+        );
 
-        if ($whatsappFilters['status'] === '') {
-            $whatsappItemsQuery->where('status', '!=', WhatsAppQueueItem::STATUS_MANUALLY_CLOSED);
+        if ($whatsappSentFilters['status'] === '') {
+            $whatsappSentItemsQuery->where('status', '!=', WhatsAppQueueItem::STATUS_MANUALLY_CLOSED);
+        }
+
+        $whatsappReceivedItemsQuery = $this->whatsAppQueueItems->queryForAdmin(
+            $whatsappReceivedStatuses,
+            [WhatsAppQueueItem::TYPE_RECEIVED],
+            [WhatsAppQueueItem::DIRECTION_INBOUND]
+        );
+
+        if ($whatsappReceivedFilters['status'] === '') {
+            $whatsappReceivedItemsQuery->where('status', '!=', WhatsAppQueueItem::STATUS_MANUALLY_CLOSED);
         }
 
         return view('admin.queue.index', [
+            'activeTab' => $activeTab,
             'stats' => [
                 'missing_users' => (clone $missingUsersQuery)->count(),
                 'sync_errors' => User::where('erp_sync_status', 'failed')->count(),
@@ -127,14 +160,22 @@ class QueueMonitorController extends Controller
                     VendusDiscountCardImport::STATUS_QUEUED,
                     VendusDiscountCardImport::STATUS_PROCESSING,
                 ])->count(),
-                'whatsapp_open' => WhatsAppQueueItem::whereIn('status', [
-                    WhatsAppQueueItem::STATUS_QUEUED,
-                    WhatsAppQueueItem::STATUS_PROCESSING,
-                    WhatsAppQueueItem::STATUS_FAILED,
-                ])->count(),
-                'whatsapp_failed' => WhatsAppQueueItem::where('status', WhatsAppQueueItem::STATUS_FAILED)->count(),
-                'whatsapp_sent' => WhatsAppQueueItem::where('status', WhatsAppQueueItem::STATUS_SENT)->count(),
-                'whatsapp_manual_closed' => WhatsAppQueueItem::where('status', WhatsAppQueueItem::STATUS_MANUALLY_CLOSED)->count(),
+                'whatsapp_sent_open' => WhatsAppQueueItem::query()
+                    ->where('direction', WhatsAppQueueItem::DIRECTION_OUTBOUND)
+                    ->whereIn('status', [
+                        WhatsAppQueueItem::STATUS_QUEUED,
+                        WhatsAppQueueItem::STATUS_PROCESSING,
+                        WhatsAppQueueItem::STATUS_FAILED,
+                    ])
+                    ->count(),
+                'whatsapp_received_open' => WhatsAppQueueItem::query()
+                    ->where('direction', WhatsAppQueueItem::DIRECTION_INBOUND)
+                    ->whereIn('status', [
+                        WhatsAppQueueItem::STATUS_QUEUED,
+                        WhatsAppQueueItem::STATUS_PROCESSING,
+                        WhatsAppQueueItem::STATUS_FAILED,
+                    ])
+                    ->count(),
             ],
             'missingUsers' => $missingUsersQuery
                 ->paginate(15, ['*'], 'users_page')
@@ -150,12 +191,17 @@ class QueueMonitorController extends Controller
                 ->withQueryString(),
             'couponFilters' => $couponFilters,
             'couponStatusOptions' => $couponStatusOptions,
-            'whatsappItems' => $whatsappItemsQuery
-                ->paginate(15, ['*'], 'whatsapp_page')
+            'whatsappSentItems' => $whatsappSentItemsQuery
+                ->paginate(15, ['*'], 'whatsapp_sent_page')
                 ->withQueryString(),
-            'whatsappFilters' => $whatsappFilters,
+            'whatsappSentFilters' => $whatsappSentFilters,
+            'whatsappSentTypeOptions' => $whatsappSentTypeOptions,
+            'whatsappReceivedItems' => $whatsappReceivedItemsQuery
+                ->paginate(15, ['*'], 'whatsapp_received_page')
+                ->withQueryString(),
+            'whatsappReceivedFilters' => $whatsappReceivedFilters,
+            'whatsappReceivedStatusOptions' => $whatsappReceivedStatusOptions,
             'whatsappStatusOptions' => $whatsappStatusOptions,
-            'whatsappTypeOptions' => $whatsappTypeOptions,
         ]);
     }
 
@@ -308,6 +354,10 @@ class QueueMonitorController extends Controller
     {
         if ($item->status !== WhatsAppQueueItem::STATUS_FAILED) {
             return back()->with('status', 'Apenas mensagens com erro podem ser reenfileiradas.');
+        }
+
+        if ($item->direction !== WhatsAppQueueItem::DIRECTION_OUTBOUND) {
+            return back()->with('status', 'Mensagens recebidas ainda não possuem reprocessamento automático.');
         }
 
         if (!in_array($item->type, [WhatsAppQueueItem::TYPE_OTP, WhatsAppQueueItem::TYPE_ORDER_PLACED], true)) {

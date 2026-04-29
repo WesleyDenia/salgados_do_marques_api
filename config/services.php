@@ -46,7 +46,7 @@ return [
     ],
     'whatsapp' => [
         'base_url' => env('WHATSAPP_BASE_URL', 'http://127.0.0.1:3000'),
-        'internal_token' => env('WHATSAPP_INTERNAL_TOKEN'),
+        'internal_token' => env('WHATSAPP_INTERNAL_TOKEN', env('WHATSAPP_TOKEN')),
         'verify_ssl' => env('WHATSAPP_VERIFY_SSL', true),
         'timeout' => env('WHATSAPP_TIMEOUT', 10),
     ],

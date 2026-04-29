@@ -13,18 +13,19 @@ class WhatsAppQueueItemRepository extends BaseRepository
         parent::__construct($model);
     }
 
-    public function queryForAdmin(?array $statuses = null, ?array $types = null): Builder
+    public function queryForAdmin(?array $statuses = null, ?array $types = null, ?array $directions = null): Builder
     {
         return $this->model
             ->newQuery()
             ->when($statuses, fn (Builder $query) => $query->whereIn('status', $statuses))
             ->when($types, fn (Builder $query) => $query->whereIn('type', $types))
+            ->when($directions, fn (Builder $query) => $query->whereIn('direction', $directions))
             ->orderByDesc('updated_at')
             ->orderByDesc('id');
     }
 
-    public function paginateForAdmin(?array $statuses = null, ?array $types = null, int $perPage = 15, string $pageName = 'whatsapp_page'): LengthAwarePaginator
+    public function paginateForAdmin(?array $statuses = null, ?array $types = null, int $perPage = 15, string $pageName = 'whatsapp_page', ?array $directions = null): LengthAwarePaginator
     {
-        return $this->queryForAdmin($statuses, $types)->paginate($perPage, ['*'], $pageName);
+        return $this->queryForAdmin($statuses, $types, $directions)->paginate($perPage, ['*'], $pageName);
     }
 }

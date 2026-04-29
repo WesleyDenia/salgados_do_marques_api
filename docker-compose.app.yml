@@ -13,6 +13,8 @@ services:
       - ./storage:/var/www/html/storage
       - ./bootstrap/cache:/var/www/html/bootstrap/cache
       - ./docker/conf/php/uploads.ini:/usr/local/etc/php/conf.d/uploads.ini
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     secrets:
       - db_password
       - mail_password
@@ -28,7 +30,7 @@ services:
       VENDUS_API_KEY_FILE: /run/secrets/vendus_api_key      
       GOOGLE_API_KEY_FILE: /run/secrets/google_api_key
       WHATSAPP_TOKEN: /run/secrets/whatsapp_token
-      WHATSAPP_BASE_URL: http://salgados-whatsapp:3000
+      WHATSAPP_BASE_URL: http://host.docker.internal:3000
     networks:
       - backend
 

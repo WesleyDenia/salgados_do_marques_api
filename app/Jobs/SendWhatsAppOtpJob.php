@@ -10,6 +10,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
 use RuntimeException;
 
 class SendWhatsAppOtpJob implements ShouldQueue
@@ -37,20 +38,43 @@ class SendWhatsAppOtpJob implements ShouldQueue
         $item = WhatsAppQueueItem::query()->find($this->queueItemId);
 
         if (!$item || $item->status === WhatsAppQueueItem::STATUS_MANUALLY_CLOSED || $item->status === WhatsAppQueueItem::STATUS_SENT) {
+            Log::info('[SendWhatsAppOtpJob] skipped', [
+                'queue_item_id' => $this->queueItemId,
+                'reason' => !$item ? 'missing_item' : $item->status,
+            ]);
+
             return;
         }
+
+        Log::info('[SendWhatsAppOtpJob] processing queued otp', [
+            'queue_item_id' => $item->id,
+            'entity_id' => $item->entity_id,
+            'phone_hash' => hash('sha256', (string) $item->phone),
+            'attempts' => $item->attempts,
+        ]);
 
         $queue->markProcessing($item);
 
         $sent = $whatsAppClient->sendMessage((string) $item->phone, (string) $item->message);
 
         if ($sent) {
+            Log::info('[SendWhatsAppOtpJob] otp sent', [
+                'queue_item_id' => $item->id,
+                'entity_id' => $item->entity_id,
+            ]);
+
             $queue->markSent($item);
             return;
         }
 
         $error = $whatsAppClient->lastError() ?: 'Nao foi possivel enviar a mensagem via WhatsApp.';
         $queue->markFailed($item, $error);
+
+        Log::warning('[SendWhatsAppOtpJob] otp send failed', [
+            'queue_item_id' => $item->id,
+            'entity_id' => $item->entity_id,
+            'error' => $error,
+        ]);
 
         throw new RuntimeException($error);
     }

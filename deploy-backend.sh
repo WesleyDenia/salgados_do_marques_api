@@ -5,7 +5,7 @@ REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$REPO_DIR"
 
 SITE_DIR="$REPO_DIR/salgados-site"
-PANEL_REPO_DIR="$(cd "$REPO_DIR/.." && pwd)/salgados-encomendas"
+PANEL_REPO_DIR="$(cd "$REPO_DIR/.." && pwd)/salgados_do_marques_encomendas"
 PANEL_COMPOSE_FILE="$PANEL_REPO_DIR/docker-compose.yml"
 PANEL_ENV_FILE="$PANEL_REPO_DIR/.env.production"
 PANEL_ENV_EXAMPLE_FILE="$PANEL_REPO_DIR/.env.production.example"
@@ -335,12 +335,12 @@ panel_operations_menu() {
 
   case "$panel_option" in
     1|subir|up)
-      update_repository "$PANEL_REPO_DIR" "salgados-encomendas"
+      update_repository "$PANEL_REPO_DIR" "salgados_do_marques_encomendas"
       start_panel_service
       echo "Painel iniciado com sucesso."
       ;;
     2|rebuild|rebuildar|build)
-      update_repository "$PANEL_REPO_DIR" "salgados-encomendas"
+      update_repository "$PANEL_REPO_DIR" "salgados_do_marques_encomendas"
       rebuild_panel_service
       echo "Painel rebuildado com sucesso."
       ;;

@@ -25,7 +25,7 @@ class UserUpdateRequest extends FormRequest
             'street' => ['nullable', 'string', 'max:255'],
             'city' => ['nullable', 'string', 'max:100'],
             'postal_code' => ['nullable', 'string', 'max:20'],
-            'role' => ['required', Rule::in(['admin', 'cliente', 'revendedor'])],
+            'role' => ['required', Rule::in(['admin', 'cliente', 'revendedor', 'operacional', 'atendimento'])],
             'active' => ['nullable', 'boolean'],
         ];
     }

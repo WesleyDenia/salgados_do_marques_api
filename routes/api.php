@@ -24,6 +24,7 @@ use App\Http\Controllers\Api\V1\{
     StoreController,
     OrderController,
     OrderAdminController,
+    UserAdminController,
     FlavorController,
     PartnerController,
     PartnerCampaignValidationController,
@@ -78,6 +79,11 @@ Route::prefix('v1')->group(function () {
             Route::get('admin/orders', [OrderAdminController::class, 'index']);
             Route::get('admin/orders/{order}', [OrderAdminController::class, 'show']);
             Route::patch('admin/orders/{order}/status', [OrderAdminController::class, 'updateStatus']);
+            
+            Route::get('admin/users', [UserAdminController::class, 'index']);
+            Route::get('admin/users/{user}', [UserAdminController::class, 'show']);
+            Route::put('admin/users/{user}', [UserAdminController::class, 'update']);
+
             Route::apiResource('products', ProductController::class)->except(['index', 'show']);
             Route::apiResource('promotions', PromotionController::class)->except(['index', 'show']);
             Route::apiResource('coupons', CouponController::class)->except(['index', 'show']);

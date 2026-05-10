@@ -5,6 +5,10 @@ REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$REPO_DIR"
 
 SITE_DIR="$REPO_DIR/salgados-site"
+PANEL_REPO_DIR="$(cd "$REPO_DIR/.." && pwd)/salgados-encomendas"
+PANEL_COMPOSE_FILE="$PANEL_REPO_DIR/docker-compose.yml"
+PANEL_ENV_FILE="$PANEL_REPO_DIR/.env.production"
+PANEL_ENV_EXAMPLE_FILE="$PANEL_REPO_DIR/.env.production.example"
 NETWORK_NAME="salgados_backend_net"
 DB_DATA_DIR="${DB_DATA_DIR:-/srv/salgados/mariadb_data}"
 DB_UID="${DB_UID:-999}"
@@ -49,11 +53,48 @@ compose_db() {
   "${COMPOSE_CMD[@]}" -f docker-compose.db.yml "$@"
 }
 
+compose_panel() {
+  "${COMPOSE_CMD[@]}" -f "$PANEL_COMPOSE_FILE" "$@"
+}
+
 ensure_docker_network() {
   if ! docker network inspect "$NETWORK_NAME" >/dev/null 2>&1; then
     echo "Criando rede Docker compartilhada: $NETWORK_NAME"
     docker network create "$NETWORK_NAME" >/dev/null
   fi
+}
+
+get_default_branch() {
+  local repo_dir="$1"
+  local branch
+
+  branch="$(git -C "$repo_dir" symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null || true)"
+  branch="${branch#origin/}"
+
+  if [ -n "$branch" ]; then
+    echo "$branch"
+    return
+  fi
+
+  echo "main"
+}
+
+update_repository() {
+  local repo_dir="$1"
+  local repo_name="$2"
+  local branch
+
+  if [ ! -d "$repo_dir/.git" ]; then
+    echo "Erro: repositório ${repo_name} não encontrado em $repo_dir"
+    exit 1
+  fi
+
+  branch="$(get_default_branch "$repo_dir")"
+
+  echo "Atualizando repositório ${repo_name}..."
+  git -C "$repo_dir" fetch --all --prune
+  git -C "$repo_dir" checkout "$branch"
+  git -C "$repo_dir" pull --ff-only origin "$branch"
 }
 
 run_privileged() {
@@ -218,6 +259,111 @@ deploy_api() {
   run_artisan_with_secrets "queue:restart"
 }
 
+ensure_panel_env_file() {
+  if [ -f "$PANEL_ENV_FILE" ]; then
+    return
+  fi
+
+  if [ ! -f "$PANEL_ENV_EXAMPLE_FILE" ]; then
+    echo "Erro: arquivo de exemplo do ambiente do painel não encontrado em $PANEL_ENV_EXAMPLE_FILE"
+    exit 1
+  fi
+
+  cp "$PANEL_ENV_EXAMPLE_FILE" "$PANEL_ENV_FILE"
+  echo "Arquivo $PANEL_ENV_FILE criado a partir do exemplo."
+  echo "Configure SESSION_SECRET antes de subir o painel."
+  exit 1
+}
+
+ensure_gateway_nginx() {
+  local nginx_container_id
+  local is_running
+
+  nginx_container_id="$(compose_app ps -q nginx 2>/dev/null || true)"
+  is_running="false"
+
+  if [ -n "$nginx_container_id" ]; then
+    is_running="$(docker inspect -f '{{.State.Running}}' "$nginx_container_id" 2>/dev/null || echo "false")"
+  fi
+
+  if [ "$is_running" = "true" ]; then
+    echo "Recarregando nginx do backend para aplicar o host do painel..."
+    compose_app exec nginx nginx -s reload || recreate_service_without_db nginx
+    return
+  fi
+
+  echo "Subindo nginx do backend para expor o painel..."
+  compose_app up -d --no-deps nginx
+}
+
+start_panel_service() {
+  ensure_docker_network
+  ensure_panel_env_file
+
+  echo "Subindo painel de agendamentos..."
+  compose_panel up -d panel
+  ensure_gateway_nginx
+}
+
+rebuild_panel_service() {
+  ensure_docker_network
+  ensure_panel_env_file
+
+  echo "Rebuildando imagem do painel de agendamentos..."
+  compose_panel build --pull panel
+  compose_panel up -d --force-recreate panel
+  ensure_gateway_nginx
+}
+
+stop_panel_service() {
+  echo "Parando painel de agendamentos..."
+  compose_panel stop panel || true
+  compose_panel rm -f panel || true
+}
+
+panel_operations_menu() {
+  local panel_option=""
+
+  echo ""
+  echo "=== Painel agendamentos ==="
+  echo "1) Subir containers"
+  echo "2) Rebuildar containers"
+  echo "3) Parar containers"
+  echo "4) Voltar"
+  read -r -p "Escolha uma opção [1-4]: " panel_option
+  panel_option="$(normalize_input "$panel_option")"
+
+  case "$panel_option" in
+    1|subir|up)
+      update_repository "$PANEL_REPO_DIR" "salgados-encomendas"
+      start_panel_service
+      echo "Painel iniciado com sucesso."
+      ;;
+    2|rebuild|rebuildar|build)
+      update_repository "$PANEL_REPO_DIR" "salgados-encomendas"
+      rebuild_panel_service
+      echo "Painel rebuildado com sucesso."
+      ;;
+    3|parar|stop)
+      echo "Atenção: esta operação para apenas o container do painel."
+      if ! confirm_dangerous_action "Confirmar parada do painel de agendamentos?"; then
+        echo "Parada do painel cancelada."
+        return 0
+      fi
+      stop_panel_service
+      echo "Painel parado com sucesso."
+      ;;
+    4|voltar|sair|exit|q)
+      echo "Operações do painel encerradas."
+      return 0
+      ;;
+    *)
+      echo "Opção inválida."
+      return 1
+      ;;
+  esac
+}
+
 db_operations_menu() {
   local db_option=""
 
@@ -293,11 +439,6 @@ db_operations_menu() {
 
 detect_compose_command
 
-echo "Atualizando repositório..."
-git fetch --all --prune
-git checkout main
-git pull --ff-only origin main
-
 echo "Observação: docker-compose.yml está legado."
 echo "Fluxo oficial usa docker-compose.app.yml (API/Site) e docker-compose.db.yml (DB)."
 
@@ -305,27 +446,35 @@ echo "Qual deploy deseja executar?"
 echo "1) Site"
 echo "2) API"
 echo "3) Operações no DB"
-echo "4) Sair"
-read -r -p "Escolha uma opção [1-4]: " deploy_option
+echo "4) Painel agendamentos"
+echo "5) Sair"
+read -r -p "Escolha uma opção [1-5]: " deploy_option
 
 deploy_option="$(normalize_input "$deploy_option")"
 final_message=""
 
 case "$deploy_option" in
   1|site|s)
+    update_repository "$REPO_DIR" "salgados-api"
     deploy_site
     final_message="Deploy do site concluído com sucesso!"
     ;;
   2|api|a)
+    update_repository "$REPO_DIR" "salgados-api"
     deploy_api
     final_message="Deploy da API concluído com sucesso!"
     ;;
   3|db|banco|operacoes)
+    update_repository "$REPO_DIR" "salgados-api"
     ensure_docker_network
     db_operations_menu
     final_message="Fluxo de operações no DB finalizado."
     ;;
-  4|sair|exit|q)
+  4|painel|panel|agendamentos)
+    panel_operations_menu
+    final_message="Fluxo do painel finalizado."
+    ;;
+  5|sair|exit|q)
     echo "Saindo."
     exit 0
     ;;

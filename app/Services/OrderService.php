@@ -5,8 +5,8 @@ namespace App\Services;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\ProductVariant;
-use App\Models\WhatsAppQueueItem;
 use App\Models\User;
+use App\Models\WhatsAppQueueItem;
 use App\Jobs\SendOrderPlacedWhatsAppJob;
 use App\Services\AdminFlavorService;
 use App\Repositories\OrderRepository;
@@ -93,7 +93,7 @@ class OrderService
         return trim((string) $this->settings->get('WHATSAPP_ORDER_TO', ''));
     }
 
-    public function createForUser(User $user, array $data): Order
+    public function createForUser(User $actor, array $data): Order
     {
         $orderSettings = $this->orderSettings();
         $scheduled = $this->parseScheduledAt($data['scheduled_at'], $orderSettings['timezone']);
@@ -126,16 +126,21 @@ class OrderService
         }
 
         $lineItems = $this->buildOrderLineItems($items, $products, $variants);
+        $resolvedCustomer = $this->resolveCustomerContext($actor, $data);
 
         $order = $this->repository->createWithItems(
-            $user->id,
+            $resolvedCustomer['user_id'],
             (int) $data['store_id'],
+            $resolvedCustomer['customer_name'],
+            $resolvedCustomer['customer_contact'],
+            $data['payment_status'] ?? null,
+            $data['slot'] ?? null,
             $scheduled->copy()->timezone('UTC'),
             $data['notes'] ?? null,
             $lineItems
         );
 
-        if ($user->phone) {
+        if ($resolvedCustomer['notification_contact']) {
             try {
                 $recipient = $this->whatsappOrderRecipient();
                 $flavorIds = $items
@@ -147,8 +152,8 @@ class OrderService
                     ->all();
                 $flavorNamesById = $this->flavors->namesByIds($flavorIds);
                 $message = $this->messages->orderPlacedSnapshot(
-                    (string) $user->name,
-                    (string) $user->phone,
+                    (string) $resolvedCustomer['notification_name'],
+                    (string) $resolvedCustomer['notification_contact'],
                     $scheduled->copy()->timezone($orderSettings['timezone']),
                     $lineItems,
                     $flavorNamesById
@@ -158,7 +163,7 @@ class OrderService
                     'type' => WhatsAppQueueItem::TYPE_ORDER_PLACED,
                     'entity_type' => 'order',
                     'entity_id' => $order->id,
-                    'recipient_name' => $user->name,
+                    'recipient_name' => $resolvedCustomer['notification_name'],
                     'phone' => $recipient,
                     'message' => $message,
                 ]);
@@ -173,7 +178,7 @@ class OrderService
             } catch (\Throwable $exception) {
                 Log::warning('[OrderService] Falha ao enfileirar WhatsApp do pedido', [
                     'order_id' => $order->id,
-                    'user_id' => $user->id,
+                    'user_id' => $resolvedCustomer['user_id'],
                     'message' => $exception->getMessage(),
                 ]);
             }
@@ -342,6 +347,53 @@ class OrderService
     }
 
     /**
+     * @param array<string, mixed> $data
+     * @return array{
+     *   user_id: int|null,
+     *   customer_name: string|null,
+     *   customer_contact: string|null,
+     *   notification_name: string|null,
+     *   notification_contact: string|null
+     * }
+     */
+    protected function resolveCustomerContext(User $actor, array $data): array
+    {
+        $requestedUserId = isset($data['user_id']) ? (int) $data['user_id'] : null;
+        $requestedCustomer = $requestedUserId ? User::query()->find($requestedUserId) : null;
+
+        if ($requestedCustomer) {
+            return [
+                'user_id' => $requestedCustomer->id,
+                'customer_name' => $data['customer_name'] ?? null,
+                'customer_contact' => $data['customer_contact'] ?? null,
+                'notification_name' => $data['customer_name'] ?? $requestedCustomer->name,
+                'notification_contact' => $data['customer_contact'] ?? $requestedCustomer->phone,
+            ];
+        }
+
+        $customerName = $this->normalizeNullableText($data['customer_name'] ?? null);
+        $customerContact = $this->normalizeNullableText($data['customer_contact'] ?? null);
+
+        if ($customerName !== null || $customerContact !== null) {
+            return [
+                'user_id' => null,
+                'customer_name' => $customerName,
+                'customer_contact' => $customerContact,
+                'notification_name' => $customerName,
+                'notification_contact' => $customerContact,
+            ];
+        }
+
+        return [
+            'user_id' => $actor->id,
+            'customer_name' => null,
+            'customer_contact' => null,
+            'notification_name' => $actor->name,
+            'notification_contact' => $actor->phone,
+        ];
+    }
+
+    /**
      * @param array<string, mixed> $filters
      * @return array<string, mixed>
      */
@@ -358,6 +410,17 @@ class OrderService
         }
 
         return $filters;
+    }
+
+    protected function normalizeNullableText(mixed $value): ?string
+    {
+        if (!is_string($value)) {
+            return null;
+        }
+
+        $trimmed = trim($value);
+
+        return $trimmed === '' ? null : $trimmed;
     }
 
     /**

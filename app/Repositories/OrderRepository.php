@@ -71,18 +71,26 @@ class OrderRepository
     }
 
     public function createWithItems(
-        int $userId,
+        ?int $userId,
         int $storeId,
+        ?string $customerName,
+        ?string $customerContact,
+        ?string $paymentStatus,
+        ?string $slot,
         CarbonInterface $scheduledAtUtc,
         ?string $notes,
         array $lineItems
     ): Order {
         /** @var Order $order */
-        $order = DB::transaction(function () use ($lineItems, $notes, $scheduledAtUtc, $storeId, $userId) {
+        $order = DB::transaction(function () use ($customerContact, $customerName, $lineItems, $notes, $paymentStatus, $scheduledAtUtc, $slot, $storeId, $userId) {
             $order = Order::query()->create([
                 'user_id' => $userId,
+                'customer_name' => $customerName,
+                'customer_contact' => $customerContact,
                 'store_id' => $storeId,
                 'status' => 'placed',
+                'payment_status' => $paymentStatus,
+                'slot' => $slot,
                 'scheduled_at' => $scheduledAtUtc,
                 'total' => 0,
                 'notes' => $notes,
@@ -111,13 +119,13 @@ class OrderRepository
             return $order;
         });
 
-        return $order->fresh(['items', 'store']);
+        return $order->fresh(['items', 'store', 'user']);
     }
 
     public function cancel(Order $order, array $payload): Order
     {
         $order->update($payload);
 
-        return $order->fresh(['items', 'store']);
+        return $order->fresh(['items', 'store', 'user']);
     }
 }

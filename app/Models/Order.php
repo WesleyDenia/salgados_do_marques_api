@@ -13,8 +13,12 @@ class Order extends Model
 
     protected $fillable = [
         'user_id',
+        'customer_name',
+        'customer_contact',
         'store_id',
         'status',
+        'payment_status',
+        'slot',
         'scheduled_at',
         'total',
         'notes',
@@ -40,6 +44,16 @@ class Order extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function customerNameForDisplay(): ?string
+    {
+        return $this->customer_name ?: $this->user?->name;
+    }
+
+    public function customerContactForDisplay(): ?string
+    {
+        return $this->customer_contact ?: $this->user?->phone;
     }
 
     public function scheduledAtForDisplay(string $timezone = 'Europe/Lisbon'): ?CarbonInterface

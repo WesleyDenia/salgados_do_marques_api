@@ -68,10 +68,15 @@ Route::middleware(['auth', 'can:manage'])
         Route::post('queue/whatsapp/{item}/close', [QueueMonitorController::class, 'closeWhatsAppMessage'])->name('queue.whatsapp.close');
         Route::post('queue/tasks/{task}/retry', [QueueMonitorController::class, 'retryTask'])->name('queue.tasks.retry');
         Route::post('queue/tasks/{task}/status', [QueueMonitorController::class, 'updateTaskStatus'])->name('queue.tasks.status');
+        Route::get('users/password', [AdminUserController::class, 'editPassword'])->name('users.password.edit');
+        Route::put('users/password', [AdminUserController::class, 'updatePassword'])->name('users.password.update');
+        Route::get('users/create', [AdminUserController::class, 'create'])->name('users.create');
+        Route::post('users', [AdminUserController::class, 'store'])->name('users.store');
         Route::get('users', [AdminUserController::class, 'index'])->name('users.index');
         Route::get('users/{user}', [AdminUserController::class, 'show'])->name('users.show');
         Route::get('users/{user}/edit', [AdminUserController::class, 'edit'])->name('users.edit');
         Route::put('users/{user}', [AdminUserController::class, 'update'])->name('users.update');
+        Route::delete('users/{user}', [AdminUserController::class, 'destroy'])->name('users.destroy');
         Route::post('users/{user}/loyalty', [AdminUserController::class, 'storeLoyalty'])->name('users.loyalty.store');
         Route::post('users/{user}/coupons', [AdminUserController::class, 'storeCoupon'])->name('users.coupons.store');
     });

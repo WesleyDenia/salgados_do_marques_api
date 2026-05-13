@@ -858,6 +858,7 @@
         </nav>
 
         <div class="sidebar-footer">
+          <a class="nav-link {{ request()->routeIs('admin.users.password.*') ? 'active' : '' }}" href="{{ route('admin.users.password.edit') }}">Alterar senha</a>
           <form action="{{ route('admin.logout') }}" method="POST">
             @csrf
             <button type="submit" class="nav-link-button">Sair</button>

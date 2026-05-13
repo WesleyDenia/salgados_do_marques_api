@@ -5,7 +5,9 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\UserAddLoyaltyPointsRequest;
 use App\Http\Requests\Admin\UserAssignCouponRequest;
+use App\Http\Requests\Admin\UserStoreRequest;
 use App\Http\Requests\Admin\UserUpdateRequest;
+use App\Http\Requests\Admin\UserUpdatePasswordRequest;
 use App\Models\User;
 use App\Services\AdminUserService;
 use App\Services\LoyaltyService;
@@ -43,6 +45,22 @@ class UserController extends Controller
         ]);
     }
 
+    public function create()
+    {
+        return view('admin.users.create', [
+            'roles' => User::STAFF_ROLES,
+        ]);
+    }
+
+    public function store(UserStoreRequest $request)
+    {
+        $user = $this->adminUserService->create($request->validated());
+
+        return redirect()
+            ->route('admin.users.edit', $user)
+            ->with('status', 'Usuário criado com sucesso.');
+    }
+
     public function show(User $user)
     {
         return view('admin.users.show', $this->adminUserService->detailData($user));
@@ -52,6 +70,9 @@ class UserController extends Controller
     {
         return view('admin.users.edit', [
             'user' => $user,
+            'roles' => $user->isStaff()
+                ? User::STAFF_ROLES
+                : array_values(array_unique([...User::STAFF_ROLES, $user->role])),
         ]);
     }
 
@@ -62,6 +83,40 @@ class UserController extends Controller
         return redirect()
             ->route('admin.users.show', $user)
             ->with('status', 'Dados do usuário atualizados com sucesso.');
+    }
+
+    public function destroy(Request $request, User $user)
+    {
+        try {
+            $this->adminUserService->delete($user, $request->user());
+        } catch (\InvalidArgumentException $exception) {
+            return redirect()
+                ->back()
+                ->with('error', $exception->getMessage());
+        }
+
+        return redirect()
+            ->route('admin.users.index')
+            ->with('status', 'Usuário excluído com sucesso.');
+    }
+
+    public function editPassword(Request $request)
+    {
+        return view('admin.users.password', [
+            'user' => $request->user(),
+        ]);
+    }
+
+    public function updatePassword(UserUpdatePasswordRequest $request)
+    {
+        $this->adminUserService->updateOwnPassword(
+            $request->user(),
+            $request->validated()['password']
+        );
+
+        return redirect()
+            ->route('admin.users.password.edit')
+            ->with('status', 'Senha atualizada com sucesso.');
     }
 
     public function storeLoyalty(UserAddLoyaltyPointsRequest $request, User $user)

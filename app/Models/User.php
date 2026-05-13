@@ -13,6 +13,26 @@ class User extends Authenticatable
 {
     use HasApiTokens, HasFactory, Notifiable;
 
+    public const ROLE_ADMIN = 'admin';
+    public const ROLE_CLIENTE = 'cliente';
+    public const ROLE_REVENDEDOR = 'revendedor';
+    public const ROLE_OPERACIONAL = 'operacional';
+    public const ROLE_ATENDIMENTO = 'atendimento';
+
+    public const STAFF_ROLES = [
+        self::ROLE_ADMIN,
+        self::ROLE_OPERACIONAL,
+        self::ROLE_ATENDIMENTO,
+    ];
+
+    public const ALL_ROLES = [
+        self::ROLE_ADMIN,
+        self::ROLE_CLIENTE,
+        self::ROLE_REVENDEDOR,
+        self::ROLE_OPERACIONAL,
+        self::ROLE_ATENDIMENTO,
+    ];
+
     protected $fillable = [
         'name',
         'email',
@@ -78,5 +98,10 @@ class User extends Authenticatable
     public function orders(): HasMany
     {
         return $this->hasMany(Order::class);
+    }
+
+    public function isStaff(): bool
+    {
+        return in_array($this->role, self::STAFF_ROLES, true);
     }
 }

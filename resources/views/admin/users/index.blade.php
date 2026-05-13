@@ -9,10 +9,10 @@
         <div>
           <h2 style="margin:0; font-size:1.5rem;">Gerenciamento de usuários</h2>
           <p style="margin:8px 0 0; color:#6b7280; max-width:820px;">
-            Consulte os clientes cadastrados, acompanhe saldo de Coinxinhas, visualize cupons atribuídos
-            e entre na ficha individual para operações manuais.
+            Gerencie os usuários internos do painel administrativo. Clientes do app não aparecem nesta listagem.
           </p>
         </div>
+        <a class="btn btn-primary" href="{{ route('admin.users.create') }}">Novo usuário</a>
       </div>
     </div>
 
@@ -26,8 +26,12 @@
         <div style="font-size:2rem; font-weight:700; margin-top:8px;">{{ $stats['active'] }}</div>
       </div>
       <div class="card">
-        <div style="font-size:0.85rem; text-transform:uppercase; letter-spacing:0.08em; color:#9ca3af;">Com loyalty</div>
-        <div style="font-size:2rem; font-weight:700; margin-top:8px;">{{ $stats['with_loyalty'] }}</div>
+        <div style="font-size:0.85rem; text-transform:uppercase; letter-spacing:0.08em; color:#9ca3af;">Operacional</div>
+        <div style="font-size:2rem; font-weight:700; margin-top:8px;">{{ $stats['operacional'] }}</div>
+      </div>
+      <div class="card">
+        <div style="font-size:0.85rem; text-transform:uppercase; letter-spacing:0.08em; color:#9ca3af;">Atendimento</div>
+        <div style="font-size:2rem; font-weight:700; margin-top:8px;">{{ $stats['atendimento'] }}</div>
       </div>
       <div class="card">
         <div style="font-size:0.85rem; text-transform:uppercase; letter-spacing:0.08em; color:#9ca3af;">Admins</div>
@@ -52,8 +56,8 @@
           <label for="role">Perfil</label>
           <select id="role" name="role">
             <option value="">Todos</option>
-            <option value="cliente" @selected($filters['role'] === 'cliente')>Cliente</option>
-            <option value="revendedor" @selected($filters['role'] === 'revendedor')>Revendedor</option>
+            <option value="operacional" @selected($filters['role'] === 'operacional')>Operacional</option>
+            <option value="atendimento" @selected($filters['role'] === 'atendimento')>Atendimento</option>
             <option value="admin" @selected($filters['role'] === 'admin')>Admin</option>
           </select>
         </div>
@@ -79,9 +83,6 @@
               <th>Usuário</th>
               <th>Contacto</th>
               <th>Perfil</th>
-              <th>Coinxinhas</th>
-              <th>Cupons</th>
-              <th>Encomendas</th>
               <th>Último login</th>
               <th>Status</th>
               <th style="width:120px;">Ações</th>
@@ -105,18 +106,6 @@
                   {{ ucfirst($user->role) }}
                 </td>
                 <td>
-                  <span class="stack-table-label">Coinxinhas</span>
-                  {{ number_format((int) ($user->loyaltyAccount?->points ?? 0), 0, ',', '.') }}
-                </td>
-                <td>
-                  <span class="stack-table-label">Cupons</span>
-                  {{ $user->user_coupons_count }}
-                </td>
-                <td>
-                  <span class="stack-table-label">Encomendas</span>
-                  {{ $user->orders_count }}
-                </td>
-                <td>
                   <span class="stack-table-label">Último login</span>
                   {{ $user->last_login?->format('d/m/Y H:i') ?? '—' }}
                 </td>
@@ -130,12 +119,12 @@
                 </td>
                 <td>
                   <span class="stack-table-label">Ações</span>
-                  <a class="btn btn-secondary" href="{{ route('admin.users.show', $user) }}">Abrir</a>
+                  <a class="btn btn-secondary" href="{{ route('admin.users.edit', $user) }}">Editar</a>
                 </td>
               </tr>
             @empty
               <tr>
-                <td colspan="9" style="text-align:center; padding:32px 0; color:#6b7280;">
+                <td colspan="6" style="text-align:center; padding:32px 0; color:#6b7280;">
                   Nenhum usuário encontrado.
                 </td>
               </tr>

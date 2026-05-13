@@ -3,7 +3,6 @@
 namespace App\Repositories;
 
 use App\Models\Coupon;
-use App\Models\LoyaltyAccount;
 use App\Models\User;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Carbon;
@@ -21,6 +20,7 @@ class AdminUserRepository extends BaseRepository
         $query = $this->query()
             ->with(['loyaltyAccount'])
             ->withCount(['orders', 'userCoupons'])
+            ->whereIn('role', User::STAFF_ROLES)
             ->latest();
 
         $search = trim((string) ($filters['search'] ?? ''));
@@ -37,7 +37,7 @@ class AdminUserRepository extends BaseRepository
             });
         }
 
-        if (in_array($role, ['admin', 'cliente', 'revendedor'], true)) {
+        if (in_array($role, User::STAFF_ROLES, true)) {
             $query->where('role', $role);
         }
 
@@ -53,10 +53,11 @@ class AdminUserRepository extends BaseRepository
     public function stats(): array
     {
         return [
-            'total' => $this->query()->count(),
-            'active' => $this->query()->where('active', true)->count(),
-            'with_loyalty' => LoyaltyAccount::query()->count(),
-            'admins' => $this->query()->where('role', 'admin')->count(),
+            'total' => $this->query()->whereIn('role', User::STAFF_ROLES)->count(),
+            'active' => $this->query()->whereIn('role', User::STAFF_ROLES)->where('active', true)->count(),
+            'admins' => $this->query()->where('role', User::ROLE_ADMIN)->count(),
+            'operacional' => $this->query()->where('role', User::ROLE_OPERACIONAL)->count(),
+            'atendimento' => $this->query()->where('role', User::ROLE_ATENDIMENTO)->count(),
         ];
     }
 

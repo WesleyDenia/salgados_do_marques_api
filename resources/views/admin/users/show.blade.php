@@ -135,6 +135,13 @@
         </div>
         <div class="detail-actions">
           <a href="{{ route('admin.users.edit', $user) }}" class="btn btn-primary">Editar dados</a>
+          @if (auth()->id() !== $user->id)
+            <form method="POST" action="{{ route('admin.users.destroy', $user) }}" onsubmit="return confirm('Excluir este usuário?');">
+              @csrf
+              @method('DELETE')
+              <button type="submit" class="btn" style="background:#b91c1c; color:#fff;">Excluir</button>
+            </form>
+          @endif
           <a href="{{ route('admin.users.index') }}" class="btn btn-secondary">Voltar para a lista</a>
         </div>
       </div>

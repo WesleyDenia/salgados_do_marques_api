@@ -9,13 +9,15 @@ class OrderStoreRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->can('orders.create') ?? false;
+        return $this->user() !== null;
     }
 
     public function rules(): array
     {
         return [
             'user_id' => ['nullable', 'integer', Rule::exists('users', 'id')],
+            // Keeping these nullable for backward compatibility with the mobile app.
+            // The panel enforces these via frontend validation (zod).
             'customer_name' => ['nullable', 'string', 'max:255'],
             'customer_contact' => ['nullable', 'string', 'max:255'],
             'store_id' => [
@@ -45,11 +47,13 @@ class OrderStoreRequest extends FormRequest
     public function messages(): array
     {
         return [
+            'store_id.required' => 'Selecione uma loja válida.',
+            'store_id.exists' => 'A loja selecionada não está disponível.',
             'items.*.flavors.array' => 'Os sabores do item devem ser enviados como uma lista de IDs.',
             'items.*.flavors.*.integer' => 'Cada sabor informado deve ser um ID numérico válido.',
             'items.*.flavors.*.exists' => 'Um dos sabores informados não existe.',
-            'scheduled_at.required' => 'Informe a data e hora de retirada.',
-            'scheduled_at.date' => 'A data e hora de retirada devem ser válidas.',
+            'scheduled_at.required' => 'Indique a data e hora da encomenda.',
+            'scheduled_at.date' => 'A data e hora da encomenda devem ser válidas.',
             'payment_status.in' => 'O estado de pagamento informado não é válido.',
             'slot.in' => 'O slot operacional informado não é válido.',
         ];

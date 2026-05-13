@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\User;
 use App\Repositories\AdminUserRepository;
+use Illuminate\Support\Facades\Hash;
 
 class AdminUserService
 {
@@ -44,6 +45,9 @@ class AdminUserService
 
     public function update(User $user, array $data): User
     {
+        $password = $data['password'] ?? null;
+        unset($data['password']);
+
         $erpFields = ['name', 'email', 'nif', 'phone', 'street', 'city', 'postal_code'];
         $erpPayloadChanged = collect($erpFields)
             ->contains(fn (string $field) => array_key_exists($field, $data) && $user->{$field} !== $data[$field]);
@@ -57,6 +61,39 @@ class AdminUserService
 
         $user->update($data);
 
+        if ($password) {
+            $user->forceFill([
+                'password' => Hash::make($password),
+            ])->save();
+        }
+
         return $user->refresh();
+    }
+
+    public function create(array $data): User
+    {
+        $user = User::create([
+            ...$data,
+            'password' => Hash::make($data['password']),
+            'active' => (bool) ($data['active'] ?? false),
+        ]);
+
+        return $user->refresh();
+    }
+
+    public function delete(User $user, User $actingUser): void
+    {
+        if ($user->is($actingUser)) {
+            throw new \InvalidArgumentException('Você não pode excluir o próprio usuário logado.');
+        }
+
+        $user->delete();
+    }
+
+    public function updateOwnPassword(User $user, string $password): void
+    {
+        $user->forceFill([
+            'password' => Hash::make($password),
+        ])->save();
     }
 }

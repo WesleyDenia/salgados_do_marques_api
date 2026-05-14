@@ -17,9 +17,19 @@ class AdminUserService
         return $this->repository->paginateForAdmin($filters, $perPage);
     }
 
+    public function paginateForCustomers(array $filters, int $perPage = 20)
+    {
+        return $this->repository->paginateForCustomers($filters, $perPage);
+    }
+
     public function stats(): array
     {
         return $this->repository->stats();
+    }
+
+    public function customerStats(): array
+    {
+        return $this->repository->customerStats();
     }
 
     public function detailData(User $user): array
@@ -28,12 +38,14 @@ class AdminUserService
         $userCoupons = $this->repository->userCoupons($user);
         $availableCoupons = $this->repository->availableCouponsForUser($user, $userCoupons);
         $transactions = $this->repository->loyaltyTransactions($user, 12);
+        $orders = $this->repository->orders($user, 12);
 
         return [
             'user' => $user,
             'userCoupons' => $userCoupons,
             'availableCoupons' => $availableCoupons,
             'transactions' => $transactions,
+            'orders' => $orders,
             'loyaltyPoints' => $user->loyaltyAccount?->points ?? 0,
             'couponStats' => [
                 'total' => $userCoupons->count(),

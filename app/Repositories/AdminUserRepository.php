@@ -50,6 +50,36 @@ class AdminUserRepository extends BaseRepository
             ->appends($filters);
     }
 
+    public function paginateForCustomers(array $filters, int $perPage = 20): LengthAwarePaginator
+    {
+        $query = $this->query()
+            ->with(['loyaltyAccount'])
+            ->withCount(['orders', 'userCoupons'])
+            ->where('role', User::ROLE_CLIENTE)
+            ->latest();
+
+        $search = trim((string) ($filters['search'] ?? ''));
+        $status = trim((string) ($filters['status'] ?? ''));
+
+        if ($search !== '') {
+            $query->where(function ($builder) use ($search) {
+                $builder
+                    ->where('name', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%")
+                    ->orWhere('phone', 'like', "%{$search}%")
+                    ->orWhere('nif', 'like', "%{$search}%");
+            });
+        }
+
+        if (in_array($status, ['active', 'inactive'], true)) {
+            $query->where('active', $status === 'active');
+        }
+
+        return $query
+            ->paginate($perPage)
+            ->appends($filters);
+    }
+
     public function stats(): array
     {
         return [
@@ -58,6 +88,22 @@ class AdminUserRepository extends BaseRepository
             'admins' => $this->query()->where('role', User::ROLE_ADMIN)->count(),
             'operacional' => $this->query()->where('role', User::ROLE_OPERACIONAL)->count(),
             'atendimento' => $this->query()->where('role', User::ROLE_ATENDIMENTO)->count(),
+        ];
+    }
+
+    public function customerStats(): array
+    {
+        return [
+            'total' => $this->query()->where('role', User::ROLE_CLIENTE)->count(),
+            'active' => $this->query()->where('role', User::ROLE_CLIENTE)->where('active', true)->count(),
+            'with_orders' => $this->query()
+                ->where('role', User::ROLE_CLIENTE)
+                ->whereHas('orders')
+                ->count(),
+            'with_loyalty' => $this->query()
+                ->where('role', User::ROLE_CLIENTE)
+                ->whereHas('loyaltyAccount', fn ($query) => $query->where('points', '>', 0))
+                ->count(),
         ];
     }
 
@@ -112,6 +158,15 @@ class AdminUserRepository extends BaseRepository
         return $user->loyaltyTransactions()
             ->latest()
             ->paginate($perPage, ['*'], 'transactions_page')
+            ->withQueryString();
+    }
+
+    public function orders(User $user, int $perPage = 12): LengthAwarePaginator
+    {
+        return $user->orders()
+            ->with(['store'])
+            ->orderByDesc('created_at')
+            ->paginate($perPage, ['*'], 'orders_page')
             ->withQueryString();
     }
 }

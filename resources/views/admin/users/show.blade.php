@@ -4,6 +4,12 @@
 
 @section('styles')
   <style>
+    .detail-link-list {
+      display: grid;
+      gap: 8px;
+      margin-top: 18px;
+    }
+
     .detail-page {
       display: grid;
       gap: 24px;
@@ -124,25 +130,40 @@
 @endsection
 
 @section('content')
+  @php
+    $isCustomerContext = ($context ?? 'users') === 'customers';
+    $orderStatusLabels = [
+      'placed' => 'Realizado',
+      'accepted' => 'Aceito',
+      'rejected' => 'Rejeitado',
+      'ready' => 'Pronto',
+      'done' => 'Concluído',
+      'canceled' => 'Cancelado',
+    ];
+  @endphp
   <div class="detail-page">
     <div class="card">
       <div class="detail-header">
         <div class="detail-header-copy">
           <h2 style="margin:0; font-size:1.5rem;">{{ $user->name }}</h2>
           <p style="margin:8px 0 0; color:#6b7280;">
-            Utilizador #{{ $user->id }} criado em {{ $user->created_at?->format('d/m/Y H:i') ?? '—' }}
+            {{ $isCustomerContext ? 'Cliente' : 'Utilizador' }} #{{ $user->id }} criado em {{ $user->created_at?->format('d/m/Y H:i') ?? '—' }}
           </p>
         </div>
         <div class="detail-actions">
-          <a href="{{ route('admin.users.edit', $user) }}" class="btn btn-primary">Editar dados</a>
-          @if (auth()->id() !== $user->id)
-            <form method="POST" action="{{ route('admin.users.destroy', $user) }}" onsubmit="return confirm('Excluir este usuário?');">
-              @csrf
-              @method('DELETE')
-              <button type="submit" class="btn" style="background:#b91c1c; color:#fff;">Excluir</button>
-            </form>
+          @if (! $isCustomerContext)
+            <a href="{{ route('admin.users.edit', $user) }}" class="btn btn-primary">Editar dados</a>
+            @if (auth()->id() !== $user->id)
+              <form method="POST" action="{{ route('admin.users.destroy', $user) }}" onsubmit="return confirm('Excluir este usuário?');">
+                @csrf
+                @method('DELETE')
+                <button type="submit" class="btn" style="background:#b91c1c; color:#fff;">Excluir</button>
+              </form>
+            @endif
           @endif
-          <a href="{{ route('admin.users.index') }}" class="btn btn-secondary">Voltar para a lista</a>
+          <a href="{{ $isCustomerContext ? route('admin.customers.index') : route('admin.users.index') }}" class="btn btn-secondary">
+            Voltar para a lista
+          </a>
         </div>
       </div>
     </div>
@@ -170,7 +191,9 @@
       <div class="card">
         <h3 class="detail-section-title">Dados do usuário</h3>
         <p class="detail-section-note">
-          Os dados permanecem agrupados por contexto para facilitar leitura rápida em ecrãs menores.
+          {{ $isCustomerContext
+              ? 'Dados de cadastro e sincronização do cliente em um único ponto de consulta.'
+              : 'Os dados permanecem agrupados por contexto para facilitar leitura rápida em ecrãs menores.' }}
         </p>
 
         <div class="detail-info-grid" style="margin-top:18px;">
@@ -224,68 +247,84 @@
       </div>
 
       <div style="display:grid; gap:24px;">
-        <div class="card">
-          <h3 class="detail-section-title">Adicionar Coinxinhas</h3>
-          <p class="detail-section-note">
-            O formulário mantém as ações de crédito visíveis e fáceis de usar com o polegar.
-          </p>
-
-          <form method="POST" action="{{ route('admin.users.loyalty.store', $user) }}" class="form-grid">
-            @csrf
-
-            <div class="form-group">
-              <label for="points">Pontos</label>
-              <input id="points" type="number" min="1" name="points" value="{{ old('points') }}" required>
-              @error('points')
-                <span class="alert alert-error">{{ $message }}</span>
-              @enderror
-            </div>
-
-            <div class="form-group">
-              <label for="reason">Motivo</label>
-              <textarea id="reason" name="reason" required>{{ old('reason') }}</textarea>
-              @error('reason')
-                <span class="alert alert-error">{{ $message }}</span>
-              @enderror
-            </div>
-
-            <button type="submit" class="btn btn-primary">Creditar pontos</button>
-          </form>
-        </div>
-
-        <div class="card">
-          <h3 class="detail-section-title">Adicionar cupom</h3>
-          <p class="detail-section-note">
-            A atribuição manual continua disponível mesmo em ecrãs estreitos.
-          </p>
-
-          @if ($availableCoupons->isEmpty())
-            <p style="margin:0; color:#6b7280;">
-              Não há cupons ativos disponíveis para atribuição manual a este usuário.
+        @if (! $isCustomerContext)
+          <div class="card">
+            <h3 class="detail-section-title">Adicionar Coinxinhas</h3>
+            <p class="detail-section-note">
+              O formulário mantém as ações de crédito visíveis e fáceis de usar com o polegar.
             </p>
-          @else
-            <form method="POST" action="{{ route('admin.users.coupons.store', $user) }}" class="form-grid">
+
+            <form method="POST" action="{{ route('admin.users.loyalty.store', $user) }}" class="form-grid">
               @csrf
 
               <div class="form-group">
-                <label for="coupon_id">Cupom</label>
-                <select id="coupon_id" name="coupon_id" required>
-                  <option value="">Selecione um cupom</option>
-                  @foreach ($availableCoupons as $coupon)
-                    <option value="{{ $coupon->id }}" @selected((string) old('coupon_id') === (string) $coupon->id)>
-                      {{ $coupon->title }}{{ $coupon->code ? ' • ' . $coupon->code : '' }}
-                    </option>
-                  @endforeach
-                </select>
-                @error('coupon_id')
+                <label for="points">Pontos</label>
+                <input id="points" type="number" min="1" name="points" value="{{ old('points') }}" required>
+                @error('points')
                   <span class="alert alert-error">{{ $message }}</span>
                 @enderror
               </div>
 
-              <button type="submit" class="btn btn-primary">Atribuir cupom</button>
+              <div class="form-group">
+                <label for="reason">Motivo</label>
+                <textarea id="reason" name="reason" required>{{ old('reason') }}</textarea>
+                @error('reason')
+                  <span class="alert alert-error">{{ $message }}</span>
+                @enderror
+              </div>
+
+              <button type="submit" class="btn btn-primary">Creditar pontos</button>
             </form>
-          @endif
-        </div>
+          </div>
+
+          <div class="card">
+            <h3 class="detail-section-title">Adicionar cupom</h3>
+            <p class="detail-section-note">
+              A atribuição manual continua disponível mesmo em ecrãs estreitos.
+            </p>
+
+            @if ($availableCoupons->isEmpty())
+              <p style="margin:0; color:#6b7280;">
+                Não há cupons ativos disponíveis para atribuição manual a este usuário.
+              </p>
+            @else
+              <form method="POST" action="{{ route('admin.users.coupons.store', $user) }}" class="form-grid">
+                @csrf
+
+                <div class="form-group">
+                  <label for="coupon_id">Cupom</label>
+                  <select id="coupon_id" name="coupon_id" required>
+                    <option value="">Selecione um cupom</option>
+                    @foreach ($availableCoupons as $coupon)
+                      <option value="{{ $coupon->id }}" @selected((string) old('coupon_id') === (string) $coupon->id)>
+                        {{ $coupon->title }}{{ $coupon->code ? ' • ' . $coupon->code : '' }}
+                      </option>
+                    @endforeach
+                  </select>
+                  @error('coupon_id')
+                    <span class="alert alert-error">{{ $message }}</span>
+                  @enderror
+                </div>
+
+                <button type="submit" class="btn btn-primary">Atribuir cupom</button>
+              </form>
+            @endif
+          </div>
+        @else
+          <div class="card">
+            <h3 class="detail-section-title">Acessos rápidos</h3>
+            <p class="detail-section-note">
+              Consulta direta de elementos relacionados do cliente no painel administrativo.
+            </p>
+
+            <div class="detail-link-list">
+              @if ($orders->count() > 0)
+                <a class="btn btn-secondary" href="{{ route('admin.orders.show', $orders->first()) }}">Abrir pedido mais recente</a>
+              @endif
+              <a class="btn btn-secondary" href="{{ route('admin.orders.index') }}">Ir para encomendas</a>
+            </div>
+          </div>
+        @endif
       </div>
     </div>
 
@@ -361,9 +400,74 @@
     </div>
 
     <div class="card">
+      <h3 class="detail-section-title">Pedidos do cliente</h3>
+      <p class="detail-section-note">
+        Histórico de encomendas realizadas com acesso ao detalhe completo de cada pedido.
+      </p>
+
+      <div class="responsive-table-wrap detail-table-wrap">
+        <table class="responsive-table">
+          <thead>
+            <tr>
+              <th>Pedido</th>
+              <th>Loja</th>
+              <th>Retirada</th>
+              <th>Total</th>
+              <th>Status</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            @forelse ($orders as $order)
+              <tr>
+                <td>
+                  <span class="stack-table-label">Pedido</span>
+                  <strong>#{{ $order->id }}</strong><br>
+                  <span style="color:#6b7280;">{{ $order->created_at?->format('d/m/Y H:i') ?? '—' }}</span>
+                </td>
+                <td>
+                  <span class="stack-table-label">Loja</span>
+                  {{ $order->store?->name ?? '—' }}
+                </td>
+                <td>
+                  <span class="stack-table-label">Retirada</span>
+                  {{ $order->scheduledAtForDisplay()?->format('d/m/Y H:i') ?? '—' }}
+                </td>
+                <td>
+                  <span class="stack-table-label">Total</span>
+                  € {{ number_format((float) $order->total, 2, ',', '.') }}
+                </td>
+                <td>
+                  <span class="stack-table-label">Status</span>
+                  <span class="badge {{ in_array($order->status, ['done', 'accepted', 'ready'], true) ? 'badge-success' : 'badge-muted' }}">
+                    {{ $orderStatusLabels[$order->status] ?? $order->status }}
+                  </span>
+                </td>
+                <td>
+                  <span class="stack-table-label">Ações</span>
+                  <a class="btn btn-secondary" href="{{ route('admin.orders.show', $order) }}">Abrir</a>
+                </td>
+              </tr>
+            @empty
+              <tr>
+                <td colspan="6" style="text-align:center; padding:32px 0; color:#6b7280;">
+                  Este cliente ainda não realizou pedidos.
+                </td>
+              </tr>
+            @endforelse
+          </tbody>
+        </table>
+      </div>
+
+      <div class="detail-pagination">
+        {{ $orders->links() }}
+      </div>
+    </div>
+
+    <div class="card">
       <h3 class="detail-section-title">Histórico de fidelidade</h3>
       <p class="detail-section-note">
-        O histórico continua paginado, mas agora mantém a legibilidade no telemóvel.
+        Extrato de loyalty com as movimentações registradas para o cliente.
       </p>
 
       <div class="responsive-table-wrap detail-table-wrap">

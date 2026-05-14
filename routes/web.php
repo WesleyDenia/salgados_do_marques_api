@@ -68,6 +68,8 @@ Route::middleware(['auth', 'can:manage'])
         Route::post('queue/whatsapp/{item}/close', [QueueMonitorController::class, 'closeWhatsAppMessage'])->name('queue.whatsapp.close');
         Route::post('queue/tasks/{task}/retry', [QueueMonitorController::class, 'retryTask'])->name('queue.tasks.retry');
         Route::post('queue/tasks/{task}/status', [QueueMonitorController::class, 'updateTaskStatus'])->name('queue.tasks.status');
+        Route::get('clientes', [AdminUserController::class, 'customersIndex'])->name('customers.index');
+        Route::get('clientes/{user}', [AdminUserController::class, 'customerShow'])->name('customers.show');
         Route::get('users/password', [AdminUserController::class, 'editPassword'])->name('users.password.edit');
         Route::put('users/password', [AdminUserController::class, 'updatePassword'])->name('users.password.update');
         Route::get('users/create', [AdminUserController::class, 'create'])->name('users.create');

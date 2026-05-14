@@ -14,6 +14,7 @@ use App\Services\LoyaltyService;
 use App\Services\UserCouponService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class UserController extends Controller
@@ -63,7 +64,40 @@ class UserController extends Controller
 
     public function show(User $user)
     {
-        return view('admin.users.show', $this->adminUserService->detailData($user));
+        return view('admin.users.show', [
+            ...$this->adminUserService->detailData($user),
+            'context' => 'users',
+        ]);
+    }
+
+    public function customersIndex(Request $request)
+    {
+        $search = trim((string) $request->string('search'));
+        $status = trim((string) $request->string('status'));
+
+        return view('admin.customers.index', [
+            'users' => $this->adminUserService->paginateForCustomers([
+                'search' => $search,
+                'status' => $status,
+            ], 20),
+            'filters' => [
+                'search' => $search,
+                'status' => $status,
+            ],
+            'stats' => $this->adminUserService->customerStats(),
+        ]);
+    }
+
+    public function customerShow(User $user)
+    {
+        if ($user->role !== User::ROLE_CLIENTE) {
+            throw new NotFoundHttpException();
+        }
+
+        return view('admin.users.show', [
+            ...$this->adminUserService->detailData($user),
+            'context' => 'customers',
+        ]);
     }
 
     public function edit(User $user)

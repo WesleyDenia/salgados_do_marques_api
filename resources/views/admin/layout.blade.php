@@ -835,8 +835,7 @@
             <span class="nav-section-label">Principal</span>
             <a class="nav-link {{ request()->routeIs('admin.dashboard') ? 'active' : '' }}" href="{{ route('admin.dashboard') }}">Dashboard</a>
             <a class="nav-link {{ request()->routeIs('admin.orders.*') ? 'active' : '' }}" href="{{ route('admin.orders.index') }}">Encomendas</a>
-            <a class="nav-link {{ request()->routeIs('admin.customers.*') ? 'active' : '' }}" href="{{ route('admin.customers.index') }}">Clientes</a>
-            <a class="nav-link {{ request()->routeIs('admin.users.*') ? 'active' : '' }}" href="{{ route('admin.users.index') }}">Usuários</a>
+            <a class="nav-link {{ request()->routeIs('admin.customers.*') ? 'active' : '' }}" href="{{ route('admin.customers.index') }}">Clientes</a>            
             <a class="nav-link {{ request()->routeIs('admin.products.*') ? 'active' : '' }}" href="{{ route('admin.products.index') }}">Produtos</a>
             <a class="nav-link {{ request()->routeIs('admin.categories.*') ? 'active' : '' }}" href="{{ route('admin.categories.index') }}">Categorias</a>
             <a class="nav-link {{ request()->routeIs('admin.flavors.*') ? 'active' : '' }}" href="{{ route('admin.flavors.index') }}">Sabores</a>
@@ -855,6 +854,7 @@
             <a class="nav-link {{ request()->routeIs('admin.content-home.*') ? 'active' : '' }}" href="{{ route('admin.content-home.index') }}">Content Home</a>
             <a class="nav-link {{ request()->routeIs('admin.home-components.*') ? 'active' : '' }}" href="{{ route('admin.home-components.index') }}">Componentes da Home</a>
             <a class="nav-link {{ request()->routeIs('admin.settings.*') ? 'active' : '' }}" href="{{ route('admin.settings.index') }}">Configurações</a>
+            <a class="nav-link {{ request()->routeIs('admin.users.*') ? 'active' : '' }}" href="{{ route('admin.users.index') }}">Usuários</a>
           </div>
         </nav>
 

@@ -83,6 +83,53 @@
       background: #ffffff;
     }
 
+    .history-list {
+      display: grid;
+      gap: 16px;
+      margin-top: 18px;
+    }
+
+    .history-card {
+      border: 1px solid #e5e7eb;
+      border-radius: 14px;
+      padding: 16px;
+      background: #fcfcfe;
+    }
+
+    .history-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: flex-start;
+    }
+
+    .history-meta {
+      color: #6b7280;
+      font-size: 0.92rem;
+      margin-top: 4px;
+    }
+
+    .history-change-list {
+      margin: 14px 0 0;
+      padding-left: 1.1rem;
+    }
+
+    .history-change-list li + li {
+      margin-top: 8px;
+    }
+
+    .history-change-field {
+      font-weight: 600;
+    }
+
+    .history-change-values {
+      color: #4b5563;
+      font-size: 0.95rem;
+      margin-top: 2px;
+      overflow-wrap: anywhere;
+    }
+
     @media (max-width: 640px) {
       .detail-header,
       .detail-actions,
@@ -184,6 +231,90 @@
         <div style="margin-top:4px;">{{ $order->notes }}</div>
       </div>
     @endif
+
+    <div class="card">
+      <h3 class="detail-section-title">Histórico relevante</h3>
+      <p class="detail-section-note">
+        Consulte quem alterou a encomenda, quando alterou e quais campos relevantes mudaram.
+      </p>
+
+      @php
+        $actionLabels = [
+          'updated' => 'Correção de encomenda',
+          'status_changed' => 'Mudança de estado',
+        ];
+
+        $fieldLabels = [
+          'customer_name' => 'Nome do cliente',
+          'customer_contact' => 'Contacto do cliente',
+          'store_id' => 'Loja',
+          'payment_status' => 'Estado do pagamento',
+          'slot' => 'Slot operacional',
+          'scheduled_at' => 'Data/hora de retirada',
+          'notes' => 'Observações',
+          'total' => 'Total',
+          'status' => 'Estado',
+          'cancelled_at' => 'Cancelada em',
+          'items' => 'Itens',
+        ];
+
+        $formatHistoryValue = function ($value) {
+          if ($value === null || $value === '') {
+            return '—';
+          }
+
+          if (is_bool($value)) {
+            return $value ? 'Sim' : 'Não';
+          }
+
+          if (is_array($value)) {
+            return json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+          }
+
+          return (string) $value;
+        };
+      @endphp
+
+      @if ($order->history->isEmpty())
+        <div style="margin-top:18px; color:#6b7280;">
+          Esta encomenda ainda não possui alterações relevantes registadas.
+        </div>
+      @else
+        <div class="history-list">
+          @foreach ($order->history as $historyEntry)
+            <div class="history-card">
+              <div class="history-header">
+                <div>
+                  <strong>{{ $actionLabels[$historyEntry->action] ?? \Illuminate\Support\Str::headline($historyEntry->action) }}</strong>
+                  <div class="history-meta">
+                    {{ $historyEntry->user?->name ?? ($historyEntry->user_id ? "Utilizador #{$historyEntry->user_id}" : 'Sistema') }}
+                    @if ($historyEntry->user?->email)
+                      · {{ $historyEntry->user->email }}
+                    @endif
+                  </div>
+                </div>
+                <div class="history-meta">
+                  {{ $historyEntry->created_at?->timezone('Europe/Lisbon')->format('d/m/Y H:i') ?? '—' }}
+                </div>
+              </div>
+
+              <ul class="history-change-list">
+                @foreach (($historyEntry->changes ?? []) as $field => $change)
+                  <li>
+                    <div class="history-change-field">{{ $fieldLabels[$field] ?? \Illuminate\Support\Str::headline($field) }}</div>
+                    <div class="history-change-values">
+                      De: {{ $formatHistoryValue($change['from'] ?? null) }}
+                      <br>
+                      Para: {{ $formatHistoryValue($change['to'] ?? null) }}
+                    </div>
+                  </li>
+                @endforeach
+              </ul>
+            </div>
+          @endforeach
+        </div>
+      @endif
+    </div>
 
     <div class="card">
       <h3 class="detail-section-title">Itens da encomenda</h3>

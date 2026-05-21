@@ -1,24 +1,24 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Admin\AdminAuthController;
-use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\AppTesterController as AdminAppTesterController;
 use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\ContentHomeController;
 use App\Http\Controllers\Admin\CouponController;
+use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\FlavorController;
+use App\Http\Controllers\Admin\HomeComponentController;
 use App\Http\Controllers\Admin\LoyaltyRewardController;
 use App\Http\Controllers\Admin\OrderController as AdminOrderController;
 use App\Http\Controllers\Admin\PartnerCampaignController;
 use App\Http\Controllers\Admin\PartnerController;
-use App\Http\Controllers\Admin\SettingController as AdminSettingController;
 use App\Http\Controllers\Admin\ProductController;
+use App\Http\Controllers\Admin\QueueMonitorController;
+use App\Http\Controllers\Admin\SettingController as AdminSettingController;
 use App\Http\Controllers\Admin\StoreController;
-use App\Http\Controllers\Admin\FlavorController;
-use App\Http\Controllers\Admin\HomeComponentController;
-use App\Http\Controllers\Admin\AppTesterController as AdminAppTesterController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Admin\WhatsAppController as AdminWhatsAppController;
-use App\Http\Controllers\Admin\QueueMonitorController;
+use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
     return view('welcome');
@@ -48,6 +48,7 @@ Route::middleware(['auth', 'can:manage'])
         Route::resource('categories', CategoryController::class)->except('show');
         Route::resource('products', ProductController::class)->except('show');
         Route::resource('flavors', FlavorController::class)->except('show');
+        Route::get('orders/daily', [AdminOrderController::class, 'daily'])->name('orders.daily');
         Route::get('orders', [AdminOrderController::class, 'index'])->name('orders.index');
         Route::get('orders/{order}', [AdminOrderController::class, 'show'])->name('orders.show');
         Route::patch('orders/{order}/status', [AdminOrderController::class, 'updateStatus'])->name('orders.status');

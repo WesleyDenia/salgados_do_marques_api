@@ -5,14 +5,19 @@ REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$REPO_DIR"
 
 SITE_DIR="$REPO_DIR/salgados-site"
-PANEL_REPO_DIR="$(cd "$REPO_DIR/.." && pwd)/salgados_do_marques_encomendas"
-PANEL_COMPOSE_FILE="$PANEL_REPO_DIR/docker-compose.yml"
-PANEL_ENV_FILE="$PANEL_REPO_DIR/.env.production"
-PANEL_ENV_EXAMPLE_FILE="$PANEL_REPO_DIR/.env.production.example"
+WORKSPACE_DIR="$(cd "$REPO_DIR/.." && pwd)"
+PANEL_CANDIDATE_DIRS=(
+  "$WORKSPACE_DIR/salgados-encomendas"
+  "$WORKSPACE_DIR/salgados_do_marques_encomendas"
+)
 NETWORK_NAME="salgados_backend_net"
 DB_DATA_DIR="${DB_DATA_DIR:-/srv/salgados/mariadb_data}"
 DB_UID="${DB_UID:-999}"
 DB_GID="${DB_GID:-999}"
+PANEL_REPO_DIR=""
+PANEL_COMPOSE_FILE=""
+PANEL_ENV_FILE=""
+PANEL_ENV_EXAMPLE_FILE=""
 
 normalize_input() {
   echo "${1:-}" | tr '[:upper:]' '[:lower:]' | xargs
@@ -55,6 +60,25 @@ compose_db() {
 
 compose_panel() {
   "${COMPOSE_CMD[@]}" -f "$PANEL_COMPOSE_FILE" "$@"
+}
+
+resolve_panel_repo_dir() {
+  local candidate=""
+
+  for candidate in "${PANEL_CANDIDATE_DIRS[@]}"; do
+    if [ -f "$candidate/docker-compose.yml" ] && [ -f "$candidate/Dockerfile" ]; then
+      PANEL_REPO_DIR="$candidate"
+      PANEL_COMPOSE_FILE="$PANEL_REPO_DIR/docker-compose.yml"
+      PANEL_ENV_FILE="$PANEL_REPO_DIR/.env.production"
+      PANEL_ENV_EXAMPLE_FILE="$PANEL_REPO_DIR/.env.production.example"
+      return 0
+    fi
+  done
+
+  echo "Erro: repositório do painel não encontrado."
+  echo "Caminhos verificados:"
+  printf ' - %s\n' "${PANEL_CANDIDATE_DIRS[@]}"
+  exit 1
 }
 
 ensure_docker_network() {
@@ -260,6 +284,8 @@ deploy_api() {
 }
 
 ensure_panel_env_file() {
+  resolve_panel_repo_dir
+
   if [ -f "$PANEL_ENV_FILE" ]; then
     return
   fi
@@ -316,6 +342,7 @@ rebuild_panel_service() {
 }
 
 stop_panel_service() {
+  resolve_panel_repo_dir
   echo "Parando painel de agendamentos..."
   compose_panel stop panel || true
   compose_panel rm -f panel || true
@@ -335,12 +362,14 @@ panel_operations_menu() {
 
   case "$panel_option" in
     1|subir|up)
-      update_repository "$PANEL_REPO_DIR" "salgados_do_marques_encomendas"
+      resolve_panel_repo_dir
+      update_repository "$PANEL_REPO_DIR" "$(basename "$PANEL_REPO_DIR")"
       start_panel_service
       echo "Painel iniciado com sucesso."
       ;;
     2|rebuild|rebuildar|build)
-      update_repository "$PANEL_REPO_DIR" "salgados_do_marques_encomendas"
+      resolve_panel_repo_dir
+      update_repository "$PANEL_REPO_DIR" "$(basename "$PANEL_REPO_DIR")"
       rebuild_panel_service
       echo "Painel rebuildado com sucesso."
       ;;

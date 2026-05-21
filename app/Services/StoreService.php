@@ -255,6 +255,11 @@ class StoreService
             ->all();
     }
 
+    public function availablePickupSlots(Store $store, Carbon $date, array $settings, ?Carbon $now = null): array
+    {
+        return $this->availablePickupMinuteOptions($store, $date, $settings, $now);
+    }
+
     protected function hasValidWeeklySchedule(Store $store): bool
     {
         $schedule = $this->normalizeWeeklySchedule($store->pickup_weekly_schedule);

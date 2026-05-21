@@ -68,6 +68,163 @@ class OrderAdminIndexTest extends TestCase
         $response->assertDontSeeText("#{$nonMatchingOrder->id}");
     }
 
+    public function test_admin_order_index_filters_orders_by_operational_search_terms(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $customer = User::factory()->create([
+            'name' => 'Carla Atendimento',
+            'phone' => '912345678',
+        ]);
+        $otherCustomer = User::factory()->create([
+            'name' => 'Bruno Operacao',
+            'phone' => '934567890',
+        ]);
+        $store = $this->createStore();
+
+        $matchingOrder = Order::create([
+            'user_id' => $customer->id,
+            'store_id' => $store->id,
+            'status' => 'placed',
+            'customer_name' => 'Carla Atendimento',
+            'customer_contact' => '912345678',
+            'scheduled_at' => Carbon::create(2026, 7, 15, 11, 30, 0, 'UTC'),
+            'total' => 12.50,
+            'notes' => null,
+        ]);
+
+        $nonMatchingOrder = Order::create([
+            'user_id' => $otherCustomer->id,
+            'store_id' => $store->id,
+            'status' => 'placed',
+            'customer_name' => 'Bruno Operacao',
+            'customer_contact' => '934567890',
+            'scheduled_at' => Carbon::create(2026, 7, 15, 10, 30, 0, 'UTC'),
+            'total' => 9.50,
+            'notes' => null,
+        ]);
+
+        $responseByName = $this->actingAs($admin)->get(route('admin.orders.index', [
+            'search' => 'Carla',
+        ]));
+
+        $responseByName->assertOk();
+        $responseByName->assertSeeText("#{$matchingOrder->id}");
+        $responseByName->assertDontSeeText("#{$nonMatchingOrder->id}");
+
+        $responseByPhone = $this->actingAs($admin)->get(route('admin.orders.index', [
+            'search' => '912345678',
+        ]));
+
+        $responseByPhone->assertOk();
+        $responseByPhone->assertSeeText("#{$matchingOrder->id}");
+        $responseByPhone->assertDontSeeText("#{$nonMatchingOrder->id}");
+
+        $responseById = $this->actingAs($admin)->get(route('admin.orders.index', [
+            'search' => (string) $matchingOrder->id,
+        ]));
+
+        $responseById->assertOk();
+        $responseById->assertSeeText("#{$matchingOrder->id}");
+        $responseById->assertDontSeeText("#{$nonMatchingOrder->id}");
+    }
+
+    public function test_admin_daily_planning_view_filters_orders_for_requested_lisbon_day(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $customer = User::factory()->create();
+        $store = $this->createStore();
+
+        $startBoundaryOrder = Order::create([
+            'user_id' => $customer->id,
+            'store_id' => $store->id,
+            'status' => 'placed',
+            'customer_name' => 'Cliente Madrugada',
+            'payment_status' => 'pending',
+            'slot' => 'manha',
+            'scheduled_at' => Carbon::create(2026, 7, 15, 23, 30, 0, 'UTC'),
+            'total' => 22.50,
+            'notes' => null,
+        ]);
+        $startBoundaryOrder->items()->create([
+            'product_id' => null,
+            'variant_id' => null,
+            'name_snapshot' => 'Coxinha',
+            'price_snapshot' => 11.25,
+            'quantity' => 2,
+            'options' => null,
+            'total' => 22.50,
+        ]);
+
+        $endBoundaryOrder = Order::create([
+            'user_id' => $customer->id,
+            'store_id' => $store->id,
+            'status' => 'accepted',
+            'customer_name' => 'Cliente Fecho',
+            'payment_status' => 'paid',
+            'slot' => 'noite',
+            'scheduled_at' => Carbon::create(2026, 7, 16, 22, 30, 0, 'UTC'),
+            'total' => 18.00,
+            'notes' => null,
+        ]);
+        $endBoundaryOrder->items()->create([
+            'product_id' => null,
+            'variant_id' => null,
+            'name_snapshot' => 'Risole',
+            'price_snapshot' => 6.00,
+            'quantity' => 3,
+            'options' => null,
+            'total' => 18.00,
+        ]);
+
+        $previousDayOrder = Order::create([
+            'user_id' => $customer->id,
+            'store_id' => $store->id,
+            'status' => 'placed',
+            'customer_name' => 'Cliente Ontem',
+            'scheduled_at' => Carbon::create(2026, 7, 15, 22, 30, 0, 'UTC'),
+            'total' => 12.50,
+            'notes' => null,
+        ]);
+
+        $nextDayOrder = Order::create([
+            'user_id' => $customer->id,
+            'store_id' => $store->id,
+            'status' => 'placed',
+            'customer_name' => 'Cliente Amanhã',
+            'scheduled_at' => Carbon::create(2026, 7, 16, 23, 15, 0, 'UTC'),
+            'total' => 14.50,
+            'notes' => null,
+        ]);
+
+        $response = $this->actingAs($admin)->get(route('admin.orders.daily', [
+            'day' => '2026-07-16',
+        ]));
+
+        $response->assertOk();
+        $response->assertSeeText('Planeamento diário');
+        $response->assertSeeText('16/07/2026');
+        $response->assertSeeText('Cliente Madrugada');
+        $response->assertSeeText('Cliente Fecho');
+        $response->assertDontSeeText('Cliente Ontem');
+        $response->assertDontSeeText('Cliente Amanhã');
+        $response->assertSeeText('2 encomendas');
+        $response->assertSeeText('5 itens');
+        $response->assertSee(route('admin.orders.show', $startBoundaryOrder), false);
+    }
+
+    public function test_admin_daily_planning_view_shows_explicit_empty_state(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+
+        $response = $this->actingAs($admin)->get(route('admin.orders.daily', [
+            'day' => '2026-07-16',
+        ]));
+
+        $response->assertOk();
+        $response->assertSeeText('Nenhuma encomenda planeada para o dia selecionado.');
+        $response->assertSeeText('Ajuste a data ou remova filtros para verificar outras encomendas.');
+    }
+
     protected function createStore(): Store
     {
         return Store::create([

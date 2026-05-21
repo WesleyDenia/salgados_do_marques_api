@@ -11,9 +11,23 @@
           Acompanhe os pedidos de retirada e atualize o fluxo operacional.
         </p>
       </div>
+      <a class="btn btn-primary" href="{{ route('admin.orders.daily') }}">
+        Abrir planeamento diário
+      </a>
     </div>
 
     <form method="GET" action="{{ route('admin.orders.index') }}" class="filter-grid">
+      <div class="form-group">
+        <label for="filter_search">Pesquisar</label>
+        <input
+          type="text"
+          id="filter_search"
+          name="search"
+          value="{{ old('search', $filters['search'] ?? '') }}"
+          placeholder="Nº, cliente ou contacto"
+        />
+      </div>
+
       <div class="form-group">
         <label for="filter_status">Status</label>
         <select id="filter_status" name="status">

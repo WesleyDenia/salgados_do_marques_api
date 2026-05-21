@@ -4,6 +4,7 @@ namespace Tests\Feature\Admin;
 
 use App\Models\Flavor;
 use App\Models\Order;
+use App\Models\OrderHistory;
 use App\Models\Store;
 use App\Models\User;
 use Carbon\Carbon;
@@ -62,6 +63,18 @@ class OrderAdminShowTest extends TestCase
             'total' => 14.90,
         ]);
 
+        OrderHistory::query()->create([
+            'order_id' => $order->id,
+            'user_id' => $admin->id,
+            'action' => 'updated',
+            'changes' => [
+                'notes' => [
+                    'from' => null,
+                    'to' => 'Cliente pediu ajuste',
+                ],
+            ],
+        ]);
+
         $response = $this->actingAs($admin)->get(route('admin.orders.show', $order));
 
         $response->assertOk();
@@ -70,5 +83,10 @@ class OrderAdminShowTest extends TestCase
         $response->assertSeeText('Frango');
         $response->assertSeeText('Carne');
         $response->assertDontSeeText("Sabores: {$frango->id}, {$carne->id}");
+        $response->assertSeeText('Histórico relevante');
+        $response->assertSeeText('Correção de encomenda');
+        $response->assertSeeText($admin->name);
+        $response->assertSeeText('Observações');
+        $response->assertSeeText('Cliente pediu ajuste');
     }
 }

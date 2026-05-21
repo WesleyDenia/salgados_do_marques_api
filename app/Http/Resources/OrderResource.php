@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Services\OrderService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -36,6 +37,21 @@ class OrderResource extends JsonResource
                 ];
             }),
             'items' => OrderItemResource::collection($this->whenLoaded('items')),
+            'history' => $this->whenLoaded('history', function () {
+                return $this->history->map(fn ($history) => [
+                    'id' => $history->id,
+                    'user_id' => $history->user_id,
+                    'user' => $history->relationLoaded('user') && $history->user ? [
+                        'id' => $history->user->id,
+                        'name' => $history->user->name,
+                        'email' => $history->user->email,
+                    ] : null,
+                    'action' => $history->action,
+                    'changes' => $history->changes,
+                    'created_at' => $history->created_at?->toIso8601String(),
+                ])->values();
+            }),
+            'can_edit' => app(OrderService::class)->canEdit($this->resource),
             'created_at' => $this->created_at?->toIso8601String(),
         ];
     }

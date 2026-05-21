@@ -2,22 +2,24 @@
 
 namespace App\Services;
 
+use App\Jobs\SendOrderPlacedWhatsAppJob;
 use App\Models\Order;
+use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\User;
 use App\Models\WhatsAppQueueItem;
-use App\Jobs\SendOrderPlacedWhatsAppJob;
-use App\Services\AdminFlavorService;
 use App\Repositories\OrderRepository;
 use App\Repositories\ProductRepository;
 use App\Services\Notifications\WhatsAppMessageFormatter;
 use Carbon\Carbon;
+use Carbon\CarbonInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Collection as SupportCollection;
-use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 
 class OrderService
 {
@@ -37,6 +39,12 @@ class OrderService
         'ready' => ['done'],
         'done' => [],
         'canceled' => [],
+    ];
+
+    private const SLOT_WINDOWS = [
+        'manha' => ['start' => 0, 'end' => 11 * 60 + 59],
+        'tarde' => ['start' => 12 * 60, 'end' => 17 * 60 + 59],
+        'noite' => ['start' => 18 * 60, 'end' => 23 * 60 + 59],
     ];
 
     public function __construct(
@@ -99,7 +107,7 @@ class OrderService
         $scheduled = $this->parseScheduledAt($data['scheduled_at'], $orderSettings['timezone']);
         $store = $this->stores->findById((int) $data['store_id']);
 
-        if (!$store) {
+        if (! $store) {
             throw ValidationException::withMessages([
                 'store_id' => 'A loja selecionada não existe.',
             ]);
@@ -228,9 +236,30 @@ class OrderService
         ];
     }
 
+    public function availabilitySlots(array $data): array
+    {
+        $settings = $this->orderSettings();
+        $store = $this->findAvailableStore((int) $data['store_id']);
+        $date = Carbon::createFromFormat('Y-m-d', $data['date'], $settings['timezone']);
+        $minuteOptions = $this->stores->availablePickupSlots($store, $date, $settings);
+
+        return [
+            'store_id' => $store->id,
+            'date' => $date->format('Y-m-d'),
+            'timezone' => $settings['timezone'],
+            'slots' => array_map(
+                fn (string $slot): array => [
+                    'slot' => $slot,
+                    'state' => $this->slotStateFromMinuteOptions($slot, $minuteOptions),
+                ],
+                array_keys(self::SLOT_WINDOWS)
+            ),
+        ];
+    }
+
     public function cancelForUser(Order $order): Order
     {
-        if (!in_array($order->status, ['placed', 'accepted'], true)) {
+        if (! in_array($order->status, ['placed', 'accepted'], true)) {
             throw ValidationException::withMessages([
                 'status' => 'Este pedido não pode ser cancelado.',
             ]);
@@ -263,6 +292,59 @@ class OrderService
         );
     }
 
+    /**
+     * @param  array<string, mixed>  $filters
+     * @return array{
+     *   orders: LengthAwarePaginator,
+     *   filters: array<string, mixed>,
+     *   slotLabels: array<string, string>,
+     *   selectedDayLabel: string,
+     *   summary: array<string, mixed>
+     * }
+     */
+    public function dailyPlanning(array $filters, int $perPage = 20): array
+    {
+        $preparedFilters = $this->prepareDailyPlanningFilters($filters);
+        $normalizedFilters = $this->normalizeAdminFilters($preparedFilters);
+        $orders = $this->repository->paginateForAdmin($normalizedFilters, $perPage);
+        $allOrders = $this->repository->listForAdmin($normalizedFilters);
+
+        return [
+            'orders' => $orders,
+            'filters' => $preparedFilters,
+            'slotLabels' => $this->slotLabels(),
+            'selectedDayLabel' => Carbon::createFromFormat('Y-m-d', $preparedFilters['day'], $this->orderSettings()['timezone'])
+                ->translatedFormat('d/m/Y'),
+            'summary' => $this->buildDailyPlanningSummary($allOrders),
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $filters
+     * @return array{
+     *   orders: Collection<int, Order>,
+     *   filters: array<string, mixed>,
+     *   slotLabels: array<string, string>,
+     *   selectedDayLabel: string,
+     *   summary: array<string, mixed>
+     * }
+     */
+    public function dailyPlanningDataset(array $filters): array
+    {
+        $preparedFilters = $this->prepareDailyPlanningFilters($filters);
+        $normalizedFilters = $this->normalizeAdminFilters($preparedFilters);
+        $orders = $this->repository->listForAdmin($normalizedFilters);
+
+        return [
+            'orders' => $orders,
+            'filters' => $preparedFilters,
+            'slotLabels' => $this->slotLabels(),
+            'selectedDayLabel' => Carbon::createFromFormat('Y-m-d', $preparedFilters['day'], $this->orderSettings()['timezone'])
+                ->translatedFormat('d/m/Y'),
+            'summary' => $this->buildDailyPlanningSummary($orders),
+        ];
+    }
+
     public function findForAdmin(Order $order): Order
     {
         return $this->repository->findForAdmin($order);
@@ -291,6 +373,11 @@ class OrderService
             return $this->repository->findForAdmin($order);
         }
 
+        $before = [
+            'status' => $order->status,
+            'cancelled_at' => $this->normalizeStoredOrderDateTime($order, 'cancelled_at'),
+        ];
+
         $payload = ['status' => $newStatus];
 
         if ($newStatus === 'canceled') {
@@ -299,12 +386,83 @@ class OrderService
             $payload['cancelled_at'] = null;
         }
 
-        return $this->repository->updateStatus($order, $payload);
+        $after = [
+            'status' => $newStatus,
+            'cancelled_at' => $this->normalizeDateTimeValue($payload['cancelled_at'] ?? $order->cancelled_at),
+        ];
+
+        return $this->repository->updateStatus($order, $payload, $this->makeHistoryPayload(
+            'status_changed',
+            $this->calculateChanges($before, $after)
+        ));
+    }
+
+    public function updateForAdmin(Order $order, array $data): Order
+    {
+        $this->assertOrderEditable($order);
+        $order->loadMissing('items');
+
+        $orderSettings = $this->orderSettings();
+        $scheduled = $this->parseScheduledAt($data['scheduled_at'], $orderSettings['timezone']);
+        $store = $this->stores->findById((int) $data['store_id']);
+
+        if (! $store) {
+            throw ValidationException::withMessages([
+                'store_id' => 'A loja selecionada não existe.',
+            ]);
+        }
+
+        $this->stores->validateScheduledPickup($store, $scheduled, $orderSettings);
+        $this->assertSlotAvailableForSchedule($store, $scheduled, $data['slot'] ?? null, $orderSettings);
+
+        $items = collect($data['items']);
+        $productIds = $items->pluck('product_id')->unique()->values()->all();
+        $variantIds = $items->pluck('variant_id')->filter()->unique()->values()->all();
+        $products = $this->products->findActiveForOrder($productIds);
+        $variants = $this->products->findActiveVariantsForOrder($variantIds);
+
+        if ($products->count() !== count($productIds)) {
+            throw ValidationException::withMessages([
+                'items' => 'Um ou mais produtos não estão disponíveis.',
+            ]);
+        }
+
+        if ($variants->count() !== count($variantIds)) {
+            throw ValidationException::withMessages([
+                'items' => 'Uma ou mais opções de pack não estão disponíveis.',
+            ]);
+        }
+
+        $lineItems = $this->buildOrderLineItems($items, $products, $variants);
+        $before = $this->snapshotOrderForHistory($order);
+        $after = $this->snapshotOrderForHistory($order, [
+            'customer_name' => $this->normalizeNullableText($data['customer_name'] ?? null),
+            'customer_contact' => $this->normalizeNullableText($data['customer_contact'] ?? null),
+            'store_id' => (int) $data['store_id'],
+            'payment_status' => $data['payment_status'] ?? null,
+            'slot' => $data['slot'] ?? null,
+            'scheduled_at' => $scheduled->copy()->timezone('UTC'),
+            'notes' => $this->normalizeNullableText($data['notes'] ?? null),
+            'items' => $lineItems,
+        ]);
+
+        return $this->repository->updateWithItems($order, [
+            'customer_name' => $this->normalizeNullableText($data['customer_name'] ?? null),
+            'customer_contact' => $this->normalizeNullableText($data['customer_contact'] ?? null),
+            'store_id' => (int) $data['store_id'],
+            'payment_status' => $data['payment_status'] ?? null,
+            'slot' => $data['slot'] ?? null,
+            'scheduled_at' => $scheduled->copy()->timezone('UTC'),
+            'notes' => $this->normalizeNullableText($data['notes'] ?? null),
+        ], $lineItems, $this->makeHistoryPayload(
+            'updated',
+            $this->calculateChanges($before, $after)
+        ));
     }
 
     protected function assertStatusTransition(Order $order, string $newStatus): void
     {
-        if (!array_key_exists($newStatus, self::STATUS_LABELS)) {
+        if (! array_key_exists($newStatus, self::STATUS_LABELS)) {
             throw ValidationException::withMessages([
                 'status' => 'Status inválido para o pedido.',
             ]);
@@ -328,16 +486,58 @@ class OrderService
         ]);
     }
 
+    protected function assertOrderEditable(Order $order): void
+    {
+        if (! $this->canEdit($order)) {
+            throw ValidationException::withMessages([
+                'status' => 'Esta encomenda já não pode ser corrigida no fluxo operacional atual.',
+            ]);
+        }
+    }
+
+    public function canEdit(Order $order, ?Carbon $now = null): bool
+    {
+        if (! in_array($order->status, ['placed', 'accepted'], true)) {
+            return false;
+        }
+
+        if (! $order->scheduled_at) {
+            return true;
+        }
+
+        $settings = $this->orderSettings();
+        $timezone = $settings['timezone'];
+        $editMinutes = max(0, (int) $settings['cancel_minutes']);
+        $current = ($now ?? Carbon::now($timezone))->copy()->timezone($timezone);
+        $scheduled = Carbon::parse($order->scheduled_at, 'UTC')->timezone($timezone);
+        $deadline = $scheduled->copy()->subMinutes($editMinutes);
+
+        return $current->lessThanOrEqualTo($deadline);
+    }
+
     protected function parseScheduledAt(string $value, string $timezone): Carbon
     {
         return Carbon::parse($value, $timezone);
+    }
+
+    protected function assertSlotAvailableForSchedule($store, Carbon $scheduled, ?string $slot, array $settings): void
+    {
+        if ($slot === null || $slot === '') {
+            return;
+        }
+
+        if ($this->slotStateFromSchedule($store, $scheduled, $slot, $settings) === 'bloqueado') {
+            throw ValidationException::withMessages([
+                'slot' => 'O slot operacional selecionado já não está disponível para essa data.',
+            ]);
+        }
     }
 
     protected function findAvailableStore(int $storeId)
     {
         $store = $this->stores->findById($storeId);
 
-        if (!$store) {
+        if (! $store) {
             throw ValidationException::withMessages([
                 'store_id' => 'A loja selecionada não existe.',
             ]);
@@ -347,7 +547,7 @@ class OrderService
     }
 
     /**
-     * @param array<string, mixed> $data
+     * @param  array<string, mixed>  $data
      * @return array{
      *   user_id: int|null,
      *   customer_name: string|null,
@@ -394,7 +594,7 @@ class OrderService
     }
 
     /**
-     * @param array<string, mixed> $filters
+     * @param  array<string, mixed>  $filters
      * @return array<string, mixed>
      */
     protected function normalizeAdminFilters(array $filters): array
@@ -412,9 +612,73 @@ class OrderService
         return $filters;
     }
 
+    /**
+     * @param  array<string, mixed>  $filters
+     * @return array<string, mixed>
+     */
+    protected function prepareDailyPlanningFilters(array $filters): array
+    {
+        $timezone = $this->orderSettings()['timezone'];
+        $day = isset($filters['day']) && is_string($filters['day']) && $filters['day'] !== ''
+            ? $filters['day']
+            : Carbon::now($timezone)->format('Y-m-d');
+
+        $dayStart = Carbon::createFromFormat('Y-m-d', $day, $timezone)->startOfDay();
+        $dayEnd = $dayStart->copy()->endOfDay();
+
+        $filters['day'] = $day;
+        $filters['scheduled_from'] = $dayStart->format('Y-m-d H:i:s');
+        $filters['scheduled_to'] = $dayEnd->format('Y-m-d H:i:s');
+
+        return $filters;
+    }
+
+    /**
+     * @param  Collection<int, Order>  $orders
+     * @return array<string, mixed>
+     */
+    protected function buildDailyPlanningSummary(Collection $orders): array
+    {
+        $slotCounts = [
+            'manha' => 0,
+            'tarde' => 0,
+            'noite' => 0,
+            'sem_slot' => 0,
+        ];
+
+        $itemQuantity = 0;
+
+        foreach ($orders as $order) {
+            $slot = $order->slot ?: 'sem_slot';
+            $slotCounts[$slot] = ($slotCounts[$slot] ?? 0) + 1;
+            $itemQuantity += (int) $order->items->sum('quantity');
+        }
+
+        return [
+            'orderCount' => $orders->count(),
+            'itemQuantity' => $itemQuantity,
+            'paidCount' => $orders->where('payment_status', 'paid')->count(),
+            'attentionCount' => $orders->filter(fn (Order $order): bool => in_array($order->status, ['placed', 'accepted'], true))->count(),
+            'slotCounts' => $slotCounts,
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    protected function slotLabels(): array
+    {
+        return [
+            'manha' => 'Manhã',
+            'tarde' => 'Tarde',
+            'noite' => 'Noite',
+            'sem_slot' => 'Sem slot',
+        ];
+    }
+
     protected function normalizeNullableText(mixed $value): ?string
     {
-        if (!is_string($value)) {
+        if (! is_string($value)) {
             return null;
         }
 
@@ -424,9 +688,183 @@ class OrderService
     }
 
     /**
-     * @param SupportCollection<int, array<string, mixed>> $items
-     * @param Collection<int, Product> $products
-     * @param Collection<int, ProductVariant> $variants
+     * @param  array<string, mixed>  $overrides
+     * @return array<string, mixed>
+     */
+    protected function snapshotOrderForHistory(Order $order, array $overrides = []): array
+    {
+        $items = array_key_exists('items', $overrides)
+            ? $this->normalizeLineItemsForHistory($overrides['items'])
+            : $this->normalizeExistingItemsForHistory($order->items);
+
+        $total = array_key_exists('items', $overrides)
+            ? round((float) collect($overrides['items'])->sum(fn (array $item): float => (float) ($item['total'] ?? 0)), 2)
+            : round((float) $order->total, 2);
+
+        return [
+            'customer_name' => $overrides['customer_name'] ?? $order->customer_name,
+            'customer_contact' => $overrides['customer_contact'] ?? $order->customer_contact,
+            'store_id' => $overrides['store_id'] ?? $order->store_id,
+            'payment_status' => $overrides['payment_status'] ?? $order->payment_status,
+            'slot' => $overrides['slot'] ?? $order->slot,
+            'scheduled_at' => array_key_exists('scheduled_at', $overrides)
+                ? $this->normalizeDateTimeValue($overrides['scheduled_at'])
+                : $this->normalizeStoredOrderDateTime($order, 'scheduled_at'),
+            'notes' => $overrides['notes'] ?? $order->notes,
+            'total' => $total,
+            'items' => $items,
+        ];
+    }
+
+    /**
+     * @param  iterable<int, OrderItem>  $items
+     * @return array<int, array<string, mixed>>
+     */
+    protected function normalizeExistingItemsForHistory(iterable $items): array
+    {
+        return collect($items)
+            ->map(fn (OrderItem $item): array => [
+                'product_id' => $item->product_id,
+                'variant_id' => $item->variant_id,
+                'name_snapshot' => $item->name_snapshot,
+                'price_snapshot' => round((float) $item->price_snapshot, 2),
+                'quantity' => (int) $item->quantity,
+                'options' => $item->options,
+                'total' => round((float) $item->total, 2),
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $items
+     * @return array<int, array<string, mixed>>
+     */
+    protected function normalizeLineItemsForHistory(array $items): array
+    {
+        return collect($items)
+            ->map(fn (array $item): array => [
+                'product_id' => $item['product_id'],
+                'variant_id' => $item['variant_id'] ?? null,
+                'name_snapshot' => $item['name_snapshot'],
+                'price_snapshot' => round((float) $item['price_snapshot'], 2),
+                'quantity' => (int) $item['quantity'],
+                'options' => $item['options'] ?? null,
+                'total' => round((float) $item['total'], 2),
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param  array<string, mixed>  $before
+     * @param  array<string, mixed>  $after
+     * @return array<string, array{from:mixed,to:mixed}>
+     */
+    protected function calculateChanges(array $before, array $after): array
+    {
+        $changes = [];
+
+        foreach ($after as $key => $afterValue) {
+            $beforeValue = $before[$key] ?? null;
+
+            if ($beforeValue == $afterValue) {
+                continue;
+            }
+
+            $changes[$key] = [
+                'from' => $beforeValue,
+                'to' => $afterValue,
+            ];
+        }
+
+        return $changes;
+    }
+
+    /**
+     * @param  array<string, array{from:mixed,to:mixed}>  $changes
+     * @return array<string, mixed>|null
+     */
+    protected function makeHistoryPayload(string $action, array $changes): ?array
+    {
+        if ($changes === []) {
+            return null;
+        }
+
+        return [
+            'user_id' => Auth::id(),
+            'action' => $action,
+            'changes' => $changes,
+        ];
+    }
+
+    protected function normalizeDateTimeValue(mixed $value): ?string
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        if ($value instanceof CarbonInterface) {
+            return $value->copy()->utc()->format('Y-m-d\TH:i:sP');
+        }
+
+        return Carbon::parse((string) $value)->utc()->format('Y-m-d\TH:i:sP');
+    }
+
+    protected function normalizeStoredOrderDateTime(Order $order, string $attribute): ?string
+    {
+        $raw = $order->getRawOriginal($attribute);
+
+        if ($raw === null || $raw === '') {
+            return null;
+        }
+
+        return Carbon::parse((string) $raw, 'UTC')->format('Y-m-d\TH:i:sP');
+    }
+
+    protected function slotStateFromSchedule($store, Carbon $scheduled, string $slot, array $settings): string
+    {
+        $date = $scheduled->copy()->timezone($settings['timezone'])->startOfDay();
+        $minuteOptions = $this->stores->availablePickupSlots($store, $date, $settings);
+
+        return $this->slotStateFromMinuteOptions($slot, $minuteOptions);
+    }
+
+    /**
+     * @param  array<int, string>  $minuteOptions
+     */
+    protected function slotStateFromMinuteOptions(string $slot, array $minuteOptions): string
+    {
+        $window = self::SLOT_WINDOWS[$slot] ?? null;
+
+        if ($window === null) {
+            return 'bloqueado';
+        }
+
+        $count = collect($minuteOptions)
+            ->filter(function (string $option) use ($window): bool {
+                [$hour, $minute] = array_map('intval', explode(':', $option));
+                $totalMinutes = ($hour * 60) + $minute;
+
+                return $totalMinutes >= $window['start'] && $totalMinutes <= $window['end'];
+            })
+            ->count();
+
+        if ($count === 0) {
+            return 'bloqueado';
+        }
+
+        if ($count <= 6) {
+            return 'limitado';
+        }
+
+        return 'disponível';
+    }
+
+    /**
+     * @param  SupportCollection<int, array<string, mixed>>  $items
+     * @param  Collection<int, Product>  $products
+     * @param  Collection<int, ProductVariant>  $variants
      * @return array<int, array<string, mixed>>
      */
     protected function buildOrderLineItems(
@@ -451,7 +889,7 @@ class OrderService
             $flavors = isset($item['flavors']) && is_array($item['flavors']) ? $item['flavors'] : [];
             $allowedFlavorIds = $product->allowedFlavors->pluck('id');
 
-            if (!$variant && $flavors !== []) {
+            if (! $variant && $flavors !== []) {
                 throw ValidationException::withMessages([
                     'items' => 'Os sabores só podem ser informados para packs.',
                 ]);
@@ -478,7 +916,7 @@ class OrderService
                 }
 
                 $hasInvalidFlavor = collect($flavors)->contains(
-                    fn ($flavorId) => !$allowedFlavorIds->contains((int) $flavorId)
+                    fn ($flavorId) => ! $allowedFlavorIds->contains((int) $flavorId)
                 );
 
                 if ($hasInvalidFlavor) {
@@ -502,5 +940,4 @@ class OrderService
             ];
         })->all();
     }
-
 }

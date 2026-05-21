@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\OrderAvailabilityDatesRequest;
 use App\Http\Requests\OrderAvailabilityHoursRequest;
 use App\Http\Requests\OrderAvailabilityMinutesRequest;
+use App\Http\Requests\OrderAvailabilitySlotsRequest;
 use App\Http\Requests\OrderStoreRequest;
 use App\Http\Resources\OrderResource;
 use App\Models\Order;
@@ -18,8 +19,11 @@ class OrderController extends Controller
 
     public function settings()
     {
+        $settings = $this->orders->orderSettings();
+        $settings['status_labels'] = $this->orders->statusLabels();
+
         return response()->json([
-            'data' => $this->orders->orderSettings(),
+            'data' => $settings,
         ]);
     }
 
@@ -41,6 +45,13 @@ class OrderController extends Controller
     {
         return response()->json([
             'data' => $this->orders->availabilityMinutes($request->validated()),
+        ]);
+    }
+
+    public function availabilitySlots(OrderAvailabilitySlotsRequest $request)
+    {
+        return response()->json([
+            'data' => $this->orders->availabilitySlots($request->validated()),
         ]);
     }
 

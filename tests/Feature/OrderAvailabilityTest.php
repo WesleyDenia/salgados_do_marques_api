@@ -97,6 +97,31 @@ class OrderAvailabilityTest extends TestCase
         ]);
     }
 
+    public function test_it_returns_slot_states_from_backend_validated_availability(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-03-16 10:00', 'Europe/Lisbon'));
+        $user = User::factory()->create();
+        $store = $this->makeStore('Loja Slots', [
+            'pickup_date_exceptions' => [
+                ['date' => '2026-03-19', 'is_open' => true, 'start_time' => '17:30', 'end_time' => '17:55'],
+            ],
+        ]);
+        $this->setSchedulingSettings(30, 5);
+
+        Sanctum::actingAs($user);
+
+        $response = $this->getJson("/api/v1/orders/availability/slots?store_id={$store->id}&date=2026-03-19");
+
+        $response->assertOk();
+        $response->assertJsonPath('data.store_id', $store->id);
+        $response->assertJsonPath('data.slots.0.slot', 'manha');
+        $response->assertJsonPath('data.slots.0.state', 'bloqueado');
+        $response->assertJsonPath('data.slots.1.slot', 'tarde');
+        $response->assertJsonPath('data.slots.1.state', 'limitado');
+        $response->assertJsonPath('data.slots.2.slot', 'noite');
+        $response->assertJsonPath('data.slots.2.state', 'bloqueado');
+    }
+
     public function test_it_validates_query_parameters_with_form_requests(): void
     {
         $user = User::factory()->create();

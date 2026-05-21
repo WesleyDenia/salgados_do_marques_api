@@ -46,6 +46,13 @@ class Order extends Model
         return $this->belongsTo(User::class);
     }
 
+    public function history()
+    {
+        return $this->hasMany(OrderHistory::class)
+            ->orderByDesc('created_at')
+            ->orderByDesc('id');
+    }
+
     public function customerNameForDisplay(): ?string
     {
         return $this->customer_name ?: $this->user?->name;

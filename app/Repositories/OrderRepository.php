@@ -11,6 +11,59 @@ use Illuminate\Support\Facades\DB;
 
 class OrderRepository
 {
+    protected function buildAdminQuery(array $filters)
+    {
+        $query = Order::query()->with(['items', 'store', 'user']);
+
+        $search = trim((string) ($filters['search'] ?? ''));
+
+        if ($search !== '') {
+            $query->where(function ($builder) use ($search) {
+                // If it looks like a numeric ID and has NO leading zeros, search by Key
+                if (ctype_digit($search) && !str_starts_with($search, '0')) {
+                    $builder->whereKey((int) $search);
+                }
+
+                // Optimization: Use prefix search if possible for indices
+                $builder
+                    ->orWhere('customer_name', 'like', $search . '%')
+                    ->orWhere('customer_contact', 'like', $search . '%')
+                    ->orWhereHas('user', function ($userQuery) use ($search) {
+                        $userQuery
+                            ->where('name', 'like', $search . '%')
+                            ->orWhere('phone', 'like', $search . '%');
+                    });
+            });
+        }
+
+        if (!empty($filters['status'])) {
+            $query->where('status', $filters['status']);
+        }
+
+        if (!empty($filters['payment_status'])) {
+            $query->where('payment_status', $filters['payment_status']);
+        }
+
+        if (!empty($filters['slot'])) {
+            $query->where('slot', $filters['slot']);
+        }
+
+        if (!empty($filters['store_id'])) {
+            $query->where('store_id', (int) $filters['store_id']);
+        }
+
+        if (!empty($filters['scheduled_from'])) {
+            $query->where('scheduled_at', '>=', $filters['scheduled_from']);
+        }
+
+        if (!empty($filters['scheduled_to'])) {
+            // Boundary fix: ensuring coverage of the specified end time
+            $query->where('scheduled_at', '<=', $filters['scheduled_to']);
+        }
+
+        return $query->orderBy('scheduled_at')->orderBy('id');
+    }
+
     public function paginateForUser(int $userId, int $perPage = 20): LengthAwarePaginator
     {
         return Order::query()
@@ -27,40 +80,63 @@ class OrderRepository
 
     public function paginateForAdmin(array $filters, int $perPage = 20): LengthAwarePaginator
     {
-        $query = Order::query()->with(['items', 'store', 'user']);
-
-        if (!empty($filters['status'])) {
-            $query->where('status', $filters['status']);
-        }
-
-        if (!empty($filters['store_id'])) {
-            $query->where('store_id', (int) $filters['store_id']);
-        }
-
-        if (!empty($filters['scheduled_from'])) {
-            $query->where('scheduled_at', '>=', $filters['scheduled_from']);
-        }
-
-        if (!empty($filters['scheduled_to'])) {
-            $query->where('scheduled_at', '<=', $filters['scheduled_to']);
-        }
-
-        return $query
-            ->orderByDesc('created_at')
+        return $this->buildAdminQuery($filters)
             ->paginate($perPage)
             ->appends($filters);
     }
 
-    public function findForAdmin(Order $order): Order
+    public function listForAdmin(array $filters): Collection
     {
-        return $order->load(['items', 'store', 'user']);
+        return $this->buildAdminQuery($filters)->get();
     }
 
-    public function updateStatus(Order $order, array $payload): Order
+    public function findForAdmin(Order $order): Order
     {
-        $order->update($payload);
+        return $order->load(['items', 'store', 'user', 'history.user']);
+    }
 
-        return $order->fresh(['items', 'store', 'user']);
+    public function updateStatus(Order $order, array $payload, ?array $history = null): Order
+    {
+        DB::transaction(function () use ($history, $order, $payload): void {
+            $order->update($payload);
+            $this->createHistoryRecord($order, $history);
+        });
+
+        return $order->fresh(['items', 'store', 'user', 'history.user']);
+    }
+
+    public function updateWithItems(Order $order, array $payload, array $lineItems, ?array $history = null): Order
+    {
+        /** @var Order $updatedOrder */
+        $updatedOrder = DB::transaction(function () use ($history, $lineItems, $order, $payload) {
+            $order->update($payload);
+            $order->items()->delete();
+
+            $total = 0;
+
+            foreach ($lineItems as $item) {
+                $lineTotal = (float) $item['total'];
+
+                $order->items()->create([
+                    'product_id' => $item['product_id'],
+                    'variant_id' => $item['variant_id'],
+                    'name_snapshot' => $item['name_snapshot'],
+                    'price_snapshot' => $item['price_snapshot'],
+                    'quantity' => $item['quantity'],
+                    'options' => $item['options'],
+                    'total' => $lineTotal,
+                ]);
+
+                $total += $lineTotal;
+            }
+
+            $order->update(['total' => $total]);
+            $this->createHistoryRecord($order, $history);
+
+            return $order;
+        });
+
+        return $updatedOrder->fresh(['items', 'store', 'user', 'history.user']);
     }
 
     public function listStoresForFilter(): Collection
@@ -127,5 +203,18 @@ class OrderRepository
         $order->update($payload);
 
         return $order->fresh(['items', 'store', 'user']);
+    }
+
+    protected function createHistoryRecord(Order $order, ?array $history): void
+    {
+        if ($history === null || empty($history['changes'])) {
+            return;
+        }
+
+        $order->history()->create([
+            'user_id' => $history['user_id'] ?? null,
+            'action' => $history['action'] ?? 'updated',
+            'changes' => $history['changes'],
+        ]);
     }
 }

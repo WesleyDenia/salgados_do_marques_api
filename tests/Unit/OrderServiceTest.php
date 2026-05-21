@@ -56,6 +56,11 @@ class OrderServiceTest extends TestCase
             ->with($order, Mockery::on(function (array $payload): bool {
                 return ($payload['status'] ?? null) === 'accepted'
                     && !array_key_exists('cancelled_at', $payload);
+            }), Mockery::on(function (?array $history): bool {
+                return is_array($history)
+                    && ($history['action'] ?? null) === 'status_changed'
+                    && ($history['changes']['status']['from'] ?? null) === 'placed'
+                    && ($history['changes']['status']['to'] ?? null) === 'accepted';
             }))
             ->andReturn($order);
 

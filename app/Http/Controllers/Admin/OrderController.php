@@ -3,12 +3,11 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\OrderSearchRequest;
 use App\Http\Requests\OrderStatusUpdateRequest;
 use App\Models\Order;
 use App\Services\AdminFlavorService;
 use App\Services\OrderService;
-use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 
 class OrderController extends Controller
 {
@@ -17,22 +16,30 @@ class OrderController extends Controller
         protected AdminFlavorService $flavors,
     ) {}
 
-    public function index(Request $request)
+    public function index(OrderSearchRequest $request)
     {
-        $statusKeys = array_keys($this->service->statusLabels());
-
-        $filters = $request->validate([
-            'status' => ['nullable', Rule::in($statusKeys)],
-            'store_id' => ['nullable', 'integer', 'exists:stores,id'],
-            'scheduled_from' => ['nullable', 'date'],
-            'scheduled_to' => ['nullable', 'date'],
-        ]);
+        $filters = $request->validated();
 
         return view('admin.orders.index', [
             'orders' => $this->service->paginateForAdmin($filters, 20),
             'stores' => $this->service->listStoresForFilter(),
             'filters' => $filters,
             'statusLabels' => $this->service->statusLabels(),
+        ]);
+    }
+
+    public function daily(OrderSearchRequest $request)
+    {
+        $planning = $this->service->dailyPlanning($request->validated(), 20);
+
+        return view('admin.orders.daily', [
+            'orders' => $planning['orders'],
+            'stores' => $this->service->listStoresForFilter(),
+            'filters' => $planning['filters'],
+            'statusLabels' => $this->service->statusLabels(),
+            'slotLabels' => $planning['slotLabels'],
+            'summary' => $planning['summary'],
+            'selectedDayLabel' => $planning['selectedDayLabel'],
         ]);
     }
 

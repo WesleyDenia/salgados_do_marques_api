@@ -57,6 +57,7 @@ Route::prefix('v1')->group(function () {
         Route::get('orders/availability/dates', [OrderController::class, 'availabilityDates']);
         Route::get('orders/availability/hours', [OrderController::class, 'availabilityHours']);
         Route::get('orders/availability/minutes', [OrderController::class, 'availabilityMinutes']);
+        Route::get('orders/availability/slots', [OrderController::class, 'availabilitySlots']);
         Route::post('logout', [AuthController::class, 'logout']);
         Route::get('me', [AuthController::class, 'me']);
         Route::post('auth/refresh', [AuthController::class, 'refresh']);
@@ -77,7 +78,9 @@ Route::prefix('v1')->group(function () {
         // Admin protected
         Route::middleware('can:manage')->group(function () {
             Route::get('admin/orders', [OrderAdminController::class, 'index']);
+            Route::get('admin/orders/daily', [OrderAdminController::class, 'daily']);
             Route::get('admin/orders/{order}', [OrderAdminController::class, 'show']);
+            Route::patch('admin/orders/{order}', [OrderAdminController::class, 'update']);
             Route::patch('admin/orders/{order}/status', [OrderAdminController::class, 'updateStatus']);
             
             Route::get('admin/users', [UserAdminController::class, 'index']);

@@ -31,6 +31,37 @@ class OrderAdminController extends Controller
             'slot_labels' => $planning['slotLabels'],
             'selected_day_label' => $planning['selectedDayLabel'],
             'summary' => $planning['summary'],
+            'slot_occupancy' => $planning['slotOccupancy'],
+        ]);
+    }
+
+    public function weekly(OrderSearchRequest $request)
+    {
+        $planning = $this->service->weeklyPlanningDataset($request->validated());
+
+        return response()->json([
+            'data' => OrderResource::collection($planning['orders'])->resolve($request),
+            'filters' => $planning['filters'],
+            'slot_labels' => $planning['slotLabels'],
+            'selected_week_label' => $planning['selectedWeekLabel'],
+            'summary' => $planning['summary'],
+            'slot_occupancy' => $planning['slotOccupancy'],
+            'day_summaries' => $planning['daySummaries'],
+        ]);
+    }
+
+    public function period(OrderSearchRequest $request)
+    {
+        $planning = $this->service->periodPlanningDataset($request->validated());
+
+        return response()->json([
+            'data' => OrderResource::collection($planning['orders'])->resolve($request),
+            'filters' => $planning['filters'],
+            'slot_labels' => $planning['slotLabels'],
+            'selected_period_label' => $planning['selectedPeriodLabel'],
+            'summary' => $planning['summary'],
+            'slot_occupancy' => $planning['slotOccupancy'],
+            'day_summaries' => $planning['daySummaries'],
         ]);
     }
 

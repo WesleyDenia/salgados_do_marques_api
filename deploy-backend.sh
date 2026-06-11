@@ -11,6 +11,7 @@ PANEL_CANDIDATE_DIRS=(
   "$WORKSPACE_DIR/salgados_do_marques_encomendas"
 )
 NETWORK_NAME="salgados_backend_net"
+PANEL_NETWORK_ALIAS="salgados-encomendas-panel"
 DB_DATA_DIR="${DB_DATA_DIR:-/srv/salgados/mariadb_data}"
 DB_UID="${DB_UID:-999}"
 DB_GID="${DB_GID:-999}"
@@ -60,6 +61,19 @@ compose_db() {
 
 compose_panel() {
   "${COMPOSE_CMD[@]}" -f "$PANEL_COMPOSE_FILE" "$@"
+}
+
+remove_legacy_panel_container_conflict() {
+  local existing_container_id
+
+  existing_container_id="$(docker ps -aq --filter "name=^/${PANEL_NETWORK_ALIAS}$" | head -n 1)"
+
+  if [ -z "$existing_container_id" ]; then
+    return 0
+  fi
+
+  echo "Removendo container legado do painel com nome fixo: ${PANEL_NETWORK_ALIAS}"
+  docker rm -f "$existing_container_id" >/dev/null 2>&1 || true
 }
 
 resolve_panel_repo_dir() {
@@ -325,6 +339,7 @@ ensure_gateway_nginx() {
 start_panel_service() {
   ensure_docker_network
   ensure_panel_env_file
+  remove_legacy_panel_container_conflict
 
   echo "Subindo painel de agendamentos..."
   compose_panel up -d panel
@@ -334,6 +349,7 @@ start_panel_service() {
 rebuild_panel_service() {
   ensure_docker_network
   ensure_panel_env_file
+  remove_legacy_panel_container_conflict
 
   echo "Rebuildando imagem do painel de agendamentos..."
   compose_panel build --pull panel

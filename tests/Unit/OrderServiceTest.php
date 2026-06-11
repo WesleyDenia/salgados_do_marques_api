@@ -10,6 +10,7 @@ use App\Jobs\SendOrderPlacedWhatsAppJob;
 use App\Services\AdminFlavorService;
 use App\Services\OrderService;
 use App\Services\Notifications\WhatsAppMessageFormatter;
+use App\Services\PlanningSlotCapacityService;
 use App\Services\SettingService;
 use App\Services\StoreService;
 use App\Services\WhatsAppQueueService;
@@ -26,6 +27,7 @@ class OrderServiceTest extends TestCase
             $repository,
             Mockery::mock(ProductRepository::class),
             Mockery::mock(AdminFlavorService::class),
+            Mockery::mock(PlanningSlotCapacityService::class),
             Mockery::mock(SettingService::class),
             Mockery::mock(StoreService::class),
             Mockery::mock(WhatsAppMessageFormatter::class),
@@ -88,11 +90,13 @@ class OrderServiceTest extends TestCase
         $settings->shouldReceive('get')->once()->with('order_timezone', 'Europe/Lisbon')->andReturn('UTC');
         $settings->shouldReceive('get')->once()->with('ORDER_TIMEZONE', 'UTC')->andReturn('Europe/Madrid');
         $settings->shouldReceive('get')->once()->with('ORDER_SCHEDULING_WINDOW_DAYS', 15)->andReturn('30');
+        $settings->shouldReceive('get')->once()->with('SETTINGS_VERSION', 1)->andReturn('4');
 
         $service = new OrderService(
             $repository,
             $products,
             Mockery::mock(AdminFlavorService::class),
+            Mockery::mock(PlanningSlotCapacityService::class),
             $settings,
             $stores,
             Mockery::mock(WhatsAppMessageFormatter::class),
@@ -106,6 +110,7 @@ class OrderServiceTest extends TestCase
             'cancel_minutes' => 120,
             'timezone' => 'Europe/Madrid',
             'scheduling_window_days' => 30,
+            'settings_version' => 4,
         ], $service->orderSettings());
     }
 
@@ -125,6 +130,7 @@ class OrderServiceTest extends TestCase
             $repository,
             $products,
             $flavors,
+            Mockery::mock(PlanningSlotCapacityService::class),
             $settings,
             $stores,
             $messages,

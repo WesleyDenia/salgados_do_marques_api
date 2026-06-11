@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Setting;
+use App\Models\Order;
 use App\Models\Store;
 use App\Models\User;
 use Carbon\Carbon;
@@ -120,6 +121,97 @@ class OrderAvailabilityTest extends TestCase
         $response->assertJsonPath('data.slots.1.state', 'limitado');
         $response->assertJsonPath('data.slots.2.slot', 'noite');
         $response->assertJsonPath('data.slots.2.state', 'bloqueado');
+    }
+
+    public function test_it_blocks_slot_availability_when_base_capacity_is_reached_and_ignores_terminal_statuses(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-03-16 10:00', 'Europe/Lisbon'));
+        $user = User::factory()->create(['role' => 'atendimento']);
+        $store = $this->makeStore('Loja Capacidade', [
+            'pickup_weekly_schedule' => [
+                'monday' => ['is_open' => false, 'start_time' => null, 'end_time' => null],
+                'tuesday' => ['is_open' => true, 'start_time' => '09:00', 'end_time' => '18:00'],
+                'wednesday' => ['is_open' => true, 'start_time' => '09:00', 'end_time' => '18:00'],
+                'thursday' => ['is_open' => true, 'start_time' => '09:00', 'end_time' => '18:00'],
+                'friday' => ['is_open' => true, 'start_time' => '09:00', 'end_time' => '18:00'],
+                'saturday' => ['is_open' => true, 'start_time' => '09:00', 'end_time' => '18:00'],
+                'sunday' => ['is_open' => true, 'start_time' => '09:00', 'end_time' => '18:00'],
+            ],
+            'pickup_date_exceptions' => [],
+        ]);
+        $this->setSchedulingSettings(30, 5);
+        Setting::create([
+            'key' => 'ORDER_SLOT_BASE_CAPACITY',
+            'value' => json_encode([
+                'manha' => 1,
+                'tarde' => 10,
+                'noite' => 10,
+            ], JSON_THROW_ON_ERROR),
+            'type' => 'json',
+            'editable' => true,
+        ]);
+
+        Order::create([
+            'user_id' => $user->id,
+            'store_id' => $store->id,
+            'status' => 'accepted',
+            'customer_name' => 'Capacidade Ativa',
+            'payment_status' => 'pending',
+            'slot' => 'manha',
+            'scheduled_at' => Carbon::create(2026, 3, 17, 9, 0, 0, 'Europe/Lisbon')->utc(),
+            'total' => 12.5,
+            'notes' => null,
+        ]);
+
+        Order::create([
+            'user_id' => $user->id,
+            'store_id' => $store->id,
+            'status' => 'canceled',
+            'customer_name' => 'Não Consome',
+            'payment_status' => 'pending',
+            'slot' => 'manha',
+            'scheduled_at' => Carbon::create(2026, 3, 17, 10, 0, 0, 'Europe/Lisbon')->utc(),
+            'total' => 12.5,
+            'notes' => null,
+        ]);
+
+        Sanctum::actingAs($user);
+
+        $availabilityResponse = $this->getJson("/api/v1/orders/availability/slots?store_id={$store->id}&date=2026-03-17");
+
+        $availabilityResponse->assertOk();
+        $availabilityResponse->assertJsonPath('data.slots.0.slot', 'manha');
+        $availabilityResponse->assertJsonPath('data.slots.0.state', 'bloqueado');
+        $availabilityResponse->assertJsonPath('data.slots.0.capacity', 1);
+        $availabilityResponse->assertJsonPath('data.slots.0.consumed', 1);
+        $availabilityResponse->assertJsonPath('data.slots.0.remaining', 0);
+
+        $category = \App\Models\Category::create(['name' => 'Salgados', 'active' => true]);
+        $product = \App\Models\Product::create([
+            'name' => 'Coxinha',
+            'description' => 'Teste',
+            'price' => 2.5,
+            'category_id' => $category->id,
+            'active' => true,
+        ]);
+
+        $createResponse = $this->postJson('/api/v1/orders', [
+            'store_id' => $store->id,
+            'scheduled_at' => '2026-03-17 09:30',
+            'customer_name' => 'Novo Cliente',
+            'customer_contact' => '912345678',
+            'payment_status' => 'pending',
+            'slot' => 'manha',
+            'items' => [
+                [
+                    'product_id' => $product->id,
+                    'quantity' => 1,
+                ],
+            ],
+        ]);
+
+        $createResponse->assertStatus(422);
+        $createResponse->assertJsonValidationErrors(['slot']);
     }
 
     public function test_it_validates_query_parameters_with_form_requests(): void

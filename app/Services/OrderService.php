@@ -7,6 +7,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\ProductVariant;
+use App\Models\Store;
 use App\Models\User;
 use App\Models\WhatsAppQueueItem;
 use App\Repositories\OrderRepository;
@@ -51,6 +52,7 @@ class OrderService
         protected OrderRepository $repository,
         protected ProductRepository $products,
         protected AdminFlavorService $flavors,
+        protected PlanningSlotCapacityService $slotCapacities,
         protected SettingService $settings,
         protected StoreService $stores,
         protected WhatsAppMessageFormatter $messages,
@@ -83,6 +85,7 @@ class OrderService
             'scheduling_window_days' => max(1, (int) $this->settings->get(
                 'ORDER_SCHEDULING_WINDOW_DAYS', 15)
             ),
+            'settings_version' => (int) $this->settings->get('SETTINGS_VERSION', 1),
         ];
     }
 
@@ -113,86 +116,99 @@ class OrderService
             ]);
         }
 
-        $this->stores->validateScheduledPickup($store, $scheduled, $orderSettings);
-
-        $items = collect($data['items']);
-        $productIds = $items->pluck('product_id')->unique()->values()->all();
-        $variantIds = $items->pluck('variant_id')->filter()->unique()->values()->all();
-        $products = $this->products->findActiveForOrder($productIds);
-        $variants = $this->products->findActiveVariantsForOrder($variantIds);
-
-        if ($products->count() !== count($productIds)) {
-            throw ValidationException::withMessages([
-                'items' => 'Um ou mais produtos não estão disponíveis.',
-            ]);
-        }
-
-        if ($variants->count() !== count($variantIds)) {
-            throw ValidationException::withMessages([
-                'items' => 'Uma ou mais opções de pack não estão disponíveis.',
-            ]);
-        }
-
-        $lineItems = $this->buildOrderLineItems($items, $products, $variants);
-        $resolvedCustomer = $this->resolveCustomerContext($actor, $data);
-
-        $order = $this->repository->createWithItems(
-            $resolvedCustomer['user_id'],
-            (int) $data['store_id'],
-            $resolvedCustomer['customer_name'],
-            $resolvedCustomer['customer_contact'],
-            $data['payment_status'] ?? null,
-            $data['slot'] ?? null,
-            $scheduled->copy()->timezone('UTC'),
-            $data['notes'] ?? null,
-            $lineItems
-        );
-
-        if ($resolvedCustomer['notification_contact']) {
-            try {
-                $recipient = $this->whatsappOrderRecipient();
-                $flavorIds = $items
-                    ->flatMap(fn (array $item) => isset($item['flavors']) && is_array($item['flavors']) ? $item['flavors'] : [])
-                    ->map(fn ($flavorId) => (int) $flavorId)
-                    ->filter(fn (int $flavorId) => $flavorId > 0)
-                    ->unique()
-                    ->values()
-                    ->all();
-                $flavorNamesById = $this->flavors->namesByIds($flavorIds);
-                $message = $this->messages->orderPlacedSnapshot(
-                    (string) $resolvedCustomer['notification_name'],
-                    (string) $resolvedCustomer['notification_contact'],
-                    $scheduled->copy()->timezone($orderSettings['timezone']),
-                    $lineItems,
-                    $flavorNamesById
-                );
-
-                $queueItem = $this->whatsAppQueue->enqueue([
-                    'type' => WhatsAppQueueItem::TYPE_ORDER_PLACED,
-                    'entity_type' => 'order',
-                    'entity_id' => $order->id,
-                    'recipient_name' => $resolvedCustomer['notification_name'],
-                    'phone' => $recipient,
-                    'message' => $message,
-                ]);
-
-                if ($recipient === '') {
-                    $this->whatsAppQueue->markFailed($queueItem, 'WHATSAPP_ORDER_TO não configurado.');
-                } else {
-                    SendOrderPlacedWhatsAppJob::dispatch($queueItem->id)
-                        ->onQueue('notifications')
-                        ->afterCommit();
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($actor, $data, $orderSettings, $scheduled, $store) {
+            // Apply slot-specific lead time precedence: Slot Rule > Global Rule (whichever is more restrictive/larger)
+            $slot = $data['slot'] ?? null;
+            if ($slot) {
+                $slotRules = $this->slotCapacities->getOperationalRules();
+                $slotLeadTime = (int) ($slotRules['lead_times'][$slot] ?? 0);
+                if ($slotLeadTime > (int) $orderSettings['minimum_minutes']) {
+                    $orderSettings['minimum_minutes'] = $slotLeadTime;
                 }
-            } catch (\Throwable $exception) {
-                Log::warning('[OrderService] Falha ao enfileirar WhatsApp do pedido', [
-                    'order_id' => $order->id,
-                    'user_id' => $resolvedCustomer['user_id'],
-                    'message' => $exception->getMessage(),
+            }
+
+            $this->stores->validateScheduledPickup($store, $scheduled, $orderSettings);
+            $this->assertSlotAvailableForSchedule($store, $scheduled, $data['slot'] ?? null, $orderSettings);
+
+            $items = collect($data['items']);
+            $productIds = $items->pluck('product_id')->unique()->values()->all();
+            $variantIds = $items->pluck('variant_id')->filter()->unique()->values()->all();
+            $products = $this->products->findActiveForOrder($productIds);
+            $variants = $this->products->findActiveVariantsForOrder($variantIds);
+
+            if ($products->count() !== count($productIds)) {
+                throw ValidationException::withMessages([
+                    'items' => 'Um ou mais produtos não estão disponíveis.',
                 ]);
             }
-        }
 
-        return $order;
+            if ($variants->count() !== count($variantIds)) {
+                throw ValidationException::withMessages([
+                    'items' => 'Uma ou mais opções de pack não estão disponíveis.',
+                ]);
+            }
+
+            $lineItems = $this->buildOrderLineItems($items, $products, $variants);
+            $resolvedCustomer = $this->resolveCustomerContext($actor, $data);
+
+            $order = $this->repository->createWithItems(
+                $resolvedCustomer['user_id'],
+                (int) $data['store_id'],
+                $resolvedCustomer['customer_name'],
+                $resolvedCustomer['customer_contact'],
+                $data['payment_status'] ?? null,
+                $data['slot'] ?? null,
+                $scheduled->copy()->timezone('UTC'),
+                $data['notes'] ?? null,
+                $lineItems
+            );
+
+            if ($resolvedCustomer['notification_contact']) {
+                try {
+                    $recipient = $this->whatsappOrderRecipient();
+                    $flavorIds = $items
+                        ->flatMap(fn (array $item) => isset($item['flavors']) && is_array($item['flavors']) ? $item['flavors'] : [])
+                        ->map(fn ($flavorId) => (int) $flavorId)
+                        ->filter(fn (int $flavorId) => $flavorId > 0)
+                        ->unique()
+                        ->values()
+                        ->all();
+                    $flavorNamesById = $this->flavors->namesByIds($flavorIds);
+                    $message = $this->messages->orderPlacedSnapshot(
+                        (string) $resolvedCustomer['notification_name'],
+                        (string) $resolvedCustomer['notification_contact'],
+                        $scheduled->copy()->timezone($orderSettings['timezone']),
+                        $lineItems,
+                        $flavorNamesById
+                    );
+
+                    $queueItem = $this->whatsAppQueue->enqueue([
+                        'type' => WhatsAppQueueItem::TYPE_ORDER_PLACED,
+                        'entity_type' => 'order',
+                        'entity_id' => $order->id,
+                        'recipient_name' => $resolvedCustomer['notification_name'],
+                        'phone' => $recipient,
+                        'message' => $message,
+                    ]);
+
+                    if ($recipient === '') {
+                        $this->whatsAppQueue->markFailed($queueItem, 'WHATSAPP_ORDER_TO não configurado.');
+                    } else {
+                        SendOrderPlacedWhatsAppJob::dispatch($queueItem->id)
+                            ->onQueue('notifications')
+                            ->afterCommit();
+                    }
+                } catch (\Throwable $exception) {
+                    Log::warning('[OrderService] Falha ao enfileirar WhatsApp do pedido', [
+                        'order_id' => $order->id,
+                        'user_id' => $resolvedCustomer['user_id'],
+                        'message' => $exception->getMessage(),
+                    ]);
+                }
+            }
+
+            return $order;
+        });
     }
 
     public function availabilityDates(array $data): array
@@ -242,15 +258,26 @@ class OrderService
         $store = $this->findAvailableStore((int) $data['store_id']);
         $date = Carbon::createFromFormat('Y-m-d', $data['date'], $settings['timezone']);
         $minuteOptions = $this->stores->availablePickupSlots($store, $date, $settings);
+        $consumedCapacity = $this->consumedCapacityForStoreDay($store->id, $date);
+        $baseCapacities = $this->slotCapacities->getBaseCapacities();
 
         return [
             'store_id' => $store->id,
             'date' => $date->format('Y-m-d'),
             'timezone' => $settings['timezone'],
+            'slot_capacities' => $baseCapacities,
             'slots' => array_map(
                 fn (string $slot): array => [
                     'slot' => $slot,
-                    'state' => $this->slotStateFromMinuteOptions($slot, $minuteOptions),
+                    'state' => $this->slotStateFromMinuteOptions(
+                        $slot,
+                        $minuteOptions,
+                        (int) ($consumedCapacity[$slot] ?? 0),
+                        $date
+                    ),
+                    'capacity' => $baseCapacities[$slot] ?? 0,
+                    'consumed' => (int) ($consumedCapacity[$slot] ?? 0),
+                    'remaining' => max(0, (int) (($baseCapacities[$slot] ?? 0) - ($consumedCapacity[$slot] ?? 0))),
                 ],
                 array_keys(self::SLOT_WINDOWS)
             ),
@@ -326,7 +353,8 @@ class OrderService
      *   filters: array<string, mixed>,
      *   slotLabels: array<string, string>,
      *   selectedDayLabel: string,
-     *   summary: array<string, mixed>
+     *   summary: array<string, mixed>,
+     *   slotOccupancy: array<string, array<string, mixed>>
      * }
      */
     public function dailyPlanningDataset(array $filters): array
@@ -334,6 +362,12 @@ class OrderService
         $preparedFilters = $this->prepareDailyPlanningFilters($filters);
         $normalizedFilters = $this->normalizeAdminFilters($preparedFilters);
         $orders = $this->repository->listForAdmin($normalizedFilters);
+        $summary = $this->buildPlanningSummary($orders);
+        $day = Carbon::createFromFormat('Y-m-d', $preparedFilters['day'], $this->orderSettings()['timezone'])->startOfDay();
+        $storeContext = $this->resolvePlanningSlotOccupancyContext(
+            $orders,
+            isset($preparedFilters['store_id']) ? (int) $preparedFilters['store_id'] : null
+        );
 
         return [
             'orders' => $orders,
@@ -341,7 +375,117 @@ class OrderService
             'slotLabels' => $this->slotLabels(),
             'selectedDayLabel' => Carbon::createFromFormat('Y-m-d', $preparedFilters['day'], $this->orderSettings()['timezone'])
                 ->translatedFormat('d/m/Y'),
-            'summary' => $this->buildDailyPlanningSummary($orders),
+            'summary' => $summary,
+            'slotOccupancy' => $this->buildPlanningSlotOccupancyForDay(
+                $orders,
+                $day,
+                $summary['slotCounts'],
+                $storeContext['store'] ?? null
+            ),
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $filters
+     * @return array{
+     *   orders: Collection<int, Order>,
+     *   filters: array<string, mixed>,
+     *   slotLabels: array<string, string>,
+     *   selectedWeekLabel: string,
+     *   summary: array<string, mixed>,
+     *   slotOccupancy: array<string, array<string, mixed>>,
+     *   daySummaries: array<string, array<string, mixed>>
+     * }
+     */
+    public function weeklyPlanningDataset(array $filters): array
+    {
+        $preparedFilters = $this->prepareWeeklyPlanningFilters($filters);
+        $normalizedFilters = $this->normalizeAdminFilters($preparedFilters);
+        $orders = $this->repository->listForAdmin($normalizedFilters);
+        $summary = $this->buildPlanningSummary($orders);
+        $consumedCounts = $this->slotCapacities->countConsumedCapacity($orders);
+        $storeContext = $this->resolvePlanningSlotOccupancyContext(
+            $orders,
+            isset($preparedFilters['store_id']) ? (int) $preparedFilters['store_id'] : null
+        );
+
+        return [
+            'orders' => $orders,
+            'filters' => $preparedFilters,
+            'slotLabels' => $this->slotLabels(),
+            'selectedWeekLabel' => $this->buildPlanningPeriodLabel(
+                $preparedFilters['week_start'],
+                $preparedFilters['week_end']
+            ),
+            'summary' => $summary,
+            'slotOccupancy' => $this->buildAggregatePlanningSlotOccupancy(
+                array_merge(['sem_slot' => (int) ($summary['slotCounts']['sem_slot'] ?? 0)], $consumedCounts),
+                'O agregado semanal combina vários dias operacionais; consulte a ocupação oficial por dia para validar disponibilidade.'
+            ),
+            'daySummaries' => $this->buildPlanningDaySummaries(
+                $orders,
+                $preparedFilters['week_start'],
+                $preparedFilters['week_end'],
+                $storeContext['store'] ?? null
+            ),
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $filters
+     * @return array{
+     *   orders: Collection<int, Order>,
+     *   filters: array<string, mixed>,
+     *   slotLabels: array<string, string>,
+     *   selectedPeriodLabel: string,
+     *   summary: array<string, mixed>,
+     *   slotOccupancy: array<string, array<string, mixed>>,
+     *   daySummaries: array<string, array<string, mixed>>
+     * }
+     */
+    public function periodPlanningDataset(array $filters): array
+    {
+        $preparedFilters = $this->preparePeriodPlanningFilters($filters);
+        $normalizedFilters = $this->normalizeAdminFilters($preparedFilters);
+        $orders = $this->repository->listForAdmin($normalizedFilters);
+        $summary = $this->buildPlanningSummary($orders);
+        $consumedCounts = $this->slotCapacities->countConsumedCapacity($orders);
+        $storeContext = $this->resolvePlanningSlotOccupancyContext(
+            $orders,
+            isset($preparedFilters['store_id']) ? (int) $preparedFilters['store_id'] : null
+        );
+        $periodStartDay = Carbon::createFromFormat('Y-m-d', $preparedFilters['start_date'], $this->orderSettings()['timezone'])->startOfDay();
+        $isSingleDayPeriod = $preparedFilters['start_date'] === $preparedFilters['end_date'];
+
+        return [
+            'orders' => $orders,
+            'filters' => [
+                'start_date' => $preparedFilters['start_date'],
+                'end_date' => $preparedFilters['end_date'],
+            ],
+            'slotLabels' => $this->slotLabels(),
+            'selectedPeriodLabel' => $this->buildPlanningPeriodLabel(
+                $preparedFilters['start_date'],
+                $preparedFilters['end_date']
+            ),
+            'summary' => $summary,
+            'slotOccupancy' => $isSingleDayPeriod
+                ? $this->buildPlanningSlotOccupancyForDay(
+                    $orders,
+                    $periodStartDay,
+                    $summary['slotCounts'],
+                    $storeContext['store'] ?? null
+                )
+                : $this->buildAggregatePlanningSlotOccupancy(
+                    array_merge(['sem_slot' => (int) ($summary['slotCounts']['sem_slot'] ?? 0)], $consumedCounts),
+                    'O agregado do período combina vários dias operacionais; consulte a ocupação oficial por dia para validar disponibilidade.'
+                ),
+            'daySummaries' => $this->buildPlanningDaySummaries(
+                $orders,
+                $preparedFilters['start_date'],
+                $preparedFilters['end_date'],
+                $storeContext['store'] ?? null
+            ),
         ];
     }
 
@@ -373,34 +517,51 @@ class OrderService
             return $this->repository->findForAdmin($order);
         }
 
-        $before = [
-            'status' => $order->status,
-            'cancelled_at' => $this->normalizeStoredOrderDateTime($order, 'cancelled_at'),
-        ];
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($order, $newStatus) {
+            // If the new status consumes capacity and the old one didn't, we must check capacity.
+            $consumingStatuses = PlanningSlotCapacityService::CAPACITY_CONSUMING_STATUSES;
+            $willConsume = in_array($newStatus, $consumingStatuses, true);
+            $didConsume = in_array($order->status, $consumingStatuses, true);
 
-        $payload = ['status' => $newStatus];
+            if ($willConsume && ! $didConsume) {
+                $this->assertSlotAvailableForSchedule(
+                    $order->store,
+                    Carbon::parse($order->scheduled_at),
+                    $order->slot,
+                    $this->orderSettings(),
+                    $order->id
+                );
+            }
 
-        if ($newStatus === 'canceled') {
-            $payload['cancelled_at'] = $order->cancelled_at ?? now('UTC');
-        } elseif ($order->cancelled_at !== null) {
-            $payload['cancelled_at'] = null;
-        }
+            $before = [
+                'status' => $order->status,
+                'cancelled_at' => $this->normalizeStoredOrderDateTime($order, 'cancelled_at'),
+            ];
 
-        $after = [
-            'status' => $newStatus,
-            'cancelled_at' => $this->normalizeDateTimeValue($payload['cancelled_at'] ?? $order->cancelled_at),
-        ];
+            $payload = ['status' => $newStatus];
 
-        return $this->repository->updateStatus($order, $payload, $this->makeHistoryPayload(
-            'status_changed',
-            $this->calculateChanges($before, $after)
-        ));
+            if ($newStatus === 'canceled') {
+                $payload['cancelled_at'] = $order->cancelled_at ?? now('UTC');
+            } elseif ($order->cancelled_at !== null) {
+                $payload['cancelled_at'] = null;
+            }
+
+            $after = [
+                'status' => $newStatus,
+                'cancelled_at' => $this->normalizeDateTimeValue($payload['cancelled_at'] ?? $order->cancelled_at),
+            ];
+
+            return $this->repository->updateStatus($order, $payload, $this->makeHistoryPayload(
+                'status_changed',
+                $this->calculateChanges($before, $after)
+            ));
+        });
     }
 
     public function updateForAdmin(Order $order, array $data): Order
     {
         $this->assertOrderEditable($order);
-        $order->loadMissing('items');
+        $order->loadMissing(['items', 'store']);
 
         $orderSettings = $this->orderSettings();
         $scheduled = $this->parseScheduledAt($data['scheduled_at'], $orderSettings['timezone']);
@@ -412,52 +573,54 @@ class OrderService
             ]);
         }
 
-        $this->stores->validateScheduledPickup($store, $scheduled, $orderSettings);
-        $this->assertSlotAvailableForSchedule($store, $scheduled, $data['slot'] ?? null, $orderSettings);
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($order, $data, $orderSettings, $scheduled, $store) {
+            $this->stores->validateScheduledPickup($store, $scheduled, $orderSettings);
+            $this->assertSlotAvailableForSchedule($store, $scheduled, $data['slot'] ?? null, $orderSettings, $order->id);
 
-        $items = collect($data['items']);
-        $productIds = $items->pluck('product_id')->unique()->values()->all();
-        $variantIds = $items->pluck('variant_id')->filter()->unique()->values()->all();
-        $products = $this->products->findActiveForOrder($productIds);
-        $variants = $this->products->findActiveVariantsForOrder($variantIds);
+            $items = collect($data['items']);
+            $productIds = $items->pluck('product_id')->unique()->values()->all();
+            $variantIds = $items->pluck('variant_id')->filter()->unique()->values()->all();
+            $products = $this->products->findActiveForOrder($productIds);
+            $variants = $this->products->findActiveVariantsForOrder($variantIds);
 
-        if ($products->count() !== count($productIds)) {
-            throw ValidationException::withMessages([
-                'items' => 'Um ou mais produtos não estão disponíveis.',
+            if ($products->count() !== count($productIds)) {
+                throw ValidationException::withMessages([
+                    'items' => 'Um ou mais produtos não estão disponíveis.',
+                ]);
+            }
+
+            if ($variants->count() !== count($variantIds)) {
+                throw ValidationException::withMessages([
+                    'items' => 'Uma ou mais opções de pack não estão disponíveis.',
+                ]);
+            }
+
+            $lineItems = $this->buildOrderLineItems($items, $products, $variants);
+            $before = $this->snapshotOrderForHistory($order);
+            $after = $this->snapshotOrderForHistory($order, [
+                'customer_name' => $this->normalizeNullableText($data['customer_name'] ?? null),
+                'customer_contact' => $this->normalizeNullableText($data['customer_contact'] ?? null),
+                'store_id' => $this->storeSnapshotForHistory((int) $data['store_id'], $store->name),
+                'payment_status' => $data['payment_status'] ?? null,
+                'slot' => $data['slot'] ?? null,
+                'scheduled_at' => $scheduled->copy()->timezone('UTC'),
+                'notes' => $this->normalizeNullableText($data['notes'] ?? null),
+                'items' => $lineItems,
             ]);
-        }
 
-        if ($variants->count() !== count($variantIds)) {
-            throw ValidationException::withMessages([
-                'items' => 'Uma ou mais opções de pack não estão disponíveis.',
-            ]);
-        }
-
-        $lineItems = $this->buildOrderLineItems($items, $products, $variants);
-        $before = $this->snapshotOrderForHistory($order);
-        $after = $this->snapshotOrderForHistory($order, [
-            'customer_name' => $this->normalizeNullableText($data['customer_name'] ?? null),
-            'customer_contact' => $this->normalizeNullableText($data['customer_contact'] ?? null),
-            'store_id' => (int) $data['store_id'],
-            'payment_status' => $data['payment_status'] ?? null,
-            'slot' => $data['slot'] ?? null,
-            'scheduled_at' => $scheduled->copy()->timezone('UTC'),
-            'notes' => $this->normalizeNullableText($data['notes'] ?? null),
-            'items' => $lineItems,
-        ]);
-
-        return $this->repository->updateWithItems($order, [
-            'customer_name' => $this->normalizeNullableText($data['customer_name'] ?? null),
-            'customer_contact' => $this->normalizeNullableText($data['customer_contact'] ?? null),
-            'store_id' => (int) $data['store_id'],
-            'payment_status' => $data['payment_status'] ?? null,
-            'slot' => $data['slot'] ?? null,
-            'scheduled_at' => $scheduled->copy()->timezone('UTC'),
-            'notes' => $this->normalizeNullableText($data['notes'] ?? null),
-        ], $lineItems, $this->makeHistoryPayload(
-            'updated',
-            $this->calculateChanges($before, $after)
-        ));
+            return $this->repository->updateWithItems($order, [
+                'customer_name' => $this->normalizeNullableText($data['customer_name'] ?? null),
+                'customer_contact' => $this->normalizeNullableText($data['customer_contact'] ?? null),
+                'store_id' => (int) $data['store_id'],
+                'payment_status' => $data['payment_status'] ?? null,
+                'slot' => $data['slot'] ?? null,
+                'scheduled_at' => $scheduled->copy()->timezone('UTC'),
+                'notes' => $this->normalizeNullableText($data['notes'] ?? null),
+            ], $lineItems, $this->makeHistoryPayload(
+                'updated',
+                $this->calculateChanges($before, $after)
+            ));
+        });
     }
 
     protected function assertStatusTransition(Order $order, string $newStatus): void
@@ -520,17 +683,34 @@ class OrderService
         return Carbon::parse($value, $timezone);
     }
 
-    protected function assertSlotAvailableForSchedule($store, Carbon $scheduled, ?string $slot, array $settings): void
+    protected function assertSlotAvailableForSchedule($store, Carbon $scheduled, ?string $slot, array $settings, ?int $ignoreOrderId = null): void
     {
         if ($slot === null || $slot === '') {
             return;
         }
 
-        if ($this->slotStateFromSchedule($store, $scheduled, $slot, $settings) === 'bloqueado') {
+        $reason = $this->slotBlockReasonFromSchedule($store, $scheduled, $slot, $settings, $ignoreOrderId);
+
+        if ($reason !== null) {
             throw ValidationException::withMessages([
-                'slot' => 'O slot operacional selecionado já não está disponível para essa data.',
+                'slot' => [$reason],
             ]);
         }
+    }
+
+    protected function slotBlockReasonFromSchedule($store, Carbon $scheduled, string $slot, array $settings, ?int $ignoreOrderId = null): ?string
+    {
+        $date = $scheduled->copy()->timezone($settings['timezone'])->startOfDay();
+        $minuteOptions = $this->stores->availablePickupSlots($store, $date, $settings);
+        $consumedCapacity = $this->consumedCapacityForStoreDay($store->id, $date, $ignoreOrderId);
+
+        return $this->slotCapacities->getSlotBlockReason(
+            $slot,
+            $minuteOptions,
+            self::SLOT_WINDOWS[$slot] ?? [],
+            (int) ($consumedCapacity[$slot] ?? 0),
+            $date
+        );
     }
 
     protected function findAvailableStore(int $storeId)
@@ -634,17 +814,63 @@ class OrderService
     }
 
     /**
+     * @param  array<string, mixed>  $filters
+     * @return array<string, mixed>
+     */
+    protected function prepareWeeklyPlanningFilters(array $filters): array
+    {
+        $timezone = $this->orderSettings()['timezone'];
+        $weekStart = isset($filters['week_start']) && is_string($filters['week_start']) && $filters['week_start'] !== ''
+            ? Carbon::createFromFormat('Y-m-d', $filters['week_start'], $timezone)->startOfWeek(Carbon::MONDAY)
+            : Carbon::now($timezone)->startOfWeek(Carbon::MONDAY);
+        $weekEnd = $weekStart->copy()->addDays(6)->endOfDay();
+
+        $filters['week_start'] = $weekStart->format('Y-m-d');
+        $filters['week_end'] = $weekEnd->format('Y-m-d');
+        $filters['scheduled_from'] = $weekStart->format('Y-m-d H:i:s');
+        $filters['scheduled_to'] = $weekEnd->format('Y-m-d H:i:s');
+
+        return $filters;
+    }
+
+    /**
+     * @param  array<string, mixed>  $filters
+     * @return array<string, mixed>
+     */
+    protected function preparePeriodPlanningFilters(array $filters): array
+    {
+        $timezone = $this->orderSettings()['timezone'];
+        $startDate = isset($filters['start_date']) && is_string($filters['start_date']) && $filters['start_date'] !== ''
+            ? Carbon::createFromFormat('Y-m-d', $filters['start_date'], $timezone)->startOfDay()
+            : Carbon::now($timezone)->startOfDay();
+        $endDate = isset($filters['end_date']) && is_string($filters['end_date']) && $filters['end_date'] !== ''
+            ? Carbon::createFromFormat('Y-m-d', $filters['end_date'], $timezone)->endOfDay()
+            : $startDate->copy()->endOfDay();
+
+        $filters['start_date'] = $startDate->format('Y-m-d');
+        $filters['end_date'] = $endDate->format('Y-m-d');
+        $filters['scheduled_from'] = $startDate->format('Y-m-d H:i:s');
+        $filters['scheduled_to'] = $endDate->format('Y-m-d H:i:s');
+
+        return $filters;
+    }
+
+    /**
      * @param  Collection<int, Order>  $orders
      * @return array<string, mixed>
      */
     protected function buildDailyPlanningSummary(Collection $orders): array
     {
-        $slotCounts = [
-            'manha' => 0,
-            'tarde' => 0,
-            'noite' => 0,
-            'sem_slot' => 0,
-        ];
+        return $this->buildPlanningSummary($orders);
+    }
+
+    /**
+     * @param  Collection<int, Order>  $orders
+     * @return array<string, mixed>
+     */
+    protected function buildPlanningSummary(Collection $orders): array
+    {
+        $slotCounts = $this->emptyPlanningSlotCounts();
 
         $itemQuantity = 0;
 
@@ -664,14 +890,286 @@ class OrderService
     }
 
     /**
+     * @param  Collection<int, Order>  $orders
+     * @return array<string, array<string, mixed>>
+     */
+    protected function buildPlanningDaySummaries(
+        Collection $orders,
+        string $startDate,
+        string $endDate,
+        ?Store $contextStore = null
+    ): array
+    {
+        $timezone = $this->orderSettings()['timezone'];
+        $periodStart = Carbon::createFromFormat('Y-m-d', $startDate, $timezone)->startOfDay();
+        $periodEnd = Carbon::createFromFormat('Y-m-d', $endDate, $timezone)->startOfDay();
+        $daySummaries = [];
+        $ordersByDay = [];
+
+        for ($day = $periodStart->copy(); $day->lessThanOrEqualTo($periodEnd); $day->addDay()) {
+            $daySummaries[$day->format('Y-m-d')] = [
+                'label' => $day->translatedFormat('l · d/m'),
+                'orderCount' => 0,
+                'itemQuantity' => 0,
+                'paidCount' => 0,
+                'attentionCount' => 0,
+                'slotCounts' => $this->emptyPlanningSlotCounts(),
+            ];
+        }
+
+        foreach ($orders as $order) {
+            $scheduledAt = $order->scheduledAtForDisplay($timezone);
+
+            if ($scheduledAt === null) {
+                continue;
+            }
+
+            $dayKey = $scheduledAt->format('Y-m-d');
+
+            if (! isset($daySummaries[$dayKey])) {
+                continue;
+            }
+
+            $ordersByDay[$dayKey] ??= collect();
+            $ordersByDay[$dayKey]->push($order);
+
+            $slot = $order->slot ?: 'sem_slot';
+            $daySummaries[$dayKey]['orderCount']++;
+            $daySummaries[$dayKey]['itemQuantity'] += (int) $order->items->sum('quantity');
+            $daySummaries[$dayKey]['slotCounts'][$slot] = ($daySummaries[$dayKey]['slotCounts'][$slot] ?? 0) + 1;
+
+            if ($order->payment_status === 'paid') {
+                $daySummaries[$dayKey]['paidCount']++;
+            }
+
+            if (in_array($order->status, ['placed', 'accepted'], true)) {
+                $daySummaries[$dayKey]['attentionCount']++;
+            }
+        }
+
+        foreach ($daySummaries as $dayKey => $summary) {
+            $dayOrders = $ordersByDay[$dayKey] ?? collect();
+            $daySummaries[$dayKey]['slotOccupancy'] = $this->buildPlanningSlotOccupancyForDay(
+                $dayOrders,
+                Carbon::createFromFormat('Y-m-d', $dayKey, $timezone)->startOfDay(),
+                $summary['slotCounts'],
+                $contextStore
+            );
+
+            $daySummaries[$dayKey]['slot_counts'] = $daySummaries[$dayKey]['slotCounts'];
+            $daySummaries[$dayKey]['slot_occupancy'] = $daySummaries[$dayKey]['slotOccupancy'];
+            unset($daySummaries[$dayKey]['slotCounts'], $daySummaries[$dayKey]['slotOccupancy']);
+        }
+
+        ksort($daySummaries);
+
+        return $daySummaries;
+    }
+
+    /**
+     * @return array<string, int>
+     */
+    protected function emptyPlanningSlotCounts(): array
+    {
+        return [
+            'manha' => 0,
+            'tarde' => 0,
+            'noite' => 0,
+            'sem_slot' => 0,
+        ];
+    }
+
+    /**
+     * @param  array<string, int>  $slotCounts
+     * @return array<string, array<string, mixed>>
+     */
+    protected function buildPlanningSlotOccupancyForDay(
+        iterable $orders,
+        CarbonInterface $day,
+        array $slotCounts,
+        ?Store $contextStore = null
+    ): array {
+        $orders = collect($orders);
+        $consumedCounts = $this->slotCapacities->countConsumedCapacity($orders);
+        $context = $this->resolvePlanningSlotOccupancyContext(
+            $orders,
+            $contextStore?->id
+        );
+
+        if (($context['status'] ?? null) !== 'ready') {
+            return $this->buildPlanningSlotOccupancyEntries(
+                array_merge(['sem_slot' => (int) ($slotCounts['sem_slot'] ?? 0)], $consumedCounts),
+                null,
+                (string) ($context['reason'] ?? 'Contexto oficial insuficiente para determinar disponibilidade.')
+            );
+        }
+
+        return $this->buildPlanningSlotOccupancyEntries(
+            array_merge(['sem_slot' => (int) ($slotCounts['sem_slot'] ?? 0)], $consumedCounts),
+            $this->buildOfficialSlotStatesForDay($context['store'], $day, $consumedCounts)
+        );
+    }
+
+    /**
+     * @param  array<string, int>  $slotCounts
+     * @return array<string, array<string, mixed>>
+     */
+    protected function buildAggregatePlanningSlotOccupancy(array $slotCounts, string $reason): array
+    {
+        return $this->buildPlanningSlotOccupancyEntries($slotCounts, null, $reason);
+    }
+
+    /**
+     * @return array{status: 'ready', store: Store}|array{status: 'insufficient_context', reason: string}
+     */
+    protected function resolvePlanningSlotOccupancyContext(iterable $orders, ?int $preferredStoreId = null): array
+    {
+        $orders = collect($orders);
+
+        if ($preferredStoreId !== null && $preferredStoreId > 0) {
+            $store = $this->stores->findById($preferredStoreId);
+
+            if ($store instanceof Store) {
+                return [
+                    'status' => 'ready',
+                    'store' => $store,
+                ];
+            }
+        }
+
+        if ($orders->isEmpty()) {
+            return [
+                'status' => 'insufficient_context',
+                'reason' => 'Sem encomendas suficientes neste conjunto para determinar um contexto oficial único de disponibilidade.',
+            ];
+        }
+
+        $storeIds = $orders
+            ->pluck('store_id')
+            ->filter(fn ($storeId): bool => is_numeric($storeId) && (int) $storeId > 0)
+            ->map(fn ($storeId): int => (int) $storeId)
+            ->unique()
+            ->values();
+
+        if ($storeIds->count() !== 1) {
+            return [
+                'status' => 'insufficient_context',
+                'reason' => 'O conjunto atual inclui várias lojas; o backend não afirma um estado oficial agregado de disponibilidade sem contexto único.',
+            ];
+        }
+
+        $store = $this->stores->findById($storeIds->first());
+
+        if (! $store instanceof Store) {
+            return [
+                'status' => 'insufficient_context',
+                'reason' => 'As encomendas atuais não trazem contexto oficial de loja suficiente para afirmar disponibilidade.',
+            ];
+        }
+
+        return [
+            'status' => 'ready',
+            'store' => $store,
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    protected function buildOfficialSlotStatesForDay(Store $store, CarbonInterface $day, array $consumedCounts): array
+    {
+        $settings = $this->orderSettings();
+        $date = Carbon::createFromFormat('Y-m-d', $day->format('Y-m-d'), $settings['timezone']);
+        $minuteOptions = $this->stores->availablePickupSlots($store, $date, $settings);
+
+        return collect(array_keys(self::SLOT_WINDOWS))
+            ->mapWithKeys(fn (string $slot): array => [
+                $slot => $this->slotStateFromMinuteOptions(
+                    $slot,
+                    $minuteOptions,
+                    (int) ($consumedCounts[$slot] ?? 0),
+                    $date
+                ),
+            ])
+            ->all();
+    }
+
+    /**
+     * @param  array<string, int>  $slotCounts
+     * @param  array<string, string>|null  $slotStates
+     * @return array<string, array<string, mixed>>
+     */
+    protected function buildPlanningSlotOccupancyEntries(
+        array $slotCounts,
+        ?array $slotStates,
+        ?string $insufficientContextReason = null
+    ): array {
+        $occupancy = [];
+        $slotKeys = array_values(array_unique(array_merge(
+            array_keys($this->emptyPlanningSlotCounts()),
+            array_keys($slotCounts)
+        )));
+
+        foreach ($slotKeys as $slot) {
+            $count = (int) ($slotCounts[$slot] ?? 0);
+
+            if ($slot === 'sem_slot') {
+                $occupancy[$slot] = [
+                    'count' => $count,
+                    'label' => $this->slotLabels()[$slot] ?? $slot,
+                    'state' => null,
+                    'context_status' => 'not_applicable',
+                    'context_reason' => 'Sem slot atribuído não representa uma janela oficial de capacidade.',
+                ];
+
+                continue;
+            }
+
+            if ($slotStates !== null && array_key_exists($slot, $slotStates)) {
+                $occupancy[$slot] = [
+                    'count' => $count,
+                    'label' => $this->slotLabels()[$slot] ?? $slot,
+                    'state' => $slotStates[$slot],
+                    'context_status' => 'official',
+                    'context_reason' => null,
+                ];
+
+                continue;
+            }
+
+            $occupancy[$slot] = [
+                'count' => $count,
+                'label' => $this->slotLabels()[$slot] ?? $slot,
+                'state' => null,
+                'context_status' => 'insufficient_context',
+                'context_reason' => $insufficientContextReason
+                    ?? 'Contexto oficial insuficiente para afirmar disponibilidade neste conjunto.',
+            ];
+        }
+
+        return $occupancy;
+    }
+
+    protected function buildPlanningPeriodLabel(string $startDate, string $endDate): string
+    {
+        $timezone = $this->orderSettings()['timezone'];
+
+        return sprintf(
+            '%s - %s',
+            Carbon::createFromFormat('Y-m-d', $startDate, $timezone)->translatedFormat('d/m/Y'),
+            Carbon::createFromFormat('Y-m-d', $endDate, $timezone)->translatedFormat('d/m/Y')
+        );
+    }
+
+    /**
      * @return array<string, string>
      */
     protected function slotLabels(): array
     {
         return [
-            'manha' => 'Manhã',
-            'tarde' => 'Tarde',
-            'noite' => 'Noite',
+            'manha' => $this->slotCapacities->slotLabel('manha'),
+            'tarde' => $this->slotCapacities->slotLabel('tarde'),
+            'noite' => $this->slotCapacities->slotLabel('noite'),
             'sem_slot' => 'Sem slot',
         ];
     }
@@ -704,7 +1202,9 @@ class OrderService
         return [
             'customer_name' => $overrides['customer_name'] ?? $order->customer_name,
             'customer_contact' => $overrides['customer_contact'] ?? $order->customer_contact,
-            'store_id' => $overrides['store_id'] ?? $order->store_id,
+            'store_id' => array_key_exists('store_id', $overrides)
+                ? $this->normalizeStoreSnapshotForHistory($overrides['store_id'])
+                : $this->storeSnapshotForHistory((int) $order->store_id, $order->store?->name),
             'payment_status' => $overrides['payment_status'] ?? $order->payment_status,
             'slot' => $overrides['slot'] ?? $order->slot,
             'scheduled_at' => array_key_exists('scheduled_at', $overrides)
@@ -726,6 +1226,7 @@ class OrderService
             ->map(fn (OrderItem $item): array => [
                 'product_id' => $item->product_id,
                 'variant_id' => $item->variant_id,
+                'variant_name_snapshot' => $item->variant_id !== null ? $item->name_snapshot : null,
                 'name_snapshot' => $item->name_snapshot,
                 'price_snapshot' => round((float) $item->price_snapshot, 2),
                 'quantity' => (int) $item->quantity,
@@ -746,6 +1247,7 @@ class OrderService
             ->map(fn (array $item): array => [
                 'product_id' => $item['product_id'],
                 'variant_id' => $item['variant_id'] ?? null,
+                'variant_name_snapshot' => $item['variant_name_snapshot'] ?? null,
                 'name_snapshot' => $item['name_snapshot'],
                 'price_snapshot' => round((float) $item['price_snapshot'], 2),
                 'quantity' => (int) $item['quantity'],
@@ -779,6 +1281,32 @@ class OrderService
         }
 
         return $changes;
+    }
+
+    /**
+     * @return array{id:int,name:string|null}
+     */
+    protected function storeSnapshotForHistory(int $id, ?string $name): array
+    {
+        return [
+            'id' => $id,
+            'name' => $this->normalizeNullableText($name),
+        ];
+    }
+
+    /**
+     * @return array{id:int,name:string|null}|mixed
+     */
+    protected function normalizeStoreSnapshotForHistory(mixed $value): mixed
+    {
+        if (is_array($value)) {
+            return [
+                'id' => (int) ($value['id'] ?? 0),
+                'name' => $this->normalizeNullableText($value['name'] ?? null),
+            ];
+        }
+
+        return $this->storeSnapshotForHistory((int) $value, null);
     }
 
     /**
@@ -822,43 +1350,36 @@ class OrderService
         return Carbon::parse((string) $raw, 'UTC')->format('Y-m-d\TH:i:sP');
     }
 
-    protected function slotStateFromSchedule($store, Carbon $scheduled, string $slot, array $settings): string
-    {
-        $date = $scheduled->copy()->timezone($settings['timezone'])->startOfDay();
-        $minuteOptions = $this->stores->availablePickupSlots($store, $date, $settings);
-
-        return $this->slotStateFromMinuteOptions($slot, $minuteOptions);
-    }
-
     /**
      * @param  array<int, string>  $minuteOptions
      */
-    protected function slotStateFromMinuteOptions(string $slot, array $minuteOptions): string
+    protected function slotStateFromMinuteOptions(string $slot, array $minuteOptions, int $consumedCount = 0, ?Carbon $date = null): string
     {
-        $window = self::SLOT_WINDOWS[$slot] ?? null;
+        return $this->slotCapacities->resolveSlotState(
+            $slot,
+            $minuteOptions,
+            self::SLOT_WINDOWS[$slot] ?? null,
+            $consumedCount,
+            $date
+        );
+    }
 
-        if ($window === null) {
-            return 'bloqueado';
-        }
+    /**
+     * @return array<string, int>
+     */
+    protected function consumedCapacityForStoreDay(int $storeId, CarbonInterface $day, ?int $ignoreOrderId = null): array
+    {
+        $settings = $this->orderSettings();
+        $dayStartUtc = $day->copy()->timezone($settings['timezone'])->startOfDay()->utc();
+        $dayEndUtc = $day->copy()->timezone($settings['timezone'])->endOfDay()->utc();
 
-        $count = collect($minuteOptions)
-            ->filter(function (string $option) use ($window): bool {
-                [$hour, $minute] = array_map('intval', explode(':', $option));
-                $totalMinutes = ($hour * 60) + $minute;
-
-                return $totalMinutes >= $window['start'] && $totalMinutes <= $window['end'];
-            })
-            ->count();
-
-        if ($count === 0) {
-            return 'bloqueado';
-        }
-
-        if ($count <= 6) {
-            return 'limitado';
-        }
-
-        return 'disponível';
+        return $this->repository->countScheduledBySlotForStoreDay(
+            $storeId,
+            $dayStartUtc,
+            $dayEndUtc,
+            PlanningSlotCapacityService::CAPACITY_CONSUMING_STATUSES,
+            $ignoreOrderId
+        );
     }
 
     /**
@@ -932,6 +1453,7 @@ class OrderService
             return [
                 'product_id' => $product->id,
                 'variant_id' => $variant?->id,
+                'variant_name_snapshot' => $variant?->name,
                 'name_snapshot' => $variant ? $variant->name : $product->name,
                 'price_snapshot' => $price,
                 'quantity' => $quantity,

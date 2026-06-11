@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\V1\{
+    AdminPlanningSlotCapacityController,
     AppTesterController,
     AuthController,
     UserController,
@@ -28,7 +29,8 @@ use App\Http\Controllers\Api\V1\{
     FlavorController,
     PartnerController,
     PartnerCampaignValidationController,
-    WhatsAppWebhookController
+    WhatsAppWebhookController,
+    AdminOperationalSettingsController
 };
 
 Route::prefix('v1')->group(function () {
@@ -75,10 +77,23 @@ Route::prefix('v1')->group(function () {
         Route::get('content-home', [ContentHomeController::class, 'index']);
         Route::get('flavors', [FlavorController::class, 'index']);
 
+        Route::middleware('can:planning.view')->group(function () {
+            Route::get('admin/orders/daily', [OrderAdminController::class, 'daily']);
+            Route::get('admin/orders/weekly', [OrderAdminController::class, 'weekly']);
+            Route::get('admin/orders/period', [OrderAdminController::class, 'period']);
+        });
+
         // Admin protected
         Route::middleware('can:manage')->group(function () {
+            Route::get('admin/planning/slot-capacities', [AdminPlanningSlotCapacityController::class, 'show']);
+            Route::put('admin/planning/slot-capacities', [AdminPlanningSlotCapacityController::class, 'update']);
+            Route::get('admin/planning/operational-rules', [AdminPlanningSlotCapacityController::class, 'showRules']);
+            Route::put('admin/planning/operational-rules', [AdminPlanningSlotCapacityController::class, 'updateRules']);
+            Route::get('admin/settings/operational', [AdminOperationalSettingsController::class, 'show']);
+            Route::put('admin/settings/operational', [AdminOperationalSettingsController::class, 'update']);
+            Route::post('admin/settings/operational/reset', [AdminOperationalSettingsController::class, 'reset']);
+            Route::post('admin/settings/test-whatsapp', [AdminOperationalSettingsController::class, 'testWhatsApp']);
             Route::get('admin/orders', [OrderAdminController::class, 'index']);
-            Route::get('admin/orders/daily', [OrderAdminController::class, 'daily']);
             Route::get('admin/orders/{order}', [OrderAdminController::class, 'show']);
             Route::patch('admin/orders/{order}', [OrderAdminController::class, 'update']);
             Route::patch('admin/orders/{order}/status', [OrderAdminController::class, 'updateStatus']);

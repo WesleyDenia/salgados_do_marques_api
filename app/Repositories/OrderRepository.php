@@ -90,6 +90,48 @@ class OrderRepository
         return $this->buildAdminQuery($filters)->get();
     }
 
+    public function listScheduledForStoreDay(
+        int $storeId,
+        CarbonInterface $scheduledFromUtc,
+        CarbonInterface $scheduledToUtc,
+        ?int $ignoreOrderId = null
+    ): Collection {
+        $query = Order::query()
+            ->with(['items', 'store', 'user'])
+            ->where('store_id', $storeId)
+            ->whereBetween('scheduled_at', [$scheduledFromUtc, $scheduledToUtc])
+            ->orderBy('scheduled_at')
+            ->orderBy('id');
+
+        if ($ignoreOrderId !== null) {
+            $query->whereKeyNot($ignoreOrderId);
+        }
+
+        return $query->get();
+    }
+
+    public function countScheduledBySlotForStoreDay(
+        int $storeId,
+        CarbonInterface $scheduledFromUtc,
+        CarbonInterface $scheduledToUtc,
+        array $statuses,
+        ?int $ignoreOrderId = null
+    ): array {
+        $query = Order::query()
+            ->select('slot')
+            ->selectRaw('count(*) as count')
+            ->where('store_id', $storeId)
+            ->whereBetween('scheduled_at', [$scheduledFromUtc, $scheduledToUtc])
+            ->whereIn('status', $statuses)
+            ->groupBy('slot');
+
+        if ($ignoreOrderId !== null) {
+            $query->whereKeyNot($ignoreOrderId);
+        }
+
+        return $query->pluck('count', 'slot')->all();
+    }
+
     public function findForAdmin(Order $order): Order
     {
         return $order->load(['items', 'store', 'user', 'history.user']);

@@ -83,6 +83,14 @@ class OrderHistoryTest extends TestCase
         $changes = json_decode($history->changes, true, 512, JSON_THROW_ON_ERROR);
 
         $this->assertSame(['from' => 'Maria Silva', 'to' => 'Maria Santos'], $changes['customer_name']);
+        $this->assertSame(
+            ['id' => $store->id, 'name' => $store->name],
+            $changes['store_id']['from']
+        );
+        $this->assertSame(
+            ['id' => $replacementStore->id, 'name' => $replacementStore->name],
+            $changes['store_id']['to']
+        );
         $this->assertSame(['from' => 'pending', 'to' => 'paid'], $changes['payment_status']);
         $this->assertSame(['from' => 'manha', 'to' => 'tarde'], $changes['slot']);
         $this->assertSame(['from' => 1, 'to' => 1], [

@@ -14,9 +14,14 @@ class OrderItemResource extends JsonResource
     public function toArray(Request $request): array
     {
         $flavorIds = $this->options['flavors'] ?? [];
-        $flavorNames = !empty($flavorIds)
-            ? Flavor::whereIn('id', $flavorIds)->pluck('name')->toArray()
+        $flavorNamesById = ! empty($flavorIds)
+            ? Flavor::whereIn('id', $flavorIds)->pluck('name', 'id')->all()
             : [];
+        $flavorNames = collect($flavorIds)
+            ->map(fn ($flavorId) => $flavorNamesById[(int) $flavorId] ?? null)
+            ->filter()
+            ->values()
+            ->all();
 
         return [
             'id' => $this->id,

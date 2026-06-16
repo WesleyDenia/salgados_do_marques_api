@@ -49,6 +49,7 @@
         text-align: center;
         color: #6b7280;
         font-size: 0.95rem;
+        font-weight: 600;
       }
 
       label {
@@ -76,15 +77,6 @@
 
       .form-group {
         margin-bottom: 18px;
-      }
-
-      .remember-row {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        margin-bottom: 18px;
-        font-size: 0.95rem;
-        color: #4b5563;
       }
 
       .error {
@@ -119,13 +111,6 @@
         transform: translateY(0);
       }
 
-      footer {
-        margin-top: 20px;
-        font-size: 0.85rem;
-        text-align: center;
-        color: #9ca3af;
-      }
-
       @media (max-width: 520px) {
         body {
           padding: 16px;
@@ -149,7 +134,7 @@
   <body>
     <main class="card">
       <h1>Painel Administrativo</h1>
-      <p class="subtitle">Entre com suas credenciais para continuar.</p>
+      <p class="subtitle">Acessar Painel</p>
 
       @if ($errors->any())
         <div class="error">
@@ -183,15 +168,8 @@
           />
         </div>
 
-        <label class="remember-row">
-          <input type="checkbox" name="remember" {{ old('remember') ? 'checked' : '' }} />
-          Lembrar de mim
-        </label>
-
-        <button type="submit">Entrar</button>
+        <button type="submit">Acessar Painel</button>
       </form>
-
-      <footer>&copy; {{ now()->year }} Salgados do Marquês</footer>
     </main>
   </body>
 </html>

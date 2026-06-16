@@ -53,6 +53,41 @@ class OrderFlavorValidationTest extends TestCase
         $response->assertOk();
         $response->assertJsonPath('data.items.0.options.flavors.0', $flavors['allowedA']->id);
         $response->assertJsonPath('data.items.0.options.flavors.1', $flavors['allowedB']->id);
+        $response->assertJsonPath('data.items.0.options.flavor_names.0', 'Frango');
+        $response->assertJsonPath('data.items.0.options.flavor_names.1', 'Carne');
+    }
+
+    public function test_order_resource_preserves_duplicate_flavor_names_in_original_selection_order(): void
+    {
+        [$product, $variant, $store, $user, $flavors] = $this->makeOrderContext();
+        $variant->update(['max_flavors' => 3]);
+
+        Sanctum::actingAs($user);
+
+        $response = $this->postJson('/api/v1/orders', [
+            'store_id' => $store->id,
+            'scheduled_at' => now()->addHour()->format('Y-m-d H:i'),
+            'items' => [
+                [
+                    'product_id' => $product->id,
+                    'variant_id' => $variant->id,
+                    'quantity' => 1,
+                    'flavors' => [
+                        $flavors['allowedA']->id,
+                        $flavors['allowedB']->id,
+                        $flavors['allowedA']->id,
+                    ],
+                ],
+            ],
+        ]);
+
+        $response->assertOk();
+        $response->assertJsonPath('data.items.0.options.flavors.0', $flavors['allowedA']->id);
+        $response->assertJsonPath('data.items.0.options.flavors.1', $flavors['allowedB']->id);
+        $response->assertJsonPath('data.items.0.options.flavors.2', $flavors['allowedA']->id);
+        $response->assertJsonPath('data.items.0.options.flavor_names.0', 'Frango');
+        $response->assertJsonPath('data.items.0.options.flavor_names.1', 'Carne');
+        $response->assertJsonPath('data.items.0.options.flavor_names.2', 'Frango');
     }
 
     public function test_order_rejects_flavors_for_product_without_variant(): void

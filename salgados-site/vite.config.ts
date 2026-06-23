@@ -29,7 +29,18 @@ export default defineConfig(({ mode }) => ({
     mode === "production" &&
       prerenderPlugin({
         staticDir: path.resolve(__dirname, "dist"),
-        routes: ["/", "/festas", "/produtos", "/parceiros", "/sobre", "/contactos", "/termos", "/privacidade", "/testers"],
+        routes: [
+          "/",
+          "/aniversario",
+          "/festas",
+          "/produtos",
+          "/parceiros",
+          "/sobre",
+          "/contactos",
+          "/termos",
+          "/privacidade",
+          "/testers",
+        ],
         renderer: new JSDOMRenderer(),
       }),
   ].filter(Boolean),

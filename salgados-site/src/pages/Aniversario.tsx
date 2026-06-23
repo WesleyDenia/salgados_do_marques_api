@@ -307,34 +307,12 @@ const Aniversario = () => {
               </p>
             </div>
 
-            <div className="relative mx-auto w-full max-w-[540px] animate-fade-up lg:justify-self-end">
-              <div className="relative overflow-hidden rounded-[2rem] border border-[#f3d48d]/20 bg-[#3b0305]/40 p-3 shadow-[0_30px_80px_-28px_rgba(0,0,0,0.55)] backdrop-blur-sm">
-                <div className="absolute left-4 top-4 z-10 rounded-full bg-[#f2cf7c] px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] text-[#5b0608]">
-                  Maior promoção do ano
-                </div>
-                <div className="overflow-hidden rounded-[1.5rem]">
-                  <img
-                    src={heroImage}
-                    alt="Coxinhas e mini salgados preparados para festas"
-                    className="aspect-[5/4] w-full object-cover"
-                  />
-                </div>
-                <div className="absolute inset-x-6 bottom-6 rounded-[1.5rem] border border-white/10 bg-[linear-gradient(135deg,rgba(91,6,8,0.92),rgba(142,32,31,0.86))] p-5 shadow-lg backdrop-blur-sm">
-                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#f6dfaa]">
-                    Compre agora, levante depois
-                  </p>
-                  <p className="mt-2 text-lg font-semibold text-white">
-                    Packs promocionais para garantir já a sua próxima ocasião.
-                  </p>
-                </div>
-              </div>
-
-              <div className="absolute -bottom-10 right-4 hidden w-48 overflow-hidden rounded-[1.5rem] border border-[#f3d48d]/25 bg-white/90 shadow-[0_24px_60px_-26px_rgba(0,0,0,0.55)] sm:block">
+            <div className="mx-auto w-full max-w-[540px] animate-fade-up lg:justify-self-end">
+              <div className="overflow-hidden rounded-[2rem] border border-[#f3d48d]/20 bg-[#3b0305]/40 p-3 shadow-[0_30px_80px_-28px_rgba(0,0,0,0.55)] backdrop-blur-sm">
                 <img
-                  src="/aneversario_preco.jpeg"
-                  alt="Tabela promocional de aniversário dos Salgados do Marquês"
-                  className="w-full object-cover"
-                  loading="lazy"
+                  src="/aneversario_banner.jpeg"
+                  alt="Arte da campanha de aniversário dos Salgados do Marquês"
+                  className="w-full rounded-[1.5rem] object-cover"
                 />
               </div>
             </div>

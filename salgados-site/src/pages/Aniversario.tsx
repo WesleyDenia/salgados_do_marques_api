@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import {
   ArrowRight,
   CalendarClock,
@@ -11,6 +12,7 @@ import {
   Users,
 } from "lucide-react";
 import heroImage from "@/assets/hero-salgados.jpg";
+import { useCookieConsent } from "@/components/CookieConsentProvider";
 import { Seo } from "@/components/Seo";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,6 +29,16 @@ const ANNIVERSARY_WHATSAPP_TEXT =
 const ANNIVERSARY_WHATSAPP_URL = `https://wa.me/${ANNIVERSARY_WHATSAPP_NUMBER}?text=${encodeURIComponent(
   ANNIVERSARY_WHATSAPP_TEXT,
 )}`;
+const FACEBOOK_PIXEL_ID = "1868612234095622";
+
+type FacebookPixelFn = {
+  (...args: unknown[]): void;
+  callMethod?: (...args: unknown[]) => void;
+  queue?: unknown[][];
+  loaded?: boolean;
+  version?: string;
+  push?: (...args: unknown[]) => void;
+};
 
 const campaignPacks = [
   {
@@ -146,6 +158,49 @@ const heroHighlights = [
 ];
 
 const Aniversario = () => {
+  const { consent } = useCookieConsent();
+
+  useEffect(() => {
+    if (!consent?.preferences.marketing) {
+      return;
+    }
+
+    const windowWithPixel = window as Window & {
+      fbq?: FacebookPixelFn;
+      _fbq?: FacebookPixelFn;
+    };
+
+    if (!windowWithPixel.fbq) {
+      const fbq = function (...args: unknown[]) {
+        if (fbq.callMethod) {
+          fbq.callMethod(...args);
+          return;
+        }
+
+        fbq.queue?.push(args);
+      } as FacebookPixelFn;
+
+      fbq.queue = [];
+      fbq.loaded = true;
+      fbq.version = "2.0";
+      fbq.push = (...args: unknown[]) => {
+        fbq.queue?.push(args);
+      };
+
+      windowWithPixel.fbq = fbq;
+      windowWithPixel._fbq = fbq;
+
+      const script = document.createElement("script");
+      script.async = true;
+      script.src = "https://connect.facebook.net/en_US/fbevents.js";
+      script.dataset.source = "facebook-pixel";
+      document.head.appendChild(script);
+    }
+
+    windowWithPixel.fbq?.("init", FACEBOOK_PIXEL_ID);
+    windowWithPixel.fbq?.("track", "PageView");
+  }, [consent]);
+
   const faqSchema = {
     "@context": "https://schema.org",
     "@type": "FAQPage",

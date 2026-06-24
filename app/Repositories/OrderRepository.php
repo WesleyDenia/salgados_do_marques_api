@@ -13,7 +13,7 @@ class OrderRepository
 {
     protected function buildAdminQuery(array $filters)
     {
-        $query = Order::query()->with(['items', 'store', 'user']);
+        $query = Order::query()->with(['items', 'store', 'user', 'tags']);
 
         $search = trim((string) ($filters['search'] ?? ''));
 
@@ -52,6 +52,18 @@ class OrderRepository
             $query->where('store_id', (int) $filters['store_id']);
         }
 
+        $tagIds = collect($filters['tag_ids'] ?? [])
+            ->map(fn ($tagId) => (int) $tagId)
+            ->filter(fn (int $tagId) => $tagId > 0)
+            ->values()
+            ->all();
+
+        if ($tagIds !== []) {
+            $query->whereHas('tags', function ($builder) use ($tagIds) {
+                $builder->whereIn('order_tags.id', $tagIds);
+            });
+        }
+
         if (!empty($filters['scheduled_from'])) {
             $query->where('scheduled_at', '>=', $filters['scheduled_from']);
         }
@@ -68,14 +80,14 @@ class OrderRepository
     {
         return Order::query()
             ->where('user_id', $userId)
-            ->with(['items', 'store'])
+            ->with(['items', 'store', 'tags'])
             ->orderByDesc('created_at')
             ->paginate($perPage);
     }
 
     public function findForUser(Order $order): Order
     {
-        return $order->load(['items', 'store']);
+        return $order->load(['items', 'store', 'tags']);
     }
 
     public function paginateForAdmin(array $filters, int $perPage = 20): LengthAwarePaginator
@@ -134,7 +146,7 @@ class OrderRepository
 
     public function findForAdmin(Order $order): Order
     {
-        return $order->load(['items', 'store', 'user', 'history.user']);
+        return $order->load(['items', 'store', 'user', 'history.user', 'tags']);
     }
 
     public function updateStatus(Order $order, array $payload, ?array $history = null): Order
@@ -144,13 +156,13 @@ class OrderRepository
             $this->createHistoryRecord($order, $history);
         });
 
-        return $order->fresh(['items', 'store', 'user', 'history.user']);
+        return $order->fresh(['items', 'store', 'user', 'history.user', 'tags']);
     }
 
-    public function updateWithItems(Order $order, array $payload, array $lineItems, ?array $history = null): Order
+    public function updateWithItems(Order $order, array $payload, array $lineItems, ?array $tagIds = null, ?array $history = null): Order
     {
         /** @var Order $updatedOrder */
-        $updatedOrder = DB::transaction(function () use ($history, $lineItems, $order, $payload) {
+        $updatedOrder = DB::transaction(function () use ($history, $lineItems, $order, $payload, $tagIds) {
             $order->update($payload);
             $order->items()->delete();
 
@@ -172,13 +184,17 @@ class OrderRepository
                 $total += $lineTotal;
             }
 
+            if ($tagIds !== null) {
+                $order->tags()->sync($tagIds);
+            }
+
             $order->update(['total' => $total]);
             $this->createHistoryRecord($order, $history);
 
             return $order;
         });
 
-        return $updatedOrder->fresh(['items', 'store', 'user', 'history.user']);
+        return $updatedOrder->fresh(['items', 'store', 'user', 'history.user', 'tags']);
     }
 
     public function listStoresForFilter(): Collection
@@ -197,10 +213,11 @@ class OrderRepository
         ?string $slot,
         CarbonInterface $scheduledAtUtc,
         ?string $notes,
-        array $lineItems
+        array $lineItems,
+        array $tagIds = []
     ): Order {
         /** @var Order $order */
-        $order = DB::transaction(function () use ($customerContact, $customerName, $lineItems, $notes, $paymentStatus, $scheduledAtUtc, $slot, $storeId, $userId) {
+        $order = DB::transaction(function () use ($customerContact, $customerName, $lineItems, $notes, $paymentStatus, $scheduledAtUtc, $slot, $storeId, $tagIds, $userId) {
             $order = Order::query()->create([
                 'user_id' => $userId,
                 'customer_name' => $customerName,
@@ -232,19 +249,20 @@ class OrderRepository
                 $total += $lineTotal;
             }
 
+            $order->tags()->sync($tagIds);
             $order->update(['total' => $total]);
 
             return $order;
         });
 
-        return $order->fresh(['items', 'store', 'user']);
+        return $order->fresh(['items', 'store', 'user', 'tags']);
     }
 
     public function cancel(Order $order, array $payload): Order
     {
         $order->update($payload);
 
-        return $order->fresh(['items', 'store', 'user']);
+        return $order->fresh(['items', 'store', 'user', 'tags']);
     }
 
     protected function createHistoryRecord(Order $order, ?array $history): void

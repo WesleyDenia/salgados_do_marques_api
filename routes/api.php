@@ -30,7 +30,8 @@ use App\Http\Controllers\Api\V1\{
     PartnerController,
     PartnerCampaignValidationController,
     WhatsAppWebhookController,
-    AdminOperationalSettingsController
+    AdminOperationalSettingsController,
+    AdminOrderTagController
 };
 
 Route::prefix('v1')->group(function () {
@@ -93,6 +94,9 @@ Route::prefix('v1')->group(function () {
             Route::put('admin/settings/operational', [AdminOperationalSettingsController::class, 'update']);
             Route::post('admin/settings/operational/reset', [AdminOperationalSettingsController::class, 'reset']);
             Route::post('admin/settings/test-whatsapp', [AdminOperationalSettingsController::class, 'testWhatsApp']);
+            Route::get('admin/order-tags', [AdminOrderTagController::class, 'index']);
+            Route::post('admin/order-tags', [AdminOrderTagController::class, 'store']);
+            Route::put('admin/order-tags/{orderTag}', [AdminOrderTagController::class, 'update']);
             Route::get('admin/orders', [OrderAdminController::class, 'index']);
             Route::get('admin/orders/{order}', [OrderAdminController::class, 'show']);
             Route::patch('admin/orders/{order}', [OrderAdminController::class, 'update']);

@@ -109,6 +109,7 @@ class OrderService
         $orderSettings = $this->orderSettings();
         $scheduled = $this->parseScheduledAt($data['scheduled_at'], $orderSettings['timezone']);
         $store = $this->stores->findById((int) $data['store_id']);
+        $tagIds = $this->normalizeOrderTagIdsForActor($actor, $data['tag_ids'] ?? []);
 
         if (! $store) {
             throw ValidationException::withMessages([
@@ -160,7 +161,8 @@ class OrderService
                 $data['slot'] ?? null,
                 $scheduled->copy()->timezone('UTC'),
                 $data['notes'] ?? null,
-                $lineItems
+                $lineItems,
+                $tagIds
             );
 
             if ($resolvedCustomer['notification_contact']) {
@@ -561,7 +563,7 @@ class OrderService
     public function updateForAdmin(Order $order, array $data): Order
     {
         $this->assertOrderEditable($order);
-        $order->loadMissing(['items', 'store']);
+        $order->loadMissing(['items', 'store', 'tags']);
 
         $orderSettings = $this->orderSettings();
         $scheduled = $this->parseScheduledAt($data['scheduled_at'], $orderSettings['timezone']);
@@ -596,6 +598,7 @@ class OrderService
             }
 
             $lineItems = $this->buildOrderLineItems($items, $products, $variants);
+            $tagIds = $this->normalizeOrderTagIds($data['tag_ids'] ?? []);
             $before = $this->snapshotOrderForHistory($order);
             $after = $this->snapshotOrderForHistory($order, [
                 'customer_name' => $this->normalizeNullableText($data['customer_name'] ?? null),
@@ -606,6 +609,7 @@ class OrderService
                 'scheduled_at' => $scheduled->copy()->timezone('UTC'),
                 'notes' => $this->normalizeNullableText($data['notes'] ?? null),
                 'items' => $lineItems,
+                'tags' => $tagIds,
             ]);
 
             return $this->repository->updateWithItems($order, [
@@ -616,7 +620,7 @@ class OrderService
                 'slot' => $data['slot'] ?? null,
                 'scheduled_at' => $scheduled->copy()->timezone('UTC'),
                 'notes' => $this->normalizeNullableText($data['notes'] ?? null),
-            ], $lineItems, $this->makeHistoryPayload(
+            ], $lineItems, $tagIds, $this->makeHistoryPayload(
                 'updated',
                 $this->calculateChanges($before, $after)
             ));
@@ -787,6 +791,10 @@ class OrderService
             }
 
             $filters[$key] = Carbon::parse((string) $filters[$key], $timezone)->timezone('UTC');
+        }
+
+        if (! empty($filters['tag_ids']) && is_array($filters['tag_ids'])) {
+            $filters['tag_ids'] = $this->normalizeOrderTagIds($filters['tag_ids']);
         }
 
         return $filters;
@@ -1194,6 +1202,9 @@ class OrderService
         $items = array_key_exists('items', $overrides)
             ? $this->normalizeLineItemsForHistory($overrides['items'])
             : $this->normalizeExistingItemsForHistory($order->items);
+        $tags = array_key_exists('tags', $overrides)
+            ? $this->normalizeTagIdsForHistory($overrides['tags'])
+            : $this->normalizeExistingTagsForHistory($order);
 
         $total = array_key_exists('items', $overrides)
             ? round((float) collect($overrides['items'])->sum(fn (array $item): float => (float) ($item['total'] ?? 0)), 2)
@@ -1213,7 +1224,75 @@ class OrderService
             'notes' => $overrides['notes'] ?? $order->notes,
             'total' => $total,
             'items' => $items,
+            'tags' => $tags,
         ];
+    }
+
+    /**
+     * @return array<int, array{id:int,name:string,color:string}>
+     */
+    protected function normalizeExistingTagsForHistory(Order $order): array
+    {
+        return $order->tags
+            ->map(fn ($tag): array => [
+                'id' => (int) $tag->id,
+                'name' => (string) $tag->name,
+                'color' => (string) $tag->color,
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param  array<int, int|string>  $tagIds
+     * @return array<int, array{id:int,name:string,color:string|null}>
+     */
+    protected function normalizeTagIdsForHistory(array $tagIds): array
+    {
+        $normalizedIds = $this->normalizeOrderTagIds($tagIds);
+
+        if ($normalizedIds === []) {
+            return [];
+        }
+
+        return \App\Models\OrderTag::query()
+            ->whereIn('id', $normalizedIds)
+            ->orderBy('name')
+            ->get(['id', 'name', 'color'])
+            ->map(fn ($tag): array => [
+                'id' => (int) $tag->id,
+                'name' => (string) $tag->name,
+                'color' => $tag->color ? (string) $tag->color : null,
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param  array<int, int|string>  $tagIds
+     * @return array<int, int>
+     */
+    protected function normalizeOrderTagIds(array $tagIds): array
+    {
+        return collect($tagIds)
+            ->map(fn ($tagId) => (int) $tagId)
+            ->filter(fn (int $tagId) => $tagId > 0)
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param  array<int, int|string>  $tagIds
+     * @return array<int, int>
+     */
+    protected function normalizeOrderTagIdsForActor(User $actor, array $tagIds): array
+    {
+        if (! $actor->isStaff()) {
+            return [];
+        }
+
+        return $this->normalizeOrderTagIds($tagIds);
     }
 
     /**

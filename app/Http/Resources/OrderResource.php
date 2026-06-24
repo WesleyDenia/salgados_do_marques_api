@@ -37,6 +37,7 @@ class OrderResource extends JsonResource
                 ];
             }),
             'items' => OrderItemResource::collection($this->whenLoaded('items')),
+            'tags' => OrderTagResource::collection($this->whenLoaded('tags')),
             'history' => $this->whenLoaded('history', function () {
                 return $this->history->map(fn ($history) => [
                     'id' => $history->id,

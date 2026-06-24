@@ -6,6 +6,7 @@ use Carbon\Carbon;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Order extends Model
 {
@@ -51,6 +52,13 @@ class Order extends Model
         return $this->hasMany(OrderHistory::class)
             ->orderByDesc('created_at')
             ->orderByDesc('id');
+    }
+
+    public function tags(): BelongsToMany
+    {
+        return $this->belongsToMany(OrderTag::class, 'order_tag_order')
+            ->withTimestamps()
+            ->orderBy('name');
     }
 
     public function customerNameForDisplay(): ?string

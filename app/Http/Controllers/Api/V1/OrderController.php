@@ -9,18 +9,35 @@ use App\Http\Requests\OrderAvailabilityMinutesRequest;
 use App\Http\Requests\OrderAvailabilitySlotsRequest;
 use App\Http\Requests\OrderStoreRequest;
 use App\Http\Resources\OrderResource;
+use App\Http\Resources\OrderTagResource;
 use App\Models\Order;
+use App\Services\AdminOrderTagService;
 use App\Services\OrderService;
 use Illuminate\Http\Request;
 
 class OrderController extends Controller
 {
-    public function __construct(protected OrderService $orders) {}
+    public function __construct(
+        protected OrderService $orders,
+        protected AdminOrderTagService $orderTags,
+    ) {}
 
     public function settings()
     {
         $settings = $this->orders->orderSettings();
         $settings['status_labels'] = $this->orders->statusLabels();
+        $user = request()->user();
+        $settings['active_tags'] = [];
+        $settings['available_tags'] = [];
+
+        if ($user?->isStaff()) {
+            $settings['active_tags'] = OrderTagResource::collection(
+                $this->orderTags->options(true)
+            )->resolve();
+            $settings['available_tags'] = OrderTagResource::collection(
+                $this->orderTags->options()
+            )->resolve();
+        }
 
         return response()->json([
             'data' => $settings,

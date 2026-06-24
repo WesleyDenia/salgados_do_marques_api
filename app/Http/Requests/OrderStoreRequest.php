@@ -30,6 +30,8 @@ class OrderStoreRequest extends FormRequest
             'scheduled_at' => ['required', 'date'],
             'payment_status' => ['nullable', 'string', Rule::in(['pending', 'partial', 'paid'])],
             'slot' => ['nullable', 'string', Rule::in(['manha', 'tarde', 'noite'])],
+            'tag_ids' => ['nullable', 'array'],
+            'tag_ids.*' => ['integer', Rule::exists('order_tags', 'id')],
             'notes' => ['nullable', 'string', 'max:500'],
             'items' => ['required', 'array', 'min:1'],
             'items.*.product_id' => [
@@ -56,6 +58,9 @@ class OrderStoreRequest extends FormRequest
             'scheduled_at.date' => 'A data e hora da encomenda devem ser válidas.',
             'payment_status.in' => 'O estado de pagamento informado não é válido.',
             'slot.in' => 'O slot operacional informado não é válido.',
+            'tag_ids.array' => 'As tags devem ser enviadas como uma lista de IDs.',
+            'tag_ids.*.integer' => 'Cada tag deve ser identificada por um ID numérico válido.',
+            'tag_ids.*.exists' => 'Uma das tags selecionadas não existe.',
         ];
     }
 }

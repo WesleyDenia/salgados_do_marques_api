@@ -26,6 +26,8 @@ class OrderSearchRequest extends FormRequest
             'status' => ['nullable', Rule::in($statusKeys)],
             'payment_status' => ['nullable', 'string', Rule::in(['pending', 'partial', 'paid'])],
             'slot' => ['nullable', 'string', Rule::in(['manha', 'tarde', 'noite'])],
+            'tag_ids' => ['nullable', 'array'],
+            'tag_ids.*' => ['integer', Rule::exists('order_tags', 'id')],
             'store_id' => ['nullable', 'integer', 'exists:stores,id'],
             'day' => ['nullable', 'date_format:Y-m-d'],
             'week_start' => ['nullable', 'date_format:Y-m-d'],
@@ -61,6 +63,15 @@ class OrderSearchRequest extends FormRequest
 
         if (is_string($search)) {
             $payload['search'] = trim($search);
+        }
+
+        $tagIds = $this->input('tag_ids');
+        if (is_string($tagIds)) {
+            $payload['tag_ids'] = collect(explode(',', $tagIds))
+                ->map(fn (string $tagId) => (int) trim($tagId))
+                ->filter(fn (int $tagId) => $tagId > 0)
+                ->values()
+                ->all();
         }
 
         if ($actionMethod === 'daily' && ! $this->filled('day')) {

@@ -117,7 +117,7 @@ class OrderService
             ]);
         }
 
-        return \Illuminate\Support\Facades\DB::transaction(function () use ($actor, $data, $orderSettings, $scheduled, $store) {
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($actor, $data, $orderSettings, $scheduled, $store, $tagIds) {
             // Apply slot-specific lead time precedence: Slot Rule > Global Rule (whichever is more restrictive/larger)
             $slot = $data['slot'] ?? null;
             if ($slot) {

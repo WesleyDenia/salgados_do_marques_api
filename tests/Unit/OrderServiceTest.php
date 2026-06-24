@@ -175,6 +175,27 @@ class OrderServiceTest extends TestCase
 
         $repository->shouldReceive('createWithItems')
             ->once()
+            ->withArgs(function (
+                ?int $userId,
+                int $storeId,
+                ?string $customerName,
+                ?string $customerContact,
+                ?string $paymentStatus,
+                ?string $slot,
+                \Carbon\CarbonInterface $scheduledAtUtc,
+                ?string $notes,
+                array $lineItems,
+                array $tagIds
+            ): bool {
+                return $userId === 10
+                    && $storeId === 20
+                    && $customerName === null
+                    && $customerContact === null
+                    && $paymentStatus === null
+                    && $slot === null
+                    && count($lineItems) === 1
+                    && $tagIds === [];
+            })
             ->andReturn($createdOrder);
 
         $messages->shouldReceive('orderPlacedSnapshot')
@@ -211,5 +232,100 @@ class OrderServiceTest extends TestCase
         ]);
 
         Queue::assertPushed(SendOrderPlacedWhatsAppJob::class, fn (SendOrderPlacedWhatsAppJob $job) => $job->queueItemId === 555);
+    }
+
+    public function test_it_passes_tag_ids_to_repository_when_creating_order(): void
+    {
+        Queue::fake();
+
+        $repository = Mockery::mock(OrderRepository::class);
+        $products = Mockery::mock(ProductRepository::class);
+        $settings = Mockery::mock(SettingService::class);
+        $stores = Mockery::mock(StoreService::class);
+        $flavors = Mockery::mock(AdminFlavorService::class);
+        $messages = Mockery::mock(WhatsAppMessageFormatter::class);
+        $queue = Mockery::mock(WhatsAppQueueService::class);
+        $slotCapacities = Mockery::mock(PlanningSlotCapacityService::class);
+
+        $service = Mockery::mock(OrderService::class, [
+            $repository,
+            $products,
+            $flavors,
+            $slotCapacities,
+            $settings,
+            $stores,
+            $messages,
+            $queue,
+        ])->makePartial();
+
+        $service->shouldReceive('orderSettings')->andReturn([
+            'start_time' => '12:00',
+            'end_time' => '20:00',
+            'minimum_minutes' => 30,
+            'cancel_minutes' => 60,
+            'timezone' => 'UTC',
+            'scheduling_window_days' => 15,
+        ]);
+
+        $user = new \App\Models\User();
+        $user->id = 10;
+        $user->role = 'atendimento';
+        $user->name = 'Joao';
+        $user->email = 'joao@example.com';
+        $user->phone = '351911928481';
+        $store = new \App\Models\Store(['id' => 20, 'name' => 'Loja', 'accepts_orders' => true]);
+        $product = new \App\Models\Product(['id' => 30, 'name' => 'Coxinha', 'price' => 2.50]);
+        $product->setRelation('allowedFlavors', new \Illuminate\Database\Eloquent\Collection());
+
+        $stores->shouldReceive('findById')->once()->with(20)->andReturn($store);
+        $stores->shouldReceive('validateScheduledPickup')
+            ->once()
+            ->with($store, Mockery::type(\Carbon\Carbon::class), Mockery::type('array'));
+        $products->shouldReceive('findActiveForOrder')
+            ->once()
+            ->andReturn(new \Illuminate\Database\Eloquent\Collection([30 => $product]));
+        $products->shouldReceive('findActiveVariantsForOrder')
+            ->once()
+            ->andReturn(new \Illuminate\Database\Eloquent\Collection());
+
+        $createdOrder = new Order();
+        $createdOrder->id = 100;
+
+        $repository->shouldReceive('createWithItems')
+            ->once()
+            ->withArgs(function (
+                ?int $userId,
+                int $storeId,
+                ?string $customerName,
+                ?string $customerContact,
+                ?string $paymentStatus,
+                ?string $slot,
+                \Carbon\CarbonInterface $scheduledAtUtc,
+                ?string $notes,
+                array $lineItems,
+                array $tagIds
+            ): bool {
+                return $userId === 10
+                    && $storeId === 20
+                    && $customerName === null
+                    && $customerContact === null
+                    && $paymentStatus === null
+                    && $slot === null
+                    && count($lineItems) === 1
+                    && $tagIds === [3, 7];
+            })
+            ->andReturn($createdOrder);
+
+        $service->createForUser($user, [
+            'store_id' => 20,
+            'scheduled_at' => '2026-01-15 12:30:00',
+            'tag_ids' => [3, '7', 7],
+            'items' => [
+                [
+                    'product_id' => 30,
+                    'quantity' => 1,
+                ],
+            ],
+        ]);
     }
 }

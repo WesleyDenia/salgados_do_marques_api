@@ -128,6 +128,50 @@ class OrderAdminIndexTest extends TestCase
         $responseById->assertDontSeeText("#{$nonMatchingOrder->id}");
     }
 
+    public function test_admin_order_index_hides_canceled_orders_by_default_but_allows_explicit_filter(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $customer = User::factory()->create();
+        $store = $this->createStore();
+
+        $visibleOrder = Order::create([
+            'user_id' => $customer->id,
+            'store_id' => $store->id,
+            'status' => 'placed',
+            'customer_name' => 'Pedido ativo',
+            'scheduled_at' => Carbon::create(2026, 7, 15, 11, 30, 0, 'UTC'),
+            'total' => 12.50,
+            'notes' => null,
+        ]);
+
+        $hiddenCanceledOrder = Order::create([
+            'user_id' => $customer->id,
+            'store_id' => $store->id,
+            'status' => 'canceled',
+            'customer_name' => 'Pedido cancelado',
+            'scheduled_at' => Carbon::create(2026, 7, 15, 12, 30, 0, 'UTC'),
+            'total' => 9.50,
+            'notes' => null,
+        ]);
+
+        $defaultResponse = $this->actingAs($admin)->get(route('admin.orders.index'));
+
+        $defaultResponse->assertOk();
+        $defaultResponse->assertSeeText("#{$visibleOrder->id}");
+        $defaultResponse->assertDontSeeText("#{$hiddenCanceledOrder->id}");
+        $defaultResponse->assertSeeText('€ 12,50');
+        $defaultResponse->assertDontSeeText('€ 9,50');
+
+        $canceledResponse = $this->actingAs($admin)->get(route('admin.orders.index', [
+            'status' => 'canceled',
+        ]));
+
+        $canceledResponse->assertOk();
+        $canceledResponse->assertSeeText("#{$hiddenCanceledOrder->id}");
+        $canceledResponse->assertSeeText('€ 9,50');
+        $canceledResponse->assertDontSeeText('€ 12,50');
+    }
+
     public function test_admin_daily_planning_view_filters_orders_for_requested_lisbon_day(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);

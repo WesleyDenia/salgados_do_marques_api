@@ -38,6 +38,8 @@ class OrderRepository
 
         if (!empty($filters['status'])) {
             $query->where('status', $filters['status']);
+        } else {
+            $query->where('status', '!=', 'canceled');
         }
 
         if (!empty($filters['payment_status'])) {

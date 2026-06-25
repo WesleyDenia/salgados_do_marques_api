@@ -179,7 +179,12 @@ class StoreService
             : null;
     }
 
-    public function validateScheduledPickup(Store $store, Carbon $scheduled, array $settings): void
+    public function validateScheduledPickup(
+        Store $store,
+        Carbon $scheduled,
+        array $settings,
+        bool $allowOutsideOperatingHours = false
+    ): void
     {
         $timezone = $settings['timezone'] ?? 'Europe/Lisbon';
         $scheduled = $scheduled->copy()->timezone($timezone);
@@ -209,7 +214,7 @@ class StoreService
         $start = Carbon::createFromFormat('Y-m-d H:i', $scheduled->format('Y-m-d') . ' ' . $window['start_time'], $timezone);
         $end = Carbon::createFromFormat('Y-m-d H:i', $scheduled->format('Y-m-d') . ' ' . $window['end_time'], $timezone);
 
-        if ($scheduled->lessThan($start) || $scheduled->greaterThan($end)) {
+        if (! $allowOutsideOperatingHours && ($scheduled->lessThan($start) || $scheduled->greaterThan($end))) {
             throw ValidationException::withMessages([
                 'scheduled_at' => 'O horário escolhido está fora do funcionamento dessa loja.',
             ]);

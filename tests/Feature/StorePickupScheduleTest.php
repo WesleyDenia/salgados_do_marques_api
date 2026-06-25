@@ -51,6 +51,7 @@ class StorePickupScheduleTest extends TestCase
     {
         Carbon::setTestNow(Carbon::parse('2026-03-16 10:00', 'Europe/Lisbon'));
         [$user, $product, $store] = $this->makeOrderContext();
+        $user->update(['role' => 'atendimento']);
 
         Sanctum::actingAs($user);
 
@@ -131,6 +132,36 @@ class StorePickupScheduleTest extends TestCase
             ->assertStatus(422)
             ->assertJsonValidationErrors(['scheduled_at'])
             ->assertJsonPath('errors.scheduled_at.0', 'O horário escolhido está fora do funcionamento dessa loja.');
+    }
+
+    public function test_order_accepts_schedule_exception_outside_store_hours_but_keeps_closed_date_blocked(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-03-16 10:00', 'Europe/Lisbon'));
+        [$user, $product, $store] = $this->makeOrderContext();
+        $user->update(['role' => 'atendimento']);
+
+        Sanctum::actingAs($user);
+
+        $payload = [
+            'store_id' => $store->id,
+            'allow_schedule_exception' => true,
+            'items' => [
+                [
+                    'product_id' => $product->id,
+                    'quantity' => 1,
+                ],
+            ],
+        ];
+
+        $this->postJson('/api/v1/orders', [
+            ...$payload,
+            'scheduled_at' => '2026-03-17 21:30',
+        ])->assertOk();
+
+        $this->postJson('/api/v1/orders', [
+            ...$payload,
+            'scheduled_at' => '2026-03-18 15:00',
+        ])->assertStatus(422)->assertJsonValidationErrors(['scheduled_at']);
     }
 
     protected function makeOrderContext(): array

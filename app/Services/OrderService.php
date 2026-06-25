@@ -110,6 +110,7 @@ class OrderService
         $scheduled = $this->parseScheduledAt($data['scheduled_at'], $orderSettings['timezone']);
         $store = $this->stores->findById((int) $data['store_id']);
         $tagIds = $this->normalizeOrderTagIdsForActor($actor, $data['tag_ids'] ?? []);
+        $allowScheduleException = $this->shouldAllowScheduleExceptionForActor($actor, $data);
 
         if (! $store) {
             throw ValidationException::withMessages([
@@ -117,7 +118,7 @@ class OrderService
             ]);
         }
 
-        return \Illuminate\Support\Facades\DB::transaction(function () use ($actor, $data, $orderSettings, $scheduled, $store, $tagIds) {
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($actor, $data, $orderSettings, $scheduled, $store, $tagIds, $allowScheduleException) {
             // Apply slot-specific lead time precedence: Slot Rule > Global Rule (whichever is more restrictive/larger)
             $slot = $data['slot'] ?? null;
             if ($slot) {
@@ -128,7 +129,7 @@ class OrderService
                 }
             }
 
-            $this->stores->validateScheduledPickup($store, $scheduled, $orderSettings);
+            $this->stores->validateScheduledPickup($store, $scheduled, $orderSettings, $allowScheduleException);
             $this->assertSlotAvailableForSchedule($store, $scheduled, $data['slot'] ?? null, $orderSettings);
 
             $items = collect($data['items']);
@@ -568,6 +569,7 @@ class OrderService
         $orderSettings = $this->orderSettings();
         $scheduled = $this->parseScheduledAt($data['scheduled_at'], $orderSettings['timezone']);
         $store = $this->stores->findById((int) $data['store_id']);
+        $allowScheduleException = (bool) ($data['allow_schedule_exception'] ?? false);
 
         if (! $store) {
             throw ValidationException::withMessages([
@@ -575,8 +577,8 @@ class OrderService
             ]);
         }
 
-        return \Illuminate\Support\Facades\DB::transaction(function () use ($order, $data, $orderSettings, $scheduled, $store) {
-            $this->stores->validateScheduledPickup($store, $scheduled, $orderSettings);
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($order, $data, $orderSettings, $scheduled, $store, $allowScheduleException) {
+            $this->stores->validateScheduledPickup($store, $scheduled, $orderSettings, $allowScheduleException);
             $this->assertSlotAvailableForSchedule($store, $scheduled, $data['slot'] ?? null, $orderSettings, $order->id);
 
             $items = collect($data['items']);
@@ -1293,6 +1295,15 @@ class OrderService
         }
 
         return $this->normalizeOrderTagIds($tagIds);
+    }
+
+    protected function shouldAllowScheduleExceptionForActor(User $actor, array $data): bool
+    {
+        if (! $actor->isStaff()) {
+            return false;
+        }
+
+        return (bool) ($data['allow_schedule_exception'] ?? false);
     }
 
     /**

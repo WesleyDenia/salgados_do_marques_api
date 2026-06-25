@@ -138,6 +138,57 @@ class OrderAdminUpdateFeatureTest extends TestCase
         $response->assertStatus(422)->assertJsonValidationErrors(['status']);
     }
 
+    public function test_admin_can_update_order_outside_store_hours_when_schedule_exception_is_true(): void
+    {
+        $this->setEditWindow();
+        $admin = User::factory()->create(['role' => 'admin']);
+        $store = $this->createStore();
+        $category = Category::create([
+            'name' => 'Salgados',
+            'description' => 'Categoria de teste',
+            'active' => true,
+        ]);
+        $product = Product::create([
+            'category_id' => $category->id,
+            'name' => 'Coxinha',
+            'price' => 2.50,
+            'active' => true,
+        ]);
+        $order = Order::create([
+            'customer_name' => 'Maria Silva',
+            'customer_contact' => '912345678',
+            'store_id' => $store->id,
+            'status' => 'placed',
+            'payment_status' => 'pending',
+            'slot' => 'manha',
+            'scheduled_at' => Carbon::create(2026, 7, 15, 11, 30, 0, 'UTC'),
+            'total' => 12.50,
+            'notes' => 'Sem picante',
+        ]);
+
+        $response = $this->actingAs($admin, 'sanctum')->patchJson("/api/v1/admin/orders/{$order->id}", [
+            'customer_name' => 'Maria Santos',
+            'customer_contact' => '919111222',
+            'store_id' => $store->id,
+            'scheduled_at' => '2026-07-16T07:00:00+01:00',
+            'allow_schedule_exception' => true,
+            'payment_status' => 'paid',
+            'slot' => 'manha',
+            'notes' => 'Correção com exceção horária',
+            'items' => [
+                [
+                    'product_id' => $product->id,
+                    'quantity' => 4,
+                ],
+            ],
+        ]);
+
+        $response->assertOk()
+            ->assertJsonPath('data.notes', 'Correção com exceção horária')
+            ->assertJsonPath('data.payment_status', 'paid')
+            ->assertJsonPath('data.slot', 'manha');
+    }
+
     public function test_order_resource_marks_orders_outside_the_window_as_not_editable(): void
     {
         Carbon::setTestNow(Carbon::parse('2026-07-15 12:31:00', 'Europe/Lisbon'));

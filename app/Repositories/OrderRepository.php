@@ -19,19 +19,20 @@ class OrderRepository
 
         if ($search !== '') {
             $query->where(function ($builder) use ($search) {
+                $likeSearch = '%' . $search . '%';
+
                 // If it looks like a numeric ID and has NO leading zeros, search by Key
                 if (ctype_digit($search) && !str_starts_with($search, '0')) {
                     $builder->whereKey((int) $search);
                 }
 
-                // Optimization: Use prefix search if possible for indices
                 $builder
-                    ->orWhere('customer_name', 'like', $search . '%')
-                    ->orWhere('customer_contact', 'like', $search . '%')
-                    ->orWhereHas('user', function ($userQuery) use ($search) {
+                    ->orWhere('customer_name', 'like', $likeSearch)
+                    ->orWhere('customer_contact', 'like', $likeSearch)
+                    ->orWhereHas('user', function ($userQuery) use ($likeSearch) {
                         $userQuery
-                            ->where('name', 'like', $search . '%')
-                            ->orWhere('phone', 'like', $search . '%');
+                            ->where('name', 'like', $likeSearch)
+                            ->orWhere('phone', 'like', $likeSearch);
                     });
             });
         }

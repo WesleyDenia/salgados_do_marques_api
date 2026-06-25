@@ -59,7 +59,7 @@ describe("GoogleReviewsSection", () => {
       expect(screen.getByText("Bruno")).toBeInTheDocument();
     });
 
-    expect(screen.getByText(/reviews no google maps/i)).toBeInTheDocument();
+    expect(screen.getByText(/avaliações no google maps/i)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /ver mais no google maps/i })).toHaveAttribute(
       "href",
       "https://maps.google.com/review-1",

@@ -13,7 +13,14 @@ class OrderRepository
 {
     protected function buildAdminQuery(array $filters)
     {
-        $query = Order::query()->with(['items', 'store', 'user', 'tags']);
+        $query = Order::query()->with([
+            'items.variant',
+            'items.partialWithdrawals',
+            'store',
+            'user',
+            'tags',
+            'partialWithdrawals',
+        ]);
 
         $search = trim((string) ($filters['search'] ?? ''));
 

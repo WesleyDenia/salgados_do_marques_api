@@ -21,6 +21,7 @@ class OrderPartialWithdrawal extends Model
         'generated_order_id',
         'created_by',
         'requested_units',
+        'flavor_ids',
         'scheduled_at',
         'status',
         'notes',
@@ -30,6 +31,7 @@ class OrderPartialWithdrawal extends Model
 
     protected $casts = [
         'requested_units' => 'integer',
+        'flavor_ids' => 'array',
         'scheduled_at' => 'datetime',
         'completed_at' => 'datetime',
         'cancelled_at' => 'datetime',

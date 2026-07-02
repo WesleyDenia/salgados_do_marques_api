@@ -8,6 +8,7 @@ use App\Http\Requests\OrderPartialWithdrawalStoreRequest;
 use App\Http\Requests\OrderStatusUpdateRequest;
 use App\Http\Requests\OrderUpdateRequest;
 use App\Http\Resources\OrderResource;
+use App\Models\Flavor;
 use App\Models\Order;
 use App\Services\OrderService;
 
@@ -90,6 +91,13 @@ class OrderAdminController extends Controller
     public function storePartialWithdrawal(OrderPartialWithdrawalStoreRequest $request, Order $order)
     {
         $result = $this->service->createPartialWithdrawalForAdmin($order, $request->validated());
+        $flavorIds = collect($result['withdrawal']->flavor_ids ?? [])
+            ->map(fn ($flavorId) => (int) $flavorId)
+            ->filter(fn (int $flavorId) => $flavorId > 0)
+            ->values();
+        $flavorNamesById = $flavorIds->isNotEmpty()
+            ? Flavor::query()->whereIn('id', $flavorIds->all())->pluck('name', 'id')->all()
+            : [];
 
         return response()->json([
             'data' => [
@@ -98,6 +106,12 @@ class OrderAdminController extends Controller
                     'parent_order_item_id' => $result['withdrawal']->parent_order_item_id,
                     'generated_order_id' => $result['withdrawal']->generated_order_id,
                     'requested_units' => $result['withdrawal']->requested_units,
+                    'flavor_ids' => $flavorIds->all(),
+                    'flavor_names' => $flavorIds
+                        ->map(fn (int $flavorId) => $flavorNamesById[$flavorId] ?? null)
+                        ->filter()
+                        ->values()
+                        ->all(),
                     'scheduled_at' => $result['withdrawal']->scheduled_at?->toIso8601String(),
                     'status' => $result['withdrawal']->status,
                     'notes' => $result['withdrawal']->notes,

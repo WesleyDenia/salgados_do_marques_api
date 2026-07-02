@@ -16,6 +16,8 @@ class OrderPartialWithdrawalStoreRequest extends FormRequest
         return [
             'parent_order_item_id' => ['required', 'integer', 'exists:order_items,id'],
             'requested_units' => ['required', 'integer', 'min:25'],
+            'flavor_ids' => ['nullable', 'array'],
+            'flavor_ids.*' => ['integer', 'exists:flavors,id'],
             'scheduled_at' => ['required', 'date'],
             'generate_child_order' => ['nullable', 'boolean'],
             'notes' => ['nullable', 'string', 'max:500'],

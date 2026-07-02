@@ -3,8 +3,10 @@
 namespace Tests\Feature\Api\V1;
 
 use App\Models\Category;
+use App\Models\Flavor;
 use App\Models\Order;
 use App\Models\Product;
+use App\Models\ProductVariant;
 use App\Models\Setting;
 use App\Models\Store;
 use App\Models\User;
@@ -92,6 +94,41 @@ class OrderPartialWithdrawalTest extends TestCase
         $response->assertStatus(422)->assertJsonValidationErrors(['requested_units']);
     }
 
+    public function test_admin_can_register_partial_withdrawals_with_selected_flavors(): void
+    {
+        $this->setEditWindow();
+        $admin = User::factory()->create(['role' => 'admin']);
+        [$order, $parentItem, $store, $flavors] = $this->makePackParentOrder();
+
+        $response = $this->actingAs($admin, 'sanctum')->postJson(
+            "/api/v1/admin/orders/{$order->id}/partial-withdrawals",
+            [
+                'parent_order_item_id' => $parentItem->id,
+                'requested_units' => 25,
+                'flavor_ids' => [$flavors['frango']->id],
+                'scheduled_at' => '2026-07-20T18:00:00+01:00',
+                'generate_child_order' => true,
+            ],
+        );
+
+        $response->assertOk()
+            ->assertJsonPath('data.withdrawal.flavor_ids.0', $flavors['frango']->id)
+            ->assertJsonPath('data.withdrawal.flavor_names.0', 'Frango')
+            ->assertJsonPath('data.generated_order.items.0.options.flavors.0', $flavors['frango']->id)
+            ->assertJsonPath('data.parent_order.partial_withdrawals.0.flavor_names.0', 'Frango');
+
+        $this->assertDatabaseHas('order_partial_withdrawals', [
+            'parent_order_id' => $order->id,
+            'parent_order_item_id' => $parentItem->id,
+            'generated_order_id' => 2,
+        ]);
+
+        $this->assertSame(
+            [$flavors['frango']->id],
+            Order::query()->findOrFail(2)->items()->firstOrFail()->options['flavors'] ?? []
+        );
+    }
+
     public function test_child_orders_cannot_generate_new_partial_withdrawals(): void
     {
         $this->setEditWindow();
@@ -176,6 +213,63 @@ class OrderPartialWithdrawalTest extends TestCase
         ]);
 
         return [$order, $item, $store];
+    }
+
+    /**
+     * @return array{0: Order, 1: \App\Models\OrderItem, 2: Store, 3: array{frango: Flavor, carne: Flavor}}
+     */
+    protected function makePackParentOrder(): array
+    {
+        $customer = User::factory()->create();
+        $store = $this->createStore();
+        $category = Category::create([
+            'name' => 'Salgados Pack',
+            'description' => 'Categoria de teste',
+            'active' => true,
+        ]);
+        $product = Product::create([
+            'category_id' => $category->id,
+            'name' => 'Pack Festa',
+            'price' => 120,
+            'active' => true,
+        ]);
+        $variant = ProductVariant::create([
+            'product_id' => $product->id,
+            'name' => 'Pack 100',
+            'unit_count' => 100,
+            'max_flavors' => 4,
+            'price' => 120,
+            'active' => true,
+            'display_order' => 1,
+        ]);
+        $frango = Flavor::create(['name' => 'Frango', 'active' => true, 'display_order' => 1]);
+        $carne = Flavor::create(['name' => 'Carne', 'active' => true, 'display_order' => 2]);
+        $product->flavors()->sync([$frango->id, $carne->id]);
+
+        $order = Order::create([
+            'user_id' => $customer->id,
+            'customer_name' => 'Cliente Teste Pack',
+            'customer_contact' => '912345678',
+            'store_id' => $store->id,
+            'status' => 'placed',
+            'payment_status' => 'pending',
+            'slot' => 'tarde',
+            'scheduled_at' => Carbon::create(2026, 7, 25, 15, 0, 0, 'UTC'),
+            'total' => 120,
+            'notes' => 'Teste pack',
+        ]);
+
+        $item = $order->items()->create([
+            'product_id' => $product->id,
+            'variant_id' => $variant->id,
+            'name_snapshot' => $variant->name,
+            'price_snapshot' => 120,
+            'quantity' => 1,
+            'options' => ['flavors' => [$frango->id, $carne->id, $frango->id, $carne->id]],
+            'total' => 120,
+        ]);
+
+        return [$order, $item, $store, compact('frango', 'carne')];
     }
 
     protected function setEditWindow(): void

@@ -51,6 +51,11 @@ class OrderPartialWithdrawalTest extends TestCase
             ->assertJsonPath('data.generated_order.items.0.quantity', 25)
             ->assertJsonPath('data.parent_order.partial_withdrawals.0.requested_units', 25);
 
+        $this->assertStringContainsString(
+            'Saldo restante na encomenda mãe: 75 unidades.',
+            (string) data_get($response->json(), 'data.generated_order.notes')
+        );
+
         $this->assertDatabaseHas('orders', [
             'id' => 2,
             'parent_order_id' => $order->id,

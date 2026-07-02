@@ -1688,11 +1688,7 @@ class OrderService
 
     protected function reservedUnitsForOrderItem(OrderItem $item): int
     {
-        $partialWithdrawals = $item->relationLoaded('partialWithdrawals')
-            ? $item->partialWithdrawals
-            : $item->partialWithdrawals()->get();
-
-        return (int) $partialWithdrawals
+        return (int) $item->partialWithdrawals()
             ->where('status', '!=', OrderPartialWithdrawal::STATUS_CANCELLED)
             ->sum('requested_units');
     }
@@ -1739,9 +1735,11 @@ class OrderService
             collect($withdrawal->flavor_ids ?? [])->map(fn ($flavorId) => (int) $flavorId)->all(),
             null,
         );
+        $remainingUnits = $this->resolveRemainingPartialWithdrawalUnitsForOrder($parentOrder);
         $lines = array_filter([
             sprintf('Retirada parcial derivada da encomenda #%d.', $parentOrder->id),
             sprintf('Quantidade reservada: %d unidades.', $withdrawal->requested_units),
+            sprintf('Saldo restante na encomenda mãe: %d unidades.', $remainingUnits),
             $selectedFlavorNames !== []
                 ? sprintf('Sabores da retirada: %s', implode(', ', $selectedFlavorNames))
                 : null,
@@ -1750,6 +1748,24 @@ class OrderService
         ]);
 
         return implode("\n", $lines);
+    }
+
+    protected function resolveRemainingPartialWithdrawalUnitsForOrder(Order $order): int
+    {
+        $order->loadMissing('items.partialWithdrawals');
+
+        return (int) $order->items
+            ->filter(function (OrderItem $item): bool {
+                $originalUnits = $this->resolveOrderItemUnits($item);
+
+                return $originalUnits >= 25 && $originalUnits % 25 === 0;
+            })
+            ->sum(function (OrderItem $item): int {
+                $originalUnits = $this->resolveOrderItemUnits($item);
+                $reservedUnits = $this->reservedUnitsForOrderItem($item);
+
+                return max(0, $originalUnits - $reservedUnits);
+            });
     }
 
     /**

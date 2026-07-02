@@ -8,20 +8,40 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (! Schema::hasColumn('order_items', 'parent_order_item_id')) {
+            Schema::table('order_items', function (Blueprint $table) {
+                $table->unsignedBigInteger('parent_order_item_id')
+                    ->nullable()
+                    ->after('order_id');
+            });
+        }
+
         Schema::table('order_items', function (Blueprint $table) {
-            $table->foreignId('parent_order_item_id')
-                ->nullable()
-                ->after('order_id')
-                ->constrained('order_items')
-                ->nullOnDelete()
-                ->index();
+            $table->index(
+                'parent_order_item_id',
+                'order_items_parent_order_item_id_idx',
+            );
+
+            $table->foreign(
+                'parent_order_item_id',
+                'order_items_parent_order_item_id_fk',
+            )
+                ->references('id')
+                ->on('order_items')
+                ->nullOnDelete();
         });
     }
 
     public function down(): void
     {
+        if (! Schema::hasColumn('order_items', 'parent_order_item_id')) {
+            return;
+        }
+
         Schema::table('order_items', function (Blueprint $table) {
-            $table->dropConstrainedForeignId('parent_order_item_id');
+            $table->dropForeign('order_items_parent_order_item_id_fk');
+            $table->dropIndex('order_items_parent_order_item_id_idx');
+            $table->dropColumn('parent_order_item_id');
         });
     }
 };

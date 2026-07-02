@@ -2,8 +2,8 @@
 
 namespace Tests\Feature\Api;
 
-use App\Models\Order;
 use App\Models\Category;
+use App\Models\Order;
 use App\Models\Product;
 use App\Models\Setting;
 use App\Models\Store;
@@ -205,6 +205,56 @@ class OrderAdminUpdateFeatureTest extends TestCase
             'scheduled_at' => Carbon::create(2026, 7, 15, 13, 0, 0, 'Europe/Lisbon')->timezone('UTC'),
             'total' => 12.50,
             'notes' => 'Sem picante',
+        ]);
+
+        $response = $this->actingAs($admin, 'sanctum')->getJson("/api/v1/admin/orders/{$order->id}");
+
+        $response->assertOk()->assertJsonPath('data.can_edit', false);
+    }
+
+    public function test_parent_order_with_partial_withdrawals_is_not_editable_even_inside_window(): void
+    {
+        $this->setEditWindow();
+        $admin = User::factory()->create(['role' => 'admin']);
+        $store = $this->createStore();
+        $category = Category::create([
+            'name' => 'Salgados',
+            'description' => 'Categoria de teste',
+            'active' => true,
+        ]);
+        $product = Product::create([
+            'category_id' => $category->id,
+            'name' => 'Coxinha',
+            'price' => 2.50,
+            'active' => true,
+        ]);
+        $order = Order::create([
+            'customer_name' => 'Maria Silva',
+            'customer_contact' => '912345678',
+            'store_id' => $store->id,
+            'status' => 'accepted',
+            'payment_status' => 'pending',
+            'slot' => 'tarde',
+            'scheduled_at' => Carbon::create(2026, 7, 15, 16, 0, 0, 'Europe/Lisbon')->timezone('UTC'),
+            'total' => 250,
+            'notes' => 'Com retirada parcial',
+        ]);
+
+        $item = $order->items()->create([
+            'product_id' => $product->id,
+            'variant_id' => null,
+            'name_snapshot' => $product->name,
+            'price_snapshot' => 2.50,
+            'quantity' => 100,
+            'options' => null,
+            'total' => 250,
+        ]);
+
+        $order->partialWithdrawals()->create([
+            'parent_order_item_id' => $item->id,
+            'requested_units' => 25,
+            'scheduled_at' => Carbon::create(2026, 7, 14, 18, 0, 0, 'UTC'),
+            'status' => 'planned',
         ]);
 
         $response = $this->actingAs($admin, 'sanctum')->getJson("/api/v1/admin/orders/{$order->id}");

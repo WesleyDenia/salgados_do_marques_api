@@ -15,6 +15,7 @@ class OrderResource extends JsonResource
     {
         return [
             'id' => $this->id,
+            'parent_order_id' => $this->parent_order_id,
             'status' => $this->status,
             'payment_status' => $this->payment_status,
             'slot' => $this->slot,
@@ -25,8 +26,18 @@ class OrderResource extends JsonResource
             'notes' => $this->notes,
             'cancelled_at' => $this->cancelled_at?->toIso8601String(),
             'store' => new StoreResource($this->whenLoaded('store')),
+            'parent_order' => $this->whenLoaded('parentOrder', function () {
+                if (! $this->parentOrder) {
+                    return null;
+                }
+
+                return [
+                    'id' => $this->parentOrder->id,
+                    'status' => $this->parentOrder->status,
+                ];
+            }),
             'user' => $this->whenLoaded('user', function () {
-                if (!$this->user) {
+                if (! $this->user) {
                     return null;
                 }
 
@@ -38,6 +49,19 @@ class OrderResource extends JsonResource
             }),
             'items' => OrderItemResource::collection($this->whenLoaded('items')),
             'tags' => OrderTagResource::collection($this->whenLoaded('tags')),
+            'partial_withdrawals' => $this->whenLoaded('partialWithdrawals', function () {
+                return $this->partialWithdrawals->map(fn ($withdrawal) => [
+                    'id' => $withdrawal->id,
+                    'parent_order_item_id' => $withdrawal->parent_order_item_id,
+                    'generated_order_id' => $withdrawal->generated_order_id,
+                    'requested_units' => $withdrawal->requested_units,
+                    'scheduled_at' => $withdrawal->scheduled_at?->toIso8601String(),
+                    'status' => $withdrawal->status,
+                    'notes' => $withdrawal->notes,
+                    'completed_at' => $withdrawal->completed_at?->toIso8601String(),
+                    'cancelled_at' => $withdrawal->cancelled_at?->toIso8601String(),
+                ])->values();
+            }),
             'history' => $this->whenLoaded('history', function () {
                 return $this->history->map(fn ($history) => [
                     'id' => $history->id,

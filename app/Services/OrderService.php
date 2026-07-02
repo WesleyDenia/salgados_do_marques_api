@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Jobs\SendOrderPlacedWhatsAppJob;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\OrderPartialWithdrawal;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\Store;
@@ -566,6 +567,12 @@ class OrderService
         $this->assertOrderEditable($order);
         $order->loadMissing(['items', 'store', 'tags']);
 
+        if ($order->parent_order_id === null && $order->partialWithdrawals()->exists()) {
+            throw ValidationException::withMessages([
+                'status' => 'Esta encomenda já tem retiradas parciais registadas e não pode ser corrigida.',
+            ]);
+        }
+
         $orderSettings = $this->orderSettings();
         $scheduled = $this->parseScheduledAt($data['scheduled_at'], $orderSettings['timezone']);
         $store = $this->stores->findById((int) $data['store_id']);
@@ -629,6 +636,129 @@ class OrderService
         });
     }
 
+    /**
+     * @return array{withdrawal: OrderPartialWithdrawal, generated_order: Order|null, parent_order: Order}
+     */
+    public function createPartialWithdrawalForAdmin(Order $order, array $data): array
+    {
+        $order->loadMissing([
+            'items.product',
+            'items.variant',
+            'items.partialWithdrawals',
+            'store',
+            'user',
+            'tags',
+        ]);
+
+        if ($order->parent_order_id !== null) {
+            throw ValidationException::withMessages([
+                'order' => 'As encomendas derivadas não permitem novas retiradas.',
+            ]);
+        }
+
+        if (in_array($order->status, ['done', 'canceled', 'rejected'], true)) {
+            throw ValidationException::withMessages([
+                'status' => 'O estado atual da encomenda não permite registar retiradas parciais.',
+            ]);
+        }
+
+        /** @var OrderItem|null $parentItem */
+        $parentItem = $order->items->firstWhere('id', (int) $data['parent_order_item_id']);
+
+        if (! $parentItem) {
+            throw ValidationException::withMessages([
+                'parent_order_item_id' => 'O item selecionado não pertence à encomenda informada.',
+            ]);
+        }
+
+        $requestedUnits = (int) ($data['requested_units'] ?? 0);
+        $this->assertValidPartialWithdrawalUnits($requestedUnits);
+
+        $originalUnits = $this->resolveOrderItemUnits($parentItem);
+        $reservedUnits = $this->reservedUnitsForOrderItem($parentItem);
+        $remainingUnits = max(0, $originalUnits - $reservedUnits);
+
+        if ($originalUnits < 25 || $originalUnits % 25 !== 0) {
+            throw ValidationException::withMessages([
+                'parent_order_item_id' => 'O item selecionado não suporta retiradas parciais em blocos de 25 unidades.',
+            ]);
+        }
+
+        if ($requestedUnits > $remainingUnits) {
+            throw ValidationException::withMessages([
+                'requested_units' => 'A quantidade pedida excede o saldo disponível para retirada.',
+            ]);
+        }
+
+        $orderSettings = $this->orderSettings();
+        $scheduled = $this->parseScheduledAt($data['scheduled_at'], $orderSettings['timezone']);
+        $store = $this->stores->findById((int) $order->store_id);
+
+        if (! $store) {
+            throw ValidationException::withMessages([
+                'store_id' => 'A loja associada à encomenda mãe já não existe.',
+            ]);
+        }
+
+        $slot = $this->resolveSlotFromSchedule($scheduled->copy()->timezone($orderSettings['timezone']));
+
+        $this->stores->validateScheduledPickup($store, $scheduled, $orderSettings, false);
+        $this->assertSlotAvailableForSchedule($store, $scheduled, $slot, $orderSettings);
+
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($data, $order, $parentItem, $requestedUnits, $scheduled, $slot) {
+            $withdrawal = $order->partialWithdrawals()->create([
+                'parent_order_item_id' => $parentItem->id,
+                'created_by' => Auth::id(),
+                'requested_units' => $requestedUnits,
+                'scheduled_at' => $scheduled->copy()->timezone('UTC'),
+                'status' => OrderPartialWithdrawal::STATUS_PLANNED,
+                'notes' => $this->normalizeNullableText($data['notes'] ?? null),
+            ]);
+
+            $generatedOrder = null;
+
+            if ((bool) ($data['generate_child_order'] ?? true)) {
+                $generatedOrder = $this->repository->createWithItems(
+                    $order->user_id,
+                    (int) $order->store_id,
+                    $this->normalizeNullableText($order->customer_name),
+                    $this->normalizeNullableText($order->customer_contact),
+                    $order->payment_status,
+                    $slot,
+                    $scheduled->copy()->timezone('UTC'),
+                    $this->buildDerivedOrderNotes($order, $withdrawal),
+                    [$this->buildDerivedWithdrawalLineItem($parentItem, $requestedUnits)],
+                    $order->tags->pluck('id')->map(fn ($tagId) => (int) $tagId)->all(),
+                    $order->id
+                );
+
+                $withdrawal->forceFill([
+                    'generated_order_id' => $generatedOrder->id,
+                ])->save();
+            }
+
+            $order->history()->create([
+                'user_id' => Auth::id(),
+                'action' => 'partial_withdrawal_planned',
+                'changes' => [
+                    'partial_withdrawal' => [
+                        'parent_order_item_id' => $parentItem->id,
+                        'requested_units' => $requestedUnits,
+                        'scheduled_at' => $scheduled->copy()->timezone('UTC')->format('Y-m-d\TH:i:sP'),
+                        'generated_order_id' => $generatedOrder?->id,
+                        'notes' => $this->normalizeNullableText($data['notes'] ?? null),
+                    ],
+                ],
+            ]);
+
+            return [
+                'withdrawal' => $withdrawal->fresh(['generatedOrder']),
+                'generated_order' => $generatedOrder ? $this->repository->findForAdmin($generatedOrder) : null,
+                'parent_order' => $this->repository->findForAdmin($order),
+            ];
+        });
+    }
+
     protected function assertStatusTransition(Order $order, string $newStatus): void
     {
         if (! array_key_exists($newStatus, self::STATUS_LABELS)) {
@@ -666,6 +796,10 @@ class OrderService
 
     public function canEdit(Order $order, ?Carbon $now = null): bool
     {
+        if ($order->parent_order_id === null && $order->partialWithdrawals()->exists()) {
+            return false;
+        }
+
         if (! in_array($order->status, ['placed', 'accepted'], true)) {
             return false;
         }
@@ -908,8 +1042,7 @@ class OrderService
         string $startDate,
         string $endDate,
         ?Store $contextStore = null
-    ): array
-    {
+    ): array {
         $timezone = $this->orderSettings()['timezone'];
         $periodStart = Carbon::createFromFormat('Y-m-d', $startDate, $timezone)->startOfDay();
         $periodEnd = Carbon::createFromFormat('Y-m-d', $endDate, $timezone)->startOfDay();
@@ -1472,6 +1605,83 @@ class OrderService
         );
     }
 
+    protected function assertValidPartialWithdrawalUnits(int $requestedUnits): void
+    {
+        if ($requestedUnits < 25 || $requestedUnits % 25 !== 0) {
+            throw ValidationException::withMessages([
+                'requested_units' => 'A retirada parcial deve ser registada em múltiplos de 25 unidades.',
+            ]);
+        }
+    }
+
+    protected function resolveOrderItemUnits(OrderItem $item): int
+    {
+        if ($item->variant?->unit_count !== null && (int) $item->variant->unit_count > 0) {
+            return (int) $item->quantity * (int) $item->variant->unit_count;
+        }
+
+        return (int) $item->quantity;
+    }
+
+    protected function reservedUnitsForOrderItem(OrderItem $item): int
+    {
+        $partialWithdrawals = $item->relationLoaded('partialWithdrawals')
+            ? $item->partialWithdrawals
+            : $item->partialWithdrawals()->get();
+
+        return (int) $partialWithdrawals
+            ->where('status', '!=', OrderPartialWithdrawal::STATUS_CANCELLED)
+            ->sum('requested_units');
+    }
+
+    protected function resolveSlotFromSchedule(Carbon $scheduled): string
+    {
+        $minutes = ((int) $scheduled->format('H') * 60) + (int) $scheduled->format('i');
+
+        foreach (self::SLOT_WINDOWS as $slot => $window) {
+            if ($minutes >= $window['start'] && $minutes <= $window['end']) {
+                return $slot;
+            }
+        }
+
+        return 'noite';
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected function buildDerivedWithdrawalLineItem(OrderItem $parentItem, int $requestedUnits): array
+    {
+        $originalUnits = max(1, $this->resolveOrderItemUnits($parentItem));
+        $lineTotal = round(((float) $parentItem->total / $originalUnits) * $requestedUnits, 2);
+        $unitPrice = round($lineTotal / max(1, $requestedUnits), 2);
+        $nameSnapshot = $parentItem->product?->name ?? $parentItem->name_snapshot;
+
+        return [
+            'parent_order_item_id' => $parentItem->id,
+            'product_id' => $parentItem->product_id,
+            'variant_id' => null,
+            'variant_name_snapshot' => null,
+            'name_snapshot' => $nameSnapshot,
+            'price_snapshot' => $unitPrice,
+            'quantity' => $requestedUnits,
+            'options' => null,
+            'total' => $lineTotal,
+        ];
+    }
+
+    protected function buildDerivedOrderNotes(Order $parentOrder, OrderPartialWithdrawal $withdrawal): string
+    {
+        $lines = array_filter([
+            sprintf('Retirada parcial derivada da encomenda #%d.', $parentOrder->id),
+            sprintf('Quantidade reservada: %d unidades.', $withdrawal->requested_units),
+            $withdrawal->notes ? sprintf('Notas da retirada: %s', $withdrawal->notes) : null,
+            $parentOrder->notes ? sprintf('Notas da encomenda mãe: %s', $parentOrder->notes) : null,
+        ]);
+
+        return implode("\n", $lines);
+    }
+
     /**
      * @param  SupportCollection<int, array<string, mixed>>  $items
      * @param  Collection<int, Product>  $products
@@ -1541,6 +1751,9 @@ class OrderService
             $lineTotal = $price * $quantity;
 
             return [
+                'parent_order_item_id' => isset($item['parent_order_item_id'])
+                    ? (int) $item['parent_order_item_id']
+                    : null,
                 'product_id' => $product->id,
                 'variant_id' => $variant?->id,
                 'variant_name_snapshot' => $variant?->name,

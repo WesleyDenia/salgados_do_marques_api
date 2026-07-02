@@ -4,8 +4,8 @@ namespace App\Models;
 
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Order extends Model
@@ -14,6 +14,7 @@ class Order extends Model
 
     protected $fillable = [
         'user_id',
+        'parent_order_id',
         'customer_name',
         'customer_contact',
         'store_id',
@@ -35,6 +36,16 @@ class Order extends Model
     public function items()
     {
         return $this->hasMany(OrderItem::class);
+    }
+
+    public function parentOrder()
+    {
+        return $this->belongsTo(self::class, 'parent_order_id');
+    }
+
+    public function childOrders()
+    {
+        return $this->hasMany(self::class, 'parent_order_id');
     }
 
     public function store()
@@ -61,6 +72,18 @@ class Order extends Model
             ->orderBy('name');
     }
 
+    public function partialWithdrawals()
+    {
+        return $this->hasMany(OrderPartialWithdrawal::class, 'parent_order_id')
+            ->orderByDesc('scheduled_at')
+            ->orderByDesc('id');
+    }
+
+    public function isDerived(): bool
+    {
+        return $this->parent_order_id !== null;
+    }
+
     public function customerNameForDisplay(): ?string
     {
         return $this->customer_name ?: $this->user?->name;
@@ -83,7 +106,7 @@ class Order extends Model
             return $rawScheduledAt->copy()->timezone($timezone);
         }
 
-        if (!is_string($rawScheduledAt)) {
+        if (! is_string($rawScheduledAt)) {
             return null;
         }
 

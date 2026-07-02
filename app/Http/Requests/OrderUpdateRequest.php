@@ -8,4 +8,11 @@ class OrderUpdateRequest extends OrderStoreRequest
     {
         return $this->user()?->can('manage') ?? false;
     }
+
+    public function rules(): array
+    {
+        return array_merge(parent::rules(), [
+            'items.*.parent_order_item_id' => ['nullable', 'integer', 'exists:order_items,id'],
+        ]);
+    }
 }

@@ -19,10 +19,10 @@ class OrderRepository
 
         if ($search !== '') {
             $query->where(function ($builder) use ($search) {
-                $likeSearch = '%' . $search . '%';
+                $likeSearch = '%'.$search.'%';
 
                 // If it looks like a numeric ID and has NO leading zeros, search by Key
-                if (ctype_digit($search) && !str_starts_with($search, '0')) {
+                if (ctype_digit($search) && ! str_starts_with($search, '0')) {
                     $builder->whereKey((int) $search);
                 }
 
@@ -37,21 +37,21 @@ class OrderRepository
             });
         }
 
-        if (!empty($filters['status'])) {
+        if (! empty($filters['status'])) {
             $query->where('status', $filters['status']);
         } else {
             $query->where('status', '!=', 'canceled');
         }
 
-        if (!empty($filters['payment_status'])) {
+        if (! empty($filters['payment_status'])) {
             $query->where('payment_status', $filters['payment_status']);
         }
 
-        if (!empty($filters['slot'])) {
+        if (! empty($filters['slot'])) {
             $query->where('slot', $filters['slot']);
         }
 
-        if (!empty($filters['store_id'])) {
+        if (! empty($filters['store_id'])) {
             $query->where('store_id', (int) $filters['store_id']);
         }
 
@@ -67,11 +67,11 @@ class OrderRepository
             });
         }
 
-        if (!empty($filters['scheduled_from'])) {
+        if (! empty($filters['scheduled_from'])) {
             $query->where('scheduled_at', '>=', $filters['scheduled_from']);
         }
 
-        if (!empty($filters['scheduled_to'])) {
+        if (! empty($filters['scheduled_to'])) {
             // Boundary fix: ensuring coverage of the specified end time
             $query->where('scheduled_at', '<=', $filters['scheduled_to']);
         }
@@ -83,6 +83,7 @@ class OrderRepository
     {
         return Order::query()
             ->where('user_id', $userId)
+            ->whereNull('parent_order_id')
             ->with(['items', 'store', 'tags'])
             ->orderByDesc('created_at')
             ->paginate($perPage);
@@ -149,7 +150,17 @@ class OrderRepository
 
     public function findForAdmin(Order $order): Order
     {
-        return $order->load(['items', 'store', 'user', 'history.user', 'tags']);
+        return $order->load([
+            'items.product',
+            'items.variant',
+            'items.partialWithdrawals',
+            'store',
+            'user',
+            'history.user',
+            'tags',
+            'parentOrder',
+            'partialWithdrawals.generatedOrder',
+        ]);
     }
 
     public function updateStatus(Order $order, array $payload, ?array $history = null): Order
@@ -175,6 +186,7 @@ class OrderRepository
                 $lineTotal = (float) $item['total'];
 
                 $order->items()->create([
+                    'parent_order_item_id' => $item['parent_order_item_id'] ?? null,
                     'product_id' => $item['product_id'],
                     'variant_id' => $item['variant_id'],
                     'name_snapshot' => $item['name_snapshot'],
@@ -217,12 +229,14 @@ class OrderRepository
         CarbonInterface $scheduledAtUtc,
         ?string $notes,
         array $lineItems,
-        array $tagIds = []
+        array $tagIds = [],
+        ?int $parentOrderId = null
     ): Order {
         /** @var Order $order */
-        $order = DB::transaction(function () use ($customerContact, $customerName, $lineItems, $notes, $paymentStatus, $scheduledAtUtc, $slot, $storeId, $tagIds, $userId) {
+        $order = DB::transaction(function () use ($customerContact, $customerName, $lineItems, $notes, $parentOrderId, $paymentStatus, $scheduledAtUtc, $slot, $storeId, $tagIds, $userId) {
             $order = Order::query()->create([
                 'user_id' => $userId,
+                'parent_order_id' => $parentOrderId,
                 'customer_name' => $customerName,
                 'customer_contact' => $customerContact,
                 'store_id' => $storeId,
@@ -240,6 +254,7 @@ class OrderRepository
                 $lineTotal = (float) $item['total'];
 
                 $order->items()->create([
+                    'parent_order_item_id' => $item['parent_order_item_id'] ?? null,
                     'product_id' => $item['product_id'],
                     'variant_id' => $item['variant_id'],
                     'name_snapshot' => $item['name_snapshot'],

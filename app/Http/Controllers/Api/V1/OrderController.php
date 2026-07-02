@@ -102,6 +102,10 @@ class OrderController extends Controller
 
     protected function authorizeOrder(Request $request, Order $order): void
     {
+        if ($order->parent_order_id !== null) {
+            abort(404);
+        }
+
         if ($order->user_id !== $request->user()->id) {
             abort(403);
         }

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\OrderSearchRequest;
+use App\Http\Requests\OrderPartialWithdrawalStoreRequest;
 use App\Http\Requests\OrderStatusUpdateRequest;
 use App\Http\Requests\OrderUpdateRequest;
 use App\Http\Resources\OrderResource;
@@ -84,5 +85,28 @@ class OrderAdminController extends Controller
         $order = $this->service->updateStatus($order, $request->input('status'));
 
         return new OrderResource($order);
+    }
+
+    public function storePartialWithdrawal(OrderPartialWithdrawalStoreRequest $request, Order $order)
+    {
+        $result = $this->service->createPartialWithdrawalForAdmin($order, $request->validated());
+
+        return response()->json([
+            'data' => [
+                'withdrawal' => [
+                    'id' => $result['withdrawal']->id,
+                    'parent_order_item_id' => $result['withdrawal']->parent_order_item_id,
+                    'generated_order_id' => $result['withdrawal']->generated_order_id,
+                    'requested_units' => $result['withdrawal']->requested_units,
+                    'scheduled_at' => $result['withdrawal']->scheduled_at?->toIso8601String(),
+                    'status' => $result['withdrawal']->status,
+                    'notes' => $result['withdrawal']->notes,
+                ],
+                'generated_order' => $result['generated_order']
+                    ? (new OrderResource($result['generated_order']))->resolve($request)
+                    : null,
+                'parent_order' => (new OrderResource($result['parent_order']))->resolve($request),
+            ],
+        ]);
     }
 }

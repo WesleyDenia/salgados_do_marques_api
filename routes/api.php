@@ -1,38 +1,36 @@
 <?php
 
+use App\Http\Controllers\Api\V1\AdminOperationalSettingsController;
+use App\Http\Controllers\Api\V1\AdminOrderTagController;
+use App\Http\Controllers\Api\V1\AdminPlanningSlotCapacityController;
+use App\Http\Controllers\Api\V1\AppTesterController;
+use App\Http\Controllers\Api\V1\AuthController;
+use App\Http\Controllers\Api\V1\CategoryController;
+use App\Http\Controllers\Api\V1\ContentHomeController;
+use App\Http\Controllers\Api\V1\CouponController;
+use App\Http\Controllers\Api\V1\FlavorController;
+use App\Http\Controllers\Api\V1\GoogleReviewsController;
+use App\Http\Controllers\Api\V1\LgpdController;
+use App\Http\Controllers\Api\V1\LoyaltyBonusController;
+use App\Http\Controllers\Api\V1\LoyaltyController;
+use App\Http\Controllers\Api\V1\LoyaltyRewardController;
+use App\Http\Controllers\Api\V1\NotificationController;
+use App\Http\Controllers\Api\V1\OrderAdminController;
+use App\Http\Controllers\Api\V1\OrderController;
+use App\Http\Controllers\Api\V1\PartnerCampaignValidationController;
+use App\Http\Controllers\Api\V1\PartnerController;
+use App\Http\Controllers\Api\V1\PasswordResetController;
+use App\Http\Controllers\Api\V1\ProductController;
+use App\Http\Controllers\Api\V1\PromotionController;
+use App\Http\Controllers\Api\V1\SettingController;
+use App\Http\Controllers\Api\V1\StoreController;
+use App\Http\Controllers\Api\V1\UploadController;
+use App\Http\Controllers\Api\V1\UserAdminController;
+use App\Http\Controllers\Api\V1\UserController;
+use App\Http\Controllers\Api\V1\UserCouponAdminController;
+use App\Http\Controllers\Api\V1\UserCouponController;
+use App\Http\Controllers\Api\V1\WhatsAppWebhookController;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Api\V1\{
-    AdminPlanningSlotCapacityController,
-    AppTesterController,
-    AuthController,
-    UserController,
-    CategoryController,
-    ProductController,
-    PromotionController,
-    CouponController,
-    UserCouponController,
-    UserCouponAdminController,
-    UploadController,
-    NotificationController,
-    LoyaltyController,
-    SettingController,
-    LoyaltyBonusController,
-    LoyaltyRewardController,
-    ContentHomeController,
-    GoogleReviewsController,
-    LgpdController,
-    PasswordResetController,
-    StoreController,
-    OrderController,
-    OrderAdminController,
-    UserAdminController,
-    FlavorController,
-    PartnerController,
-    PartnerCampaignValidationController,
-    WhatsAppWebhookController,
-    AdminOperationalSettingsController,
-    AdminOrderTagController
-};
 
 Route::prefix('v1')->group(function () {
     Route::post('register', [AuthController::class, 'register']);
@@ -101,7 +99,8 @@ Route::prefix('v1')->group(function () {
             Route::get('admin/orders/{order}', [OrderAdminController::class, 'show']);
             Route::patch('admin/orders/{order}', [OrderAdminController::class, 'update']);
             Route::patch('admin/orders/{order}/status', [OrderAdminController::class, 'updateStatus']);
-            
+            Route::post('admin/orders/{order}/partial-withdrawals', [OrderAdminController::class, 'storePartialWithdrawal']);
+
             Route::get('admin/users', [UserAdminController::class, 'index']);
             Route::get('admin/users/{user}', [UserAdminController::class, 'show']);
             Route::put('admin/users/{user}', [UserAdminController::class, 'update']);
@@ -117,7 +116,7 @@ Route::prefix('v1')->group(function () {
             Route::get('settings/{key}', [SettingController::class, 'show']);
             Route::put('settings/{key}', [SettingController::class, 'update']);
         });
-        
+
         // Cliente
         Route::get('my-coupons', [UserCouponController::class, 'index']);
         Route::post('my-coupons', [UserCouponController::class, 'store']);

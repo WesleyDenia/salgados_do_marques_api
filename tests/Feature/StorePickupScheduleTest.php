@@ -164,6 +164,31 @@ class StorePickupScheduleTest extends TestCase
         ])->assertStatus(422)->assertJsonValidationErrors(['scheduled_at']);
     }
 
+    public function test_order_accepts_retroactive_schedule_exception_for_staff(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-03-17 19:00', 'Europe/Lisbon'));
+        [$user, $product, $store] = $this->makeOrderContext();
+        $user->update(['role' => 'atendimento']);
+
+        Sanctum::actingAs($user);
+
+        $response = $this->postJson('/api/v1/orders', [
+            'store_id' => $store->id,
+            'scheduled_at' => '2026-03-17 16:30',
+            'slot' => 'tarde',
+            'allow_schedule_exception' => true,
+            'items' => [
+                [
+                    'product_id' => $product->id,
+                    'quantity' => 1,
+                ],
+            ],
+        ]);
+
+        $response->assertOk()
+            ->assertJsonPath('data.slot', 'tarde');
+    }
+
     protected function makeOrderContext(): array
     {
         $user = User::factory()->create();

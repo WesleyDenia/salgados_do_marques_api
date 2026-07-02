@@ -132,7 +132,14 @@ class OrderService
             }
 
             $this->stores->validateScheduledPickup($store, $scheduled, $orderSettings, $allowScheduleException);
-            $this->assertSlotAvailableForSchedule($store, $scheduled, $data['slot'] ?? null, $orderSettings);
+            $this->assertSlotAvailableForSchedule(
+                $store,
+                $scheduled,
+                $data['slot'] ?? null,
+                $orderSettings,
+                null,
+                $allowScheduleException
+            );
 
             $items = collect($data['items']);
             $productIds = $items->pluck('product_id')->unique()->values()->all();
@@ -587,7 +594,14 @@ class OrderService
 
         return \Illuminate\Support\Facades\DB::transaction(function () use ($order, $data, $orderSettings, $scheduled, $store, $allowScheduleException) {
             $this->stores->validateScheduledPickup($store, $scheduled, $orderSettings, $allowScheduleException);
-            $this->assertSlotAvailableForSchedule($store, $scheduled, $data['slot'] ?? null, $orderSettings, $order->id);
+            $this->assertSlotAvailableForSchedule(
+                $store,
+                $scheduled,
+                $data['slot'] ?? null,
+                $orderSettings,
+                $order->id,
+                $allowScheduleException
+            );
 
             $items = collect($data['items']);
             $productIds = $items->pluck('product_id')->unique()->values()->all();
@@ -699,6 +713,7 @@ class OrderService
         $orderSettings = $this->orderSettings();
         $scheduled = $this->parseScheduledAt($data['scheduled_at'], $orderSettings['timezone']);
         $store = $this->stores->findById((int) $order->store_id);
+        $allowScheduleException = $this->shouldAllowScheduleExceptionForActor(Auth::user(), $data);
 
         if (! $store) {
             throw ValidationException::withMessages([
@@ -708,8 +723,15 @@ class OrderService
 
         $slot = $this->resolveSlotFromSchedule($scheduled->copy()->timezone($orderSettings['timezone']));
 
-        $this->stores->validateScheduledPickup($store, $scheduled, $orderSettings, false);
-        $this->assertSlotAvailableForSchedule($store, $scheduled, $slot, $orderSettings);
+        $this->stores->validateScheduledPickup($store, $scheduled, $orderSettings, $allowScheduleException);
+        $this->assertSlotAvailableForSchedule(
+            $store,
+            $scheduled,
+            $slot,
+            $orderSettings,
+            null,
+            $allowScheduleException
+        );
 
         return \Illuminate\Support\Facades\DB::transaction(function () use ($data, $order, $parentItem, $requestedUnits, $scheduled, $selectedFlavorIds, $slot) {
             $withdrawal = $order->partialWithdrawals()->create([
@@ -832,13 +854,27 @@ class OrderService
         return Carbon::parse($value, $timezone);
     }
 
-    protected function assertSlotAvailableForSchedule($store, Carbon $scheduled, ?string $slot, array $settings, ?int $ignoreOrderId = null): void
+    protected function assertSlotAvailableForSchedule(
+        $store,
+        Carbon $scheduled,
+        ?string $slot,
+        array $settings,
+        ?int $ignoreOrderId = null,
+        bool $allowScheduleException = false
+    ): void
     {
         if ($slot === null || $slot === '') {
             return;
         }
 
-        $reason = $this->slotBlockReasonFromSchedule($store, $scheduled, $slot, $settings, $ignoreOrderId);
+        $reason = $this->slotBlockReasonFromSchedule(
+            $store,
+            $scheduled,
+            $slot,
+            $settings,
+            $ignoreOrderId,
+            $allowScheduleException
+        );
 
         if ($reason !== null) {
             throw ValidationException::withMessages([
@@ -847,19 +883,37 @@ class OrderService
         }
     }
 
-    protected function slotBlockReasonFromSchedule($store, Carbon $scheduled, string $slot, array $settings, ?int $ignoreOrderId = null): ?string
+    protected function slotBlockReasonFromSchedule(
+        $store,
+        Carbon $scheduled,
+        string $slot,
+        array $settings,
+        ?int $ignoreOrderId = null,
+        bool $allowScheduleException = false
+    ): ?string
     {
         $date = $scheduled->copy()->timezone($settings['timezone'])->startOfDay();
-        $minuteOptions = $this->stores->availablePickupSlots($store, $date, $settings);
+        $minuteOptions = $this->stores->availablePickupSlots(
+            $store,
+            $date,
+            $settings,
+            $allowScheduleException ? $date->copy()->subDay() : null
+        );
         $consumedCapacity = $this->consumedCapacityForStoreDay($store->id, $date, $ignoreOrderId);
 
-        return $this->slotCapacities->getSlotBlockReason(
+        $reason = $this->slotCapacities->getSlotBlockReason(
             $slot,
             $minuteOptions,
             self::SLOT_WINDOWS[$slot] ?? [],
             (int) ($consumedCapacity[$slot] ?? 0),
             $date
         );
+
+        if ($allowScheduleException && $reason === 'SLOT_LEAD_TIME_VIOLATION') {
+            return null;
+        }
+
+        return $reason;
     }
 
     protected function findAvailableStore(int $storeId)
@@ -1439,9 +1493,9 @@ class OrderService
         return $this->normalizeOrderTagIds($tagIds);
     }
 
-    protected function shouldAllowScheduleExceptionForActor(User $actor, array $data): bool
+    protected function shouldAllowScheduleExceptionForActor(?User $actor, array $data): bool
     {
-        if (! $actor->isStaff()) {
+        if (! $actor?->isStaff()) {
             return false;
         }
 

@@ -191,7 +191,7 @@ class StoreService
         $now = Carbon::now($timezone);
         $minimumAllowed = $now->copy()->addMinutes(max(0, (int) ($settings['minimum_minutes'] ?? 0)));
 
-        if ($scheduled->lessThan($minimumAllowed)) {
+        if (! $allowOutsideOperatingHours && $scheduled->lessThan($minimumAllowed)) {
             throw ValidationException::withMessages([
                 'scheduled_at' => 'O horário escolhido precisa respeitar o tempo mínimo de preparação.',
             ]);

@@ -18,6 +18,12 @@ class OrderPartialWithdrawalTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function tearDown(): void
+    {
+        Carbon::setTestNow();
+        parent::tearDown();
+    }
+
     public function test_admin_can_register_a_partial_withdrawal_and_generate_a_child_order(): void
     {
         $this->setEditWindow();
@@ -127,6 +133,29 @@ class OrderPartialWithdrawalTest extends TestCase
             [$flavors['frango']->id],
             Order::query()->findOrFail(2)->items()->firstOrFail()->options['flavors'] ?? []
         );
+    }
+
+    public function test_admin_can_register_retroactive_partial_withdrawal_with_schedule_exception(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-07-20 18:30', 'Europe/Lisbon'));
+        $this->setEditWindow();
+        $admin = User::factory()->create(['role' => 'admin']);
+        [$order, $parentItem] = $this->makeParentOrder(quantity: 100);
+
+        $response = $this->actingAs($admin, 'sanctum')->postJson(
+            "/api/v1/admin/orders/{$order->id}/partial-withdrawals",
+            [
+                'parent_order_item_id' => $parentItem->id,
+                'requested_units' => 25,
+                'scheduled_at' => '2026-07-20T10:00:00+01:00',
+                'allow_schedule_exception' => true,
+                'generate_child_order' => true,
+            ],
+        );
+
+        $response->assertOk()
+            ->assertJsonPath('data.withdrawal.requested_units', 25)
+            ->assertJsonPath('data.generated_order.slot', 'manha');
     }
 
     public function test_child_orders_cannot_generate_new_partial_withdrawals(): void

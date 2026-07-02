@@ -19,6 +19,7 @@ class OrderPartialWithdrawalStoreRequest extends FormRequest
             'flavor_ids' => ['nullable', 'array'],
             'flavor_ids.*' => ['integer', 'exists:flavors,id'],
             'scheduled_at' => ['required', 'date'],
+            'allow_schedule_exception' => ['nullable', 'boolean'],
             'generate_child_order' => ['nullable', 'boolean'],
             'notes' => ['nullable', 'string', 'max:500'],
         ];
@@ -28,6 +29,10 @@ class OrderPartialWithdrawalStoreRequest extends FormRequest
     {
         if (! $this->has('generate_child_order')) {
             $this->merge(['generate_child_order' => true]);
+        }
+
+        if (! $this->has('allow_schedule_exception')) {
+            $this->merge(['allow_schedule_exception' => false]);
         }
     }
 }

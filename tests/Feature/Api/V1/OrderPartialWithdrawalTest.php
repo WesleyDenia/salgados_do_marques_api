@@ -140,6 +140,77 @@ class OrderPartialWithdrawalTest extends TestCase
         );
     }
 
+    public function test_admin_can_spread_partial_withdrawal_across_compatible_items_from_selected_reference(): void
+    {
+        $this->setEditWindow();
+        $admin = User::factory()->create(['role' => 'admin']);
+        [$order, $items, $flavors] = $this->makeMultiPackParentOrder();
+
+        $response = $this->actingAs($admin, 'sanctum')->postJson(
+            "/api/v1/admin/orders/{$order->id}/partial-withdrawals",
+            [
+                'parent_order_item_id' => $items[0]->id,
+                'requested_units' => 125,
+                'flavor_ids' => [
+                    $flavors['frango']->id,
+                    $flavors['carne']->id,
+                    $flavors['frango']->id,
+                    $flavors['carne']->id,
+                    $flavors['frango']->id,
+                ],
+                'scheduled_at' => '2026-07-20T18:00:00+01:00',
+                'generate_child_order' => true,
+            ],
+        );
+
+        $response->assertOk()
+            ->assertJsonPath('data.withdrawals.0.requested_units', 100)
+            ->assertJsonPath('data.withdrawals.1.requested_units', 25)
+            ->assertJsonCount(2, 'data.withdrawals')
+            ->assertJsonCount(2, 'data.generated_order.items')
+            ->assertJsonPath('data.generated_order.items.0.quantity', 100)
+            ->assertJsonPath('data.generated_order.items.1.quantity', 25);
+
+        $this->assertDatabaseHas('order_partial_withdrawals', [
+            'parent_order_id' => $order->id,
+            'parent_order_item_id' => $items[0]->id,
+            'requested_units' => 100,
+        ]);
+        $this->assertDatabaseHas('order_partial_withdrawals', [
+            'parent_order_id' => $order->id,
+            'parent_order_item_id' => $items[1]->id,
+            'requested_units' => 25,
+        ]);
+    }
+
+    public function test_admin_can_register_partial_withdrawal_without_item_selector_when_group_is_unambiguous(): void
+    {
+        $this->setEditWindow();
+        $admin = User::factory()->create(['role' => 'admin']);
+        [$order, $items, $flavors] = $this->makeMultiPackParentOrder();
+
+        $response = $this->actingAs($admin, 'sanctum')->postJson(
+            "/api/v1/admin/orders/{$order->id}/partial-withdrawals",
+            [
+                'requested_units' => 125,
+                'flavor_ids' => [
+                    $flavors['frango']->id,
+                    $flavors['carne']->id,
+                    $flavors['frango']->id,
+                    $flavors['carne']->id,
+                    $flavors['frango']->id,
+                ],
+                'scheduled_at' => '2026-07-20T18:00:00+01:00',
+                'generate_child_order' => false,
+            ],
+        );
+
+        $response->assertOk()
+            ->assertJsonCount(2, 'data.withdrawals')
+            ->assertJsonPath('data.withdrawals.0.parent_order_item_id', $items[0]->id)
+            ->assertJsonPath('data.withdrawals.1.parent_order_item_id', $items[1]->id);
+    }
+
     public function test_admin_can_register_retroactive_partial_withdrawal_with_schedule_exception(): void
     {
         Carbon::setTestNow(Carbon::parse('2026-07-20 18:30', 'Europe/Lisbon'));
@@ -304,6 +375,28 @@ class OrderPartialWithdrawalTest extends TestCase
         ]);
 
         return [$order, $item, $store, compact('frango', 'carne')];
+    }
+
+    /**
+     * @return array{0: Order, 1: array<int, \App\Models\OrderItem>, 2: array{frango: Flavor, carne: Flavor}}
+     */
+    protected function makeMultiPackParentOrder(): array
+    {
+        [$order, $item, $store, $flavors] = $this->makePackParentOrder();
+
+        $secondItem = $order->items()->create([
+            'product_id' => $item->product_id,
+            'variant_id' => $item->variant_id,
+            'name_snapshot' => $item->name_snapshot,
+            'price_snapshot' => $item->price_snapshot,
+            'quantity' => 1,
+            'options' => ['flavors' => [$flavors['carne']->id, $flavors['frango']->id, $flavors['carne']->id, $flavors['frango']->id]],
+            'total' => 120,
+        ]);
+
+        $order->update(['total' => 240]);
+
+        return [$order->fresh(), [$item->fresh(), $secondItem->fresh()], $flavors];
     }
 
     protected function setEditWindow(): void

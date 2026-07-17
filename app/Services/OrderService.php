@@ -159,7 +159,7 @@ class OrderService
                 ]);
             }
 
-            $lineItems = $this->buildOrderLineItems($items, $products, $variants);
+            $lineItems = $this->buildOrderLineItems($items, $products, $variants, true);
             $resolvedCustomer = $this->resolveCustomerContext($actor, $data);
 
             $order = $this->repository->createWithItems(
@@ -652,7 +652,12 @@ class OrderService
     }
 
     /**
-     * @return array{withdrawal: OrderPartialWithdrawal, generated_order: Order|null, parent_order: Order}
+     * @return array{
+     *   withdrawal: OrderPartialWithdrawal,
+     *   withdrawals: array<int, OrderPartialWithdrawal>,
+     *   generated_order: Order|null,
+     *   parent_order: Order
+     * }
      */
     public function createPartialWithdrawalForAdmin(Order $order, array $data): array
     {
@@ -677,38 +682,9 @@ class OrderService
             ]);
         }
 
-        /** @var OrderItem|null $parentItem */
-        $parentItem = $order->items->firstWhere('id', (int) $data['parent_order_item_id']);
-
-        if (! $parentItem) {
-            throw ValidationException::withMessages([
-                'parent_order_item_id' => 'O item selecionado não pertence à encomenda informada.',
-            ]);
-        }
-
         $requestedUnits = (int) ($data['requested_units'] ?? 0);
         $this->assertValidPartialWithdrawalUnits($requestedUnits);
-        $selectedFlavorIds = $this->resolveWithdrawalFlavorIds(
-            $parentItem,
-            $requestedUnits,
-            $data['flavor_ids'] ?? []
-        );
-
-        $originalUnits = $this->resolveOrderItemUnits($parentItem);
-        $reservedUnits = $this->reservedUnitsForOrderItem($parentItem);
-        $remainingUnits = max(0, $originalUnits - $reservedUnits);
-
-        if ($originalUnits < 25 || $originalUnits % 25 !== 0) {
-            throw ValidationException::withMessages([
-                'parent_order_item_id' => 'O item selecionado não suporta retiradas parciais em blocos de 25 unidades.',
-            ]);
-        }
-
-        if ($requestedUnits > $remainingUnits) {
-            throw ValidationException::withMessages([
-                'requested_units' => 'A quantidade pedida excede o saldo disponível para retirada.',
-            ]);
-        }
+        $allocationPlan = $this->resolvePartialWithdrawalAllocationPlan($order, $data, $requestedUnits);
 
         $orderSettings = $this->orderSettings();
         $scheduled = $this->parseScheduledAt($data['scheduled_at'], $orderSettings['timezone']);
@@ -733,16 +709,20 @@ class OrderService
             $allowScheduleException
         );
 
-        return \Illuminate\Support\Facades\DB::transaction(function () use ($data, $order, $parentItem, $requestedUnits, $scheduled, $selectedFlavorIds, $slot) {
-            $withdrawal = $order->partialWithdrawals()->create([
-                'parent_order_item_id' => $parentItem->id,
-                'created_by' => Auth::id(),
-                'requested_units' => $requestedUnits,
-                'flavor_ids' => $selectedFlavorIds !== [] ? $selectedFlavorIds : null,
-                'scheduled_at' => $scheduled->copy()->timezone('UTC'),
-                'status' => OrderPartialWithdrawal::STATUS_PLANNED,
-                'notes' => $this->normalizeNullableText($data['notes'] ?? null),
-            ]);
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($data, $order, $requestedUnits, $scheduled, $slot, $allocationPlan) {
+            $withdrawals = [];
+
+            foreach ($allocationPlan as $allocation) {
+                $withdrawals[] = $order->partialWithdrawals()->create([
+                    'parent_order_item_id' => $allocation['item']->id,
+                    'created_by' => Auth::id(),
+                    'requested_units' => $allocation['requested_units'],
+                    'flavor_ids' => $allocation['flavor_ids'] !== [] ? $allocation['flavor_ids'] : null,
+                    'scheduled_at' => $scheduled->copy()->timezone('UTC'),
+                    'status' => OrderPartialWithdrawal::STATUS_PLANNED,
+                    'notes' => $this->normalizeNullableText($data['notes'] ?? null),
+                ]);
+            }
 
             $generatedOrder = null;
 
@@ -755,15 +735,24 @@ class OrderService
                     $order->payment_status,
                     $slot,
                     $scheduled->copy()->timezone('UTC'),
-                    $this->buildDerivedOrderNotes($order, $withdrawal),
-                    [$this->buildDerivedWithdrawalLineItem($parentItem, $requestedUnits, $selectedFlavorIds)],
+                    $this->buildDerivedOrderNotes($order, $withdrawals),
+                    collect($allocationPlan)
+                        ->map(fn (array $allocation): array => $this->buildDerivedWithdrawalLineItem(
+                            $allocation['item'],
+                            $allocation['requested_units'],
+                            $allocation['flavor_ids']
+                        ))
+                        ->values()
+                        ->all(),
                     $order->tags->pluck('id')->map(fn ($tagId) => (int) $tagId)->all(),
                     $order->id
                 );
 
-                $withdrawal->forceFill([
-                    'generated_order_id' => $generatedOrder->id,
-                ])->save();
+                foreach ($withdrawals as $withdrawal) {
+                    $withdrawal->forceFill([
+                        'generated_order_id' => $generatedOrder->id,
+                    ])->save();
+                }
             }
 
             $order->history()->create([
@@ -771,10 +760,19 @@ class OrderService
                 'action' => 'partial_withdrawal_planned',
                 'changes' => [
                     'partial_withdrawal' => [
-                        'parent_order_item_id' => $parentItem->id,
                         'requested_units' => $requestedUnits,
-                        'flavor_ids' => $selectedFlavorIds,
-                        'flavor_names' => $this->resolveFlavorNames($selectedFlavorIds, $parentItem),
+                        'allocations' => collect($allocationPlan)
+                            ->map(fn (array $allocation): array => [
+                                'parent_order_item_id' => $allocation['item']->id,
+                                'requested_units' => $allocation['requested_units'],
+                                'flavor_ids' => $allocation['flavor_ids'],
+                                'flavor_names' => $this->resolveFlavorNames(
+                                    $allocation['flavor_ids'],
+                                    $allocation['item']
+                                ),
+                            ])
+                            ->values()
+                            ->all(),
                         'scheduled_at' => $scheduled->copy()->timezone('UTC')->format('Y-m-d\TH:i:sP'),
                         'generated_order_id' => $generatedOrder?->id,
                         'notes' => $this->normalizeNullableText($data['notes'] ?? null),
@@ -783,7 +781,10 @@ class OrderService
             ]);
 
             return [
-                'withdrawal' => $withdrawal->fresh(['generatedOrder']),
+                'withdrawal' => $withdrawals[0]->fresh(['generatedOrder']),
+                'withdrawals' => collect($withdrawals)
+                    ->map(fn (OrderPartialWithdrawal $withdrawal): OrderPartialWithdrawal => $withdrawal->fresh(['generatedOrder']))
+                    ->all(),
                 'generated_order' => $generatedOrder ? $this->repository->findForAdmin($generatedOrder) : null,
                 'parent_order' => $this->repository->findForAdmin($order),
             ];
@@ -1729,21 +1730,30 @@ class OrderService
         ];
     }
 
-    protected function buildDerivedOrderNotes(Order $parentOrder, OrderPartialWithdrawal $withdrawal): string
+    /**
+     * @param  array<int, OrderPartialWithdrawal>  $withdrawals
+     */
+    protected function buildDerivedOrderNotes(Order $parentOrder, array $withdrawals): string
     {
-        $selectedFlavorNames = $this->resolveFlavorNames(
-            collect($withdrawal->flavor_ids ?? [])->map(fn ($flavorId) => (int) $flavorId)->all(),
-            null,
-        );
+        $selectedFlavorIds = collect($withdrawals)
+            ->flatMap(fn (OrderPartialWithdrawal $withdrawal) => $withdrawal->flavor_ids ?? [])
+            ->map(fn ($flavorId) => (int) $flavorId)
+            ->filter(fn (int $flavorId) => $flavorId > 0)
+            ->values()
+            ->all();
+        $selectedFlavorNames = $this->resolveFlavorNames($selectedFlavorIds, null);
+        $requestedUnits = (int) collect($withdrawals)->sum('requested_units');
         $remainingUnits = $this->resolveRemainingPartialWithdrawalUnitsForOrder($parentOrder);
         $lines = array_filter([
             sprintf('Retirada parcial derivada da encomenda #%d.', $parentOrder->id),
-            sprintf('Quantidade reservada: %d unidades.', $withdrawal->requested_units),
+            sprintf('Quantidade reservada: %d unidades.', $requestedUnits),
             sprintf('Saldo restante na encomenda mãe: %d unidades.', $remainingUnits),
             $selectedFlavorNames !== []
                 ? sprintf('Sabores da retirada: %s', implode(', ', $selectedFlavorNames))
                 : null,
-            $withdrawal->notes ? sprintf('Notas da retirada: %s', $withdrawal->notes) : null,
+            collect($withdrawals)->pluck('notes')->filter()->first()
+                ? sprintf('Notas da retirada: %s', (string) collect($withdrawals)->pluck('notes')->filter()->first())
+                : null,
             $parentOrder->notes ? sprintf('Notas da encomenda mãe: %s', $parentOrder->notes) : null,
         ]);
 
@@ -1766,6 +1776,240 @@ class OrderService
 
                 return max(0, $originalUnits - $reservedUnits);
             });
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<int, array{item: OrderItem, requested_units: int, flavor_ids: array<int, int>}>
+     */
+    protected function resolvePartialWithdrawalAllocationPlan(Order $order, array $data, int $requestedUnits): array
+    {
+        $preferredItemId = isset($data['parent_order_item_id']) ? (int) $data['parent_order_item_id'] : null;
+        $eligibleItems = $order->items
+            ->filter(fn (OrderItem $item): bool => $this->canItemWithdrawPartially($item))
+            ->values();
+
+        if ($eligibleItems->isEmpty()) {
+            throw ValidationException::withMessages([
+                'parent_order_item_id' => 'A encomenda não possui itens compatíveis com retiradas parciais.',
+            ]);
+        }
+
+        $preferredItem = null;
+
+        if ($preferredItemId !== null) {
+            /** @var OrderItem|null $preferredItem */
+            $preferredItem = $order->items->firstWhere('id', $preferredItemId);
+
+            if (! $preferredItem) {
+                throw ValidationException::withMessages([
+                    'parent_order_item_id' => 'O item selecionado não pertence à encomenda informada.',
+                ]);
+            }
+
+            if (! $this->canItemWithdrawPartially($preferredItem)) {
+                throw ValidationException::withMessages([
+                    'parent_order_item_id' => 'O item selecionado não suporta retiradas parciais em blocos de 25 unidades.',
+                ]);
+            }
+        }
+
+        $candidateItems = $preferredItem
+            ? $eligibleItems
+                ->filter(fn (OrderItem $item): bool => $this->belongsToPartialWithdrawalGroup($item, $preferredItem))
+                ->sortBy(fn (OrderItem $item): array => [$item->id === $preferredItem->id ? 0 : 1, $item->id])
+                ->values()
+            : $this->resolveImplicitPartialWithdrawalItems($eligibleItems, $requestedUnits, $data['flavor_ids'] ?? []);
+
+        $totalRemainingUnits = (int) $candidateItems
+            ->sum(fn (OrderItem $item): int => $this->remainingUnitsForOrderItem($item));
+
+        if ($requestedUnits > $totalRemainingUnits) {
+            throw ValidationException::withMessages([
+                'requested_units' => 'A quantidade pedida excede o saldo disponível para retirada.',
+            ]);
+        }
+
+        $unitsLeft = $requestedUnits;
+        $allocations = [];
+
+        foreach ($candidateItems as $item) {
+            if ($unitsLeft <= 0) {
+                break;
+            }
+
+            $remainingUnits = $this->remainingUnitsForOrderItem($item);
+
+            if ($remainingUnits < 25) {
+                continue;
+            }
+
+            $allocatedUnits = min($remainingUnits, $unitsLeft);
+            $allocatedUnits -= $allocatedUnits % 25;
+
+            if ($allocatedUnits < 25) {
+                continue;
+            }
+
+            $allocations[] = [
+                'item' => $item,
+                'requested_units' => $allocatedUnits,
+                'flavor_ids' => [],
+            ];
+            $unitsLeft -= $allocatedUnits;
+        }
+
+        if ($unitsLeft > 0) {
+            throw ValidationException::withMessages([
+                'requested_units' => 'A quantidade pedida excede o saldo disponível para retirada.',
+            ]);
+        }
+
+        return $this->assignFlavorIdsToWithdrawalAllocations($allocations, $data['flavor_ids'] ?? []);
+    }
+
+    protected function canItemWithdrawPartially(OrderItem $item): bool
+    {
+        if ($item->parent_order_item_id !== null) {
+            return false;
+        }
+
+        $originalUnits = $this->resolveOrderItemUnits($item);
+
+        return $originalUnits >= 25 && $originalUnits % 25 === 0;
+    }
+
+    protected function remainingUnitsForOrderItem(OrderItem $item): int
+    {
+        $originalUnits = $this->resolveOrderItemUnits($item);
+        $reservedUnits = $this->reservedUnitsForOrderItem($item);
+
+        return max(0, $originalUnits - $reservedUnits);
+    }
+
+    protected function belongsToPartialWithdrawalGroup(OrderItem $item, OrderItem $reference): bool
+    {
+        return (int) $item->product_id === (int) $reference->product_id
+            && (int) ($item->variant_id ?? 0) === (int) ($reference->variant_id ?? 0)
+            && (string) $item->name_snapshot === (string) $reference->name_snapshot;
+    }
+
+    /**
+     * @param  SupportCollection<int, OrderItem>  $eligibleItems
+     * @param  array<int, mixed>  $selectedFlavorIds
+     * @return SupportCollection<int, OrderItem>
+     */
+    protected function resolveImplicitPartialWithdrawalItems(
+        SupportCollection $eligibleItems,
+        int $requestedUnits,
+        array $selectedFlavorIds
+    ): SupportCollection {
+        $normalizedFlavorIds = collect($selectedFlavorIds)
+            ->map(fn ($flavorId) => (int) $flavorId)
+            ->filter(fn (int $flavorId) => $flavorId > 0)
+            ->values()
+            ->all();
+
+        $groups = $eligibleItems
+            ->groupBy(fn (OrderItem $item): string => implode(':', [
+                (int) $item->product_id,
+                (int) ($item->variant_id ?? 0),
+                (string) $item->name_snapshot,
+            ]))
+            ->map(function (SupportCollection $items) use ($normalizedFlavorIds): ?SupportCollection {
+                /** @var OrderItem $firstItem */
+                $firstItem = $items->first();
+                $allowedFlavorIds = $firstItem->product?->allowedFlavors?->pluck('id')
+                    ->map(fn ($flavorId) => (int) $flavorId)
+                    ->all() ?? [];
+
+                if ($normalizedFlavorIds !== [] && collect($normalizedFlavorIds)->contains(
+                    fn (int $flavorId): bool => ! in_array($flavorId, $allowedFlavorIds, true)
+                )) {
+                    return null;
+                }
+
+                return $items->sortBy('id')->values();
+            })
+            ->filter()
+            ->values();
+
+        $matchingGroups = $groups
+            ->filter(function (SupportCollection $items) use ($requestedUnits): bool {
+                $remainingUnits = (int) $items->sum(
+                    fn (OrderItem $item): int => $this->remainingUnitsForOrderItem($item)
+                );
+
+                return $remainingUnits >= $requestedUnits;
+            })
+            ->values();
+
+        if ($matchingGroups->count() === 1) {
+            return $matchingGroups->first();
+        }
+
+        if ($groups->count() === 1) {
+            return $groups->first();
+        }
+
+        throw ValidationException::withMessages([
+            'parent_order_item_id' => 'Selecione um item de referência para esta retirada parcial.',
+        ]);
+    }
+
+    /**
+     * @param  array<int, array{item: OrderItem, requested_units: int, flavor_ids: array<int, int>}>  $allocations
+     * @param  array<int, mixed>  $selectedFlavorIds
+     * @return array<int, array{item: OrderItem, requested_units: int, flavor_ids: array<int, int>}>
+     */
+    protected function assignFlavorIdsToWithdrawalAllocations(array $allocations, array $selectedFlavorIds): array
+    {
+        $normalizedFlavorIds = collect($selectedFlavorIds)
+            ->map(fn ($flavorId) => (int) $flavorId)
+            ->filter(fn (int $flavorId) => $flavorId > 0)
+            ->values()
+            ->all();
+        $requiredFlavorCount = (int) collect($allocations)
+            ->sum(fn (array $allocation): int => $this->resolveRequiredWithdrawalFlavorCount(
+                $allocation['item'],
+                $allocation['requested_units']
+            ));
+
+        if ($requiredFlavorCount === 0) {
+            return $allocations;
+        }
+
+        if (count($normalizedFlavorIds) !== $requiredFlavorCount) {
+            throw ValidationException::withMessages([
+                'flavor_ids' => sprintf(
+                    'Selecione exatamente %d sabor(es) para registar esta retirada parcial.',
+                    $requiredFlavorCount
+                ),
+            ]);
+        }
+
+        $cursor = 0;
+
+        foreach ($allocations as $index => $allocation) {
+            $count = $this->resolveRequiredWithdrawalFlavorCount(
+                $allocation['item'],
+                $allocation['requested_units']
+            );
+
+            if ($count === 0) {
+                continue;
+            }
+
+            $slice = array_slice($normalizedFlavorIds, $cursor, $count);
+            $allocations[$index]['flavor_ids'] = $this->resolveWithdrawalFlavorIds(
+                $allocation['item'],
+                $allocation['requested_units'],
+                $slice
+            );
+            $cursor += $count;
+        }
+
+        return $allocations;
     }
 
     /**
@@ -1859,9 +2103,10 @@ class OrderService
     protected function buildOrderLineItems(
         SupportCollection $items,
         Collection $products,
-        Collection $variants
+        Collection $variants,
+        bool $expandMultiplier = false
     ): array {
-        return $items->map(function (array $item) use ($products, $variants): array {
+        return $items->flatMap(function (array $item) use ($products, $variants, $expandMultiplier): array {
             /** @var Product $product */
             $product = $products->get($item['product_id']);
             /** @var ProductVariant|null $variant */
@@ -1916,9 +2161,7 @@ class OrderService
             }
 
             $price = $variant ? (float) $variant->price : (float) $product->price;
-            $lineTotal = $price * $quantity;
-
-            return [
+            $baseLineItem = [
                 'parent_order_item_id' => isset($item['parent_order_item_id'])
                     ? (int) $item['parent_order_item_id']
                     : null,
@@ -1929,8 +2172,20 @@ class OrderService
                 'price_snapshot' => $price,
                 'quantity' => $quantity,
                 'options' => $flavors !== [] ? ['flavors' => $flavors] : null,
-                'total' => $lineTotal,
+                'total' => $price * $quantity,
             ];
-        })->all();
+
+            if (! $expandMultiplier || ! $variant || $quantity <= 1 || (int) ($variant->unit_count ?? 0) <= 0) {
+                return [$baseLineItem];
+            }
+
+            return collect(range(1, $quantity))
+                ->map(fn (): array => [
+                    ...$baseLineItem,
+                    'quantity' => 1,
+                    'total' => $price,
+                ])
+                ->all();
+        })->values()->all();
     }
 }

@@ -14,7 +14,7 @@ class OrderPartialWithdrawalStoreRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'parent_order_item_id' => ['required', 'integer', 'exists:order_items,id'],
+            'parent_order_item_id' => ['nullable', 'integer', 'exists:order_items,id'],
             'requested_units' => ['required', 'integer', 'min:25'],
             'flavor_ids' => ['nullable', 'array'],
             'flavor_ids.*' => ['integer', 'exists:flavors,id'],

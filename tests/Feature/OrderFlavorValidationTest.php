@@ -90,6 +90,40 @@ class OrderFlavorValidationTest extends TestCase
         $response->assertJsonPath('data.items.0.options.flavor_names.2', 'Frango');
     }
 
+    public function test_new_orders_expand_variant_multiplier_into_distinct_order_items(): void
+    {
+        [$product, $variant, $store, $user, $flavors] = $this->makeOrderContext();
+
+        Sanctum::actingAs($user);
+
+        $response = $this->postJson('/api/v1/orders', [
+            'store_id' => $store->id,
+            'scheduled_at' => now()->addHour()->format('Y-m-d H:i'),
+            'items' => [
+                [
+                    'product_id' => $product->id,
+                    'variant_id' => $variant->id,
+                    'quantity' => 2,
+                    'flavors' => [$flavors['allowedA']->id, $flavors['allowedB']->id],
+                ],
+            ],
+        ]);
+
+        $response->assertOk();
+        $response->assertJsonCount(2, 'data.items');
+        $response->assertJsonPath('data.items.0.quantity', 1);
+        $response->assertJsonPath('data.items.1.quantity', 1);
+        $response->assertJsonPath('data.items.0.total', 14.9);
+        $response->assertJsonPath('data.items.1.total', 14.9);
+
+        $this->assertDatabaseCount('order_items', 2);
+        $this->assertDatabaseHas('order_items', [
+            'variant_id' => $variant->id,
+            'quantity' => 1,
+            'total' => 14.9,
+        ]);
+    }
+
     public function test_order_rejects_flavors_for_product_without_variant(): void
     {
         [$product, $variant, $store, $user, $flavors] = $this->makeOrderContext();

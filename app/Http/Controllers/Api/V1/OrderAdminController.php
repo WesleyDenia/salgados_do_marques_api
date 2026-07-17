@@ -16,6 +16,36 @@ class OrderAdminController extends Controller
 {
     public function __construct(protected OrderService $service) {}
 
+    /**
+     * @return array<string, mixed>
+     */
+    protected function serializePartialWithdrawal($withdrawal): array
+    {
+        $flavorIds = collect($withdrawal->flavor_ids ?? [])
+            ->map(fn ($flavorId) => (int) $flavorId)
+            ->filter(fn (int $flavorId) => $flavorId > 0)
+            ->values();
+        $flavorNamesById = $flavorIds->isNotEmpty()
+            ? Flavor::query()->whereIn('id', $flavorIds->all())->pluck('name', 'id')->all()
+            : [];
+
+        return [
+            'id' => $withdrawal->id,
+            'parent_order_item_id' => $withdrawal->parent_order_item_id,
+            'generated_order_id' => $withdrawal->generated_order_id,
+            'requested_units' => $withdrawal->requested_units,
+            'flavor_ids' => $flavorIds->all(),
+            'flavor_names' => $flavorIds
+                ->map(fn (int $flavorId) => $flavorNamesById[$flavorId] ?? null)
+                ->filter()
+                ->values()
+                ->all(),
+            'scheduled_at' => $withdrawal->scheduled_at?->toIso8601String(),
+            'status' => $withdrawal->status,
+            'notes' => $withdrawal->notes,
+        ];
+    }
+
     public function index(OrderSearchRequest $request)
     {
         $orders = $this->service->paginateForAdmin($request->validated(), 20);
@@ -91,31 +121,14 @@ class OrderAdminController extends Controller
     public function storePartialWithdrawal(OrderPartialWithdrawalStoreRequest $request, Order $order)
     {
         $result = $this->service->createPartialWithdrawalForAdmin($order, $request->validated());
-        $flavorIds = collect($result['withdrawal']->flavor_ids ?? [])
-            ->map(fn ($flavorId) => (int) $flavorId)
-            ->filter(fn (int $flavorId) => $flavorId > 0)
-            ->values();
-        $flavorNamesById = $flavorIds->isNotEmpty()
-            ? Flavor::query()->whereIn('id', $flavorIds->all())->pluck('name', 'id')->all()
-            : [];
 
         return response()->json([
             'data' => [
-                'withdrawal' => [
-                    'id' => $result['withdrawal']->id,
-                    'parent_order_item_id' => $result['withdrawal']->parent_order_item_id,
-                    'generated_order_id' => $result['withdrawal']->generated_order_id,
-                    'requested_units' => $result['withdrawal']->requested_units,
-                    'flavor_ids' => $flavorIds->all(),
-                    'flavor_names' => $flavorIds
-                        ->map(fn (int $flavorId) => $flavorNamesById[$flavorId] ?? null)
-                        ->filter()
-                        ->values()
-                        ->all(),
-                    'scheduled_at' => $result['withdrawal']->scheduled_at?->toIso8601String(),
-                    'status' => $result['withdrawal']->status,
-                    'notes' => $result['withdrawal']->notes,
-                ],
+                'withdrawal' => $this->serializePartialWithdrawal($result['withdrawal']),
+                'withdrawals' => collect($result['withdrawals'] ?? [])
+                    ->map(fn ($withdrawal) => $this->serializePartialWithdrawal($withdrawal))
+                    ->values()
+                    ->all(),
                 'generated_order' => $result['generated_order']
                     ? (new OrderResource($result['generated_order']))->resolve($request)
                     : null,

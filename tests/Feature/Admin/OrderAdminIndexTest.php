@@ -128,7 +128,7 @@ class OrderAdminIndexTest extends TestCase
         $responseById->assertDontSeeText("#{$nonMatchingOrder->id}");
     }
 
-    public function test_admin_order_index_hides_canceled_orders_by_default_but_allows_explicit_filter(): void
+    public function test_admin_order_index_hides_terminal_orders_by_default_but_allows_explicit_filter(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);
         $customer = User::factory()->create();
@@ -141,6 +141,26 @@ class OrderAdminIndexTest extends TestCase
             'customer_name' => 'Pedido ativo',
             'scheduled_at' => Carbon::create(2026, 7, 15, 11, 30, 0, 'UTC'),
             'total' => 12.50,
+            'notes' => null,
+        ]);
+
+        $hiddenDoneOrder = Order::create([
+            'user_id' => $customer->id,
+            'store_id' => $store->id,
+            'status' => 'done',
+            'customer_name' => 'Pedido concluido',
+            'scheduled_at' => Carbon::create(2026, 7, 15, 12, 0, 0, 'UTC'),
+            'total' => 8.50,
+            'notes' => null,
+        ]);
+
+        $hiddenRejectedOrder = Order::create([
+            'user_id' => $customer->id,
+            'store_id' => $store->id,
+            'status' => 'rejected',
+            'customer_name' => 'Pedido rejeitado',
+            'scheduled_at' => Carbon::create(2026, 7, 15, 12, 15, 0, 'UTC'),
+            'total' => 7.50,
             'notes' => null,
         ]);
 
@@ -157,9 +177,9 @@ class OrderAdminIndexTest extends TestCase
         $defaultResponse = $this->actingAs($admin)->get(route('admin.orders.index'));
 
         $defaultResponse->assertOk();
-        $defaultResponse->assertSeeText("#{$visibleOrder->id}");
-        $defaultResponse->assertDontSeeText("#{$hiddenCanceledOrder->id}");
         $defaultResponse->assertSeeText('€ 12,50');
+        $defaultResponse->assertDontSeeText('€ 8,50');
+        $defaultResponse->assertDontSeeText('€ 7,50');
         $defaultResponse->assertDontSeeText('€ 9,50');
 
         $canceledResponse = $this->actingAs($admin)->get(route('admin.orders.index', [
@@ -167,9 +187,24 @@ class OrderAdminIndexTest extends TestCase
         ]));
 
         $canceledResponse->assertOk();
-        $canceledResponse->assertSeeText("#{$hiddenCanceledOrder->id}");
         $canceledResponse->assertSeeText('€ 9,50');
         $canceledResponse->assertDontSeeText('€ 12,50');
+
+        $doneResponse = $this->actingAs($admin)->get(route('admin.orders.index', [
+            'status' => 'done',
+        ]));
+
+        $doneResponse->assertOk();
+        $doneResponse->assertSeeText('€ 8,50');
+        $doneResponse->assertDontSeeText('€ 12,50');
+
+        $rejectedResponse = $this->actingAs($admin)->get(route('admin.orders.index', [
+            'status' => 'rejected',
+        ]));
+
+        $rejectedResponse->assertOk();
+        $rejectedResponse->assertSeeText('€ 7,50');
+        $rejectedResponse->assertDontSeeText('€ 12,50');
     }
 
     public function test_admin_daily_planning_view_filters_orders_for_requested_lisbon_day(): void

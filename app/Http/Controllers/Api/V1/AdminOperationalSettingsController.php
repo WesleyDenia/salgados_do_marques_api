@@ -133,7 +133,7 @@ class AdminOperationalSettingsController extends Controller
     public function testWhatsApp(Request $request, WhatsAppClient $whatsAppClient)
     {
         $validated = $request->validate([
-            'number' => ['required', 'string', 'regex:' . AdminOperationalSettingsUpdateRequest::E164_REGEX],
+            'number' => ['required', 'string', 'regex:' . AdminOperationalSettingsUpdateRequest::WHATSAPP_RECIPIENT_REGEX],
         ]);
         $number = trim($validated['number']);
 

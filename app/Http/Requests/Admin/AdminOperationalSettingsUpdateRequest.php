@@ -9,6 +9,8 @@ use Illuminate\Validation\Validator;
 class AdminOperationalSettingsUpdateRequest extends FormRequest
 {
     public const E164_REGEX = '/^\+[1-9]\d{7,14}$/';
+    public const WHATSAPP_GROUP_REGEX = '/^[A-Za-z0-9._:-]+@g\.us$/';
+    public const WHATSAPP_RECIPIENT_REGEX = '/^(?:\+[1-9]\d{7,14}|[A-Za-z0-9._:-]+@g\.us)$/';
 
     public function authorize(): bool
     {
@@ -33,7 +35,7 @@ class AdminOperationalSettingsUpdateRequest extends FormRequest
             'ORDER_MINIMUM_MINUTES' => ['sometimes', 'required', 'integer', 'min:0'],
             'ORDER_CANCEL_MINUTES' => ['sometimes', 'required', 'integer', 'min:0'],
             'ORDER_SCHEDULING_WINDOW_DAYS' => ['sometimes', 'required', 'integer', 'min:1'],
-            'WHATSAPP_ORDER_TO' => ['sometimes', 'nullable', 'string', 'regex:' . self::E164_REGEX],
+            'WHATSAPP_ORDER_TO' => ['sometimes', 'nullable', 'string', 'regex:' . self::WHATSAPP_RECIPIENT_REGEX],
         ];
     }
 
@@ -68,7 +70,7 @@ class AdminOperationalSettingsUpdateRequest extends FormRequest
     {
         return [
             'ORDER_SCHEDULING_WINDOW_DAYS.min' => 'A janela de agendamento deve ser de pelo menos 1 dia.',
-            'WHATSAPP_ORDER_TO.regex' => 'O número WhatsApp deve estar no formato E.164.',
+            'WHATSAPP_ORDER_TO.regex' => 'O destino WhatsApp deve estar no formato E.164 ou terminar com @g.us.',
         ];
     }
 }

@@ -72,6 +72,18 @@ class AdminOperationalSettingsTest extends TestCase
         $this->assertEquals(2, Setting::where('key', 'SETTINGS_VERSION')->first()->value);
     }
 
+    public function test_it_accepts_whatsapp_group_ids_on_update(): void
+    {
+        $response = $this->actingAs($this->admin, 'sanctum')
+            ->putJson('/api/v1/admin/settings/operational', [
+                'version' => 1,
+                'WHATSAPP_ORDER_TO' => '120363417489273293@g.us',
+            ]);
+
+        $response->assertStatus(200);
+        $this->assertEquals('120363417489273293@g.us', Setting::where('key', 'WHATSAPP_ORDER_TO')->first()->value);
+    }
+
     public function test_it_prevents_concurrent_updates_with_wrong_version(): void
     {
         $response = $this->actingAs($this->admin, 'sanctum')
@@ -169,6 +181,24 @@ class AdminOperationalSettingsTest extends TestCase
         $response = $this->actingAs($this->admin, 'sanctum')
             ->postJson('/api/v1/admin/settings/test-whatsapp', [
                 'number' => '+351912345678'
+            ]);
+
+        $response->assertStatus(200);
+        $response->assertJson(['success' => true]);
+    }
+
+    public function test_it_calls_whatsapp_client_on_group_test_connection(): void
+    {
+        $this->mock(\App\Contracts\Notifications\WhatsAppClient::class, function ($mock) {
+            $mock->shouldReceive('sendMessage')
+                ->once()
+                ->with('120363417489273293@g.us', 'Teste de conexão de governação operacional Salgados do Marquês.')
+                ->andReturn(true);
+        });
+
+        $response = $this->actingAs($this->admin, 'sanctum')
+            ->postJson('/api/v1/admin/settings/test-whatsapp', [
+                'number' => '120363417489273293@g.us',
             ]);
 
         $response->assertStatus(200);

@@ -8,6 +8,7 @@ use Carbon\CarbonInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\LazyCollection;
 
 class OrderRepository
 {
@@ -111,6 +112,23 @@ class OrderRepository
     public function listForAdmin(array $filters): Collection
     {
         return $this->buildAdminQuery($filters)->get();
+    }
+
+    /**
+     * @param  array<int, string>  $statuses
+     * @return LazyCollection<int, Order>
+     */
+    public function cursorOverdueOrdersForCompletion(
+        CarbonInterface $cutoffUtc,
+        array $statuses
+    ): LazyCollection {
+        return Order::query()
+            ->whereNotNull('scheduled_at')
+            ->where('scheduled_at', '<', $cutoffUtc)
+            ->whereIn('status', $statuses)
+            ->orderBy('scheduled_at')
+            ->orderBy('id')
+            ->cursor();
     }
 
     public function listScheduledForStoreDay(

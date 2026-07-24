@@ -290,6 +290,9 @@ deploy_api() {
   echo "Executando migrations..."
   run_artisan_with_secrets "migrate --force --no-interaction"
 
+  echo "Concluindo encomendas vencidas..."
+  run_artisan_with_secrets "orders:complete-overdue"
+
   echo "Iniciando serviços de sincronização com o Vendus..."
   run_artisan_with_secrets "vendus:sync-coupons"
   run_artisan_with_secrets "vendus:sync-documents"

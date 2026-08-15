@@ -79,6 +79,11 @@ class Order extends Model
             ->orderByDesc('id');
     }
 
+    public function preparationAllocations()
+    {
+        return $this->hasMany(OrderPreparationAllocation::class);
+    }
+
     public function isDerived(): bool
     {
         return $this->parent_order_id !== null;

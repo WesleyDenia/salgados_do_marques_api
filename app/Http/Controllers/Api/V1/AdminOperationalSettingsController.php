@@ -2,14 +2,15 @@
 
 namespace App\Http\Controllers\Api\V1;
 
-use App\Http\Controllers\Controller;
 use App\Contracts\Notifications\WhatsAppClient;
+use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\AdminOperationalSettingsUpdateRequest;
 use App\Models\ActivityLog;
 use App\Models\Setting;
+use App\Services\PlanningSlotCapacityService;
 use App\Services\SettingService;
-use Illuminate\Http\Request;
 use Illuminate\Http\Exceptions\HttpResponseException;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
@@ -23,6 +24,7 @@ class AdminOperationalSettingsController extends Controller
         'ORDER_MINIMUM_MINUTES' => 30,
         'ORDER_CANCEL_MINUTES' => 60,
         'ORDER_SCHEDULING_WINDOW_DAYS' => 14,
+        'ORDER_SLOT_MODE' => PlanningSlotCapacityService::SLOT_MODE_PERIOD,
         'WHATSAPP_ORDER_TO' => '',
     ];
 
@@ -45,6 +47,7 @@ class AdminOperationalSettingsController extends Controller
         $settings['ORDER_MINIMUM_MINUTES'] = (int) $settings['ORDER_MINIMUM_MINUTES'];
         $settings['ORDER_CANCEL_MINUTES'] = (int) $settings['ORDER_CANCEL_MINUTES'];
         $settings['ORDER_SCHEDULING_WINDOW_DAYS'] = (int) $settings['ORDER_SCHEDULING_WINDOW_DAYS'];
+        $settings['ORDER_SLOT_MODE'] = (string) $settings['ORDER_SLOT_MODE'];
         $settings['WHATSAPP_ORDER_TO'] = (string) ($settings['WHATSAPP_ORDER_TO'] ?? '');
 
         return response()->json($settings);
@@ -133,7 +136,7 @@ class AdminOperationalSettingsController extends Controller
     public function testWhatsApp(Request $request, WhatsAppClient $whatsAppClient)
     {
         $validated = $request->validate([
-            'number' => ['required', 'string', 'regex:' . AdminOperationalSettingsUpdateRequest::WHATSAPP_RECIPIENT_REGEX],
+            'number' => ['required', 'string', 'regex:'.AdminOperationalSettingsUpdateRequest::WHATSAPP_RECIPIENT_REGEX],
         ]);
         $number = trim($validated['number']);
 
@@ -180,7 +183,7 @@ class AdminOperationalSettingsController extends Controller
                 $versionRecord->editable = $versionRecord->editable ?? true;
                 $versionRecord->save();
 
-                Cache::forget('setting_' . self::SETTINGS_VERSION_KEY);
+                Cache::forget('setting_'.self::SETTINGS_VERSION_KEY);
             }
         });
 

@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\V1\AdminOperationalSettingsController;
 use App\Http\Controllers\Api\V1\AdminOrderTagController;
+use App\Http\Controllers\Api\V1\AdminPreparationCapacityController;
 use App\Http\Controllers\Api\V1\AdminPlanningSlotCapacityController;
 use App\Http\Controllers\Api\V1\AppTesterController;
 use App\Http\Controllers\Api\V1\AuthController;
@@ -91,6 +92,8 @@ Route::prefix('v1')->group(function () {
             Route::get('admin/settings/operational', [AdminOperationalSettingsController::class, 'show']);
             Route::put('admin/settings/operational', [AdminOperationalSettingsController::class, 'update']);
             Route::post('admin/settings/operational/reset', [AdminOperationalSettingsController::class, 'reset']);
+            Route::get('admin/settings/operational/preparation-capacity', [AdminPreparationCapacityController::class, 'show']);
+            Route::put('admin/settings/operational/preparation-capacity', [AdminPreparationCapacityController::class, 'update']);
             Route::post('admin/settings/test-whatsapp', [AdminOperationalSettingsController::class, 'testWhatsApp']);
             Route::get('admin/order-tags', [AdminOrderTagController::class, 'index']);
             Route::post('admin/order-tags', [AdminOrderTagController::class, 'store']);

@@ -26,6 +26,7 @@ class OrderController extends Controller
     {
         $settings = $this->orders->orderSettings();
         $settings['status_labels'] = $this->orders->statusLabels();
+        $settings['slot_labels'] = $this->orders->slotLabels();
         $user = request()->user();
         $settings['active_tags'] = [];
         $settings['available_tags'] = [];

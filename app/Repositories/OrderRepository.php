@@ -21,6 +21,7 @@ class OrderRepository
             'user',
             'tags',
             'partialWithdrawals',
+            'preparationAllocations.preparationSlot',
         ]);
 
         $search = trim((string) ($filters['search'] ?? ''));
@@ -92,14 +93,14 @@ class OrderRepository
         return Order::query()
             ->where('user_id', $userId)
             ->whereNull('parent_order_id')
-            ->with(['items', 'store', 'tags'])
+            ->with(['items', 'store', 'tags', 'preparationAllocations.preparationSlot'])
             ->orderByDesc('created_at')
             ->paginate($perPage);
     }
 
     public function findForUser(Order $order): Order
     {
-        return $order->load(['items', 'store', 'tags']);
+        return $order->load(['items', 'store', 'tags', 'preparationAllocations.preparationSlot']);
     }
 
     public function paginateForAdmin(array $filters, int $perPage = 20): LengthAwarePaginator
@@ -185,6 +186,7 @@ class OrderRepository
             'tags',
             'parentOrder',
             'partialWithdrawals.generatedOrder',
+            'preparationAllocations.preparationSlot',
         ]);
     }
 
@@ -195,7 +197,7 @@ class OrderRepository
             $this->createHistoryRecord($order, $history);
         });
 
-        return $order->fresh(['items', 'store', 'user', 'history.user', 'tags']);
+        return $order->fresh(['items', 'store', 'user', 'history.user', 'tags', 'preparationAllocations.preparationSlot']);
     }
 
     public function updateWithItems(Order $order, array $payload, array $lineItems, ?array $tagIds = null, ?array $history = null): Order
@@ -234,7 +236,7 @@ class OrderRepository
             return $order;
         });
 
-        return $updatedOrder->fresh(['items', 'store', 'user', 'history.user', 'tags']);
+        return $updatedOrder->fresh(['items', 'store', 'user', 'history.user', 'tags', 'preparationAllocations.preparationSlot']);
     }
 
     public function listStoresForFilter(): Collection
@@ -298,14 +300,14 @@ class OrderRepository
             return $order;
         });
 
-        return $order->fresh(['items', 'store', 'user', 'tags']);
+        return $order->fresh(['items', 'store', 'user', 'tags', 'preparationAllocations.preparationSlot']);
     }
 
     public function cancel(Order $order, array $payload): Order
     {
         $order->update($payload);
 
-        return $order->fresh(['items', 'store', 'user', 'tags']);
+        return $order->fresh(['items', 'store', 'user', 'tags', 'preparationAllocations.preparationSlot']);
     }
 
     protected function createHistoryRecord(Order $order, ?array $history): void

@@ -14,7 +14,7 @@ class PlanningSlotCapacityUpdateRequest extends FormRequest
 
     public function rules(): array
     {
-        $slots = \App\Services\PlanningSlotCapacityService::CANONICAL_SLOTS;
+        $slots = app(\App\Services\PlanningSlotCapacityService::class)->slotKeys();
         $rules = [];
 
         foreach ($slots as $slot) {
@@ -27,13 +27,13 @@ class PlanningSlotCapacityUpdateRequest extends FormRequest
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator): void {
-            $slots = \App\Services\PlanningSlotCapacityService::CANONICAL_SLOTS;
+            $slots = app(\App\Services\PlanningSlotCapacityService::class)->slotKeys();
             $unknownSlots = array_diff(array_keys($this->all()), $slots);
 
             if ($unknownSlots !== []) {
                 $validator->errors()->add(
                     'slot_capacities',
-                    'A capacidade base só aceita os slots canónicos ' . implode(', ', $slots) . '.'
+                    'A capacidade base só aceita os slots canónicos '.implode(', ', $slots).'.'
                 );
             }
         });

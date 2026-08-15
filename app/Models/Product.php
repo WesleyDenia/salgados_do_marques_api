@@ -44,4 +44,9 @@ class Product extends Model
             ->orderBy('flavors.display_order')
             ->orderBy('flavors.name');
     }
+
+    public function preparationSettings(): HasMany
+    {
+        return $this->hasMany(ProductPreparationSetting::class);
+    }
 }

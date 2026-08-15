@@ -49,6 +49,23 @@ class OrderResource extends JsonResource
             }),
             'items' => OrderItemResource::collection($this->whenLoaded('items')),
             'tags' => OrderTagResource::collection($this->whenLoaded('tags')),
+            'preparation_allocations' => $this->whenLoaded('preparationAllocations', function () {
+                return $this->preparationAllocations
+                    ->sortBy('batch_index')
+                    ->map(fn ($allocation): array => [
+                        'id' => $allocation->id,
+                        'order_item_id' => $allocation->order_item_id,
+                        'product_id' => $allocation->product_id,
+                        'operational_preparation_slot_id' => $allocation->operational_preparation_slot_id,
+                        'preparation_slot_name' => $allocation->preparationSlot?->name,
+                        'scheduled_slot' => $allocation->scheduled_slot,
+                        'scheduled_for_date' => $allocation->scheduled_for_date?->format('Y-m-d'),
+                        'batch_index' => $allocation->batch_index,
+                        'batch_units' => $allocation->batch_units,
+                        'preparation_time_seconds' => $allocation->preparation_time_seconds,
+                    ])
+                    ->values();
+            }),
             'partial_withdrawals' => $this->whenLoaded('partialWithdrawals', function () {
                 return $this->partialWithdrawals->map(function ($withdrawal) {
                     $flavorIds = collect($withdrawal->flavor_ids ?? [])

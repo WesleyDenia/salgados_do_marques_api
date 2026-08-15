@@ -20,12 +20,13 @@ class OrderSearchRequest extends FormRequest
         /** @var OrderService $orderService */
         $orderService = app(OrderService::class);
         $statusKeys = array_keys($orderService->statusLabels());
+        $slotKeys = app(\App\Services\PlanningSlotCapacityService::class)->slotKeys();
 
         return [
             'search' => ['nullable', 'string', 'max:255'],
             'status' => ['nullable', Rule::in($statusKeys)],
             'payment_status' => ['nullable', 'string', Rule::in(['pending', 'partial', 'paid'])],
-            'slot' => ['nullable', 'string', Rule::in(['manha', 'tarde', 'noite'])],
+            'slot' => ['nullable', 'string', Rule::in($slotKeys)],
             'tag_ids' => ['nullable', 'array'],
             'tag_ids.*' => ['integer', Rule::exists('order_tags', 'id')],
             'store_id' => ['nullable', 'integer', 'exists:stores,id'],

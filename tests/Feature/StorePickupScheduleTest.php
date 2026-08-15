@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Category;
 use App\Models\Product;
+use App\Models\Setting;
 use App\Models\Store;
 use App\Models\User;
 use Carbon\Carbon;
@@ -187,6 +188,56 @@ class StorePickupScheduleTest extends TestCase
 
         $response->assertOk()
             ->assertJsonPath('data.slot', 'tarde');
+    }
+
+    public function test_order_assigns_hourly_slot_from_scheduled_time(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-03-16 10:00', 'Europe/Lisbon'));
+        [$user, $product, $store] = $this->makeOrderContext();
+        Setting::create([
+            'key' => 'ORDER_SLOT_MODE',
+            'value' => 'horario',
+            'type' => 'string',
+            'editable' => true,
+        ]);
+
+        Sanctum::actingAs($user);
+
+        $response = $this->postJson('/api/v1/orders', [
+            'store_id' => $store->id,
+            'scheduled_at' => '2026-03-17 14:37',
+            'slot' => 'manha',
+            'items' => [
+                [
+                    'product_id' => $product->id,
+                    'quantity' => 1,
+                ],
+            ],
+        ]);
+
+        $response->assertOk()
+            ->assertJsonPath('data.slot', '14h');
+    }
+
+    public function test_hourly_slot_availability_uses_hour_keys(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-03-16 10:00', 'Europe/Lisbon'));
+        [$user, , $store] = $this->makeOrderContext();
+        Setting::create([
+            'key' => 'ORDER_SLOT_MODE',
+            'value' => 'horario',
+            'type' => 'string',
+            'editable' => true,
+        ]);
+
+        Sanctum::actingAs($user);
+
+        $response = $this->getJson("/api/v1/orders/availability/slots?store_id={$store->id}&date=2026-03-17");
+
+        $response->assertOk();
+        $response->assertJsonPath('data.slots.0.slot', '08h');
+        $response->assertJsonPath('data.slots.6.slot', '14h');
+        $response->assertJsonPath('data.slots.14.slot', '22h');
     }
 
     protected function makeOrderContext(): array

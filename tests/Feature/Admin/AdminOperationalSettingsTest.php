@@ -17,12 +17,13 @@ class AdminOperationalSettingsTest extends TestCase
     {
         parent::setUp();
         $this->admin = User::factory()->create(['role' => 'admin']);
-        
+
         Setting::updateOrCreate(['key' => 'ORDER_START_TIME'], ['value' => '12:00', 'type' => 'string', 'editable' => true]);
         Setting::updateOrCreate(['key' => 'ORDER_END_TIME'], ['value' => '20:00', 'type' => 'string', 'editable' => true]);
         Setting::updateOrCreate(['key' => 'ORDER_MINIMUM_MINUTES'], ['value' => '30', 'type' => 'integer', 'editable' => true]);
         Setting::updateOrCreate(['key' => 'ORDER_CANCEL_MINUTES'], ['value' => '60', 'type' => 'integer', 'editable' => true]);
         Setting::updateOrCreate(['key' => 'ORDER_SCHEDULING_WINDOW_DAYS'], ['value' => '14', 'type' => 'integer', 'editable' => true]);
+        Setting::updateOrCreate(['key' => 'ORDER_SLOT_MODE'], ['value' => 'periodo', 'type' => 'string', 'editable' => true]);
         Setting::updateOrCreate(['key' => 'WHATSAPP_ORDER_TO'], ['value' => '', 'type' => 'string', 'editable' => true]);
         Setting::updateOrCreate(['key' => 'SETTINGS_VERSION'], ['value' => '1', 'type' => 'integer', 'editable' => true]);
     }
@@ -62,14 +63,28 @@ class AdminOperationalSettingsTest extends TestCase
                 'ORDER_MINIMUM_MINUTES' => 45,
                 'ORDER_CANCEL_MINUTES' => 120,
                 'ORDER_SCHEDULING_WINDOW_DAYS' => 30,
+                'ORDER_SLOT_MODE' => 'horario',
                 'WHATSAPP_ORDER_TO' => '+351912345678',
             ]);
 
         $response->assertStatus(200);
-        
+
         $this->assertEquals('10:00', Setting::where('key', 'ORDER_START_TIME')->first()->value);
         $this->assertEquals(45, Setting::where('key', 'ORDER_MINIMUM_MINUTES')->first()->value);
+        $this->assertEquals('horario', Setting::where('key', 'ORDER_SLOT_MODE')->first()->value);
         $this->assertEquals(2, Setting::where('key', 'SETTINGS_VERSION')->first()->value);
+    }
+
+    public function test_it_rejects_invalid_slot_mode(): void
+    {
+        $response = $this->actingAs($this->admin, 'sanctum')
+            ->putJson('/api/v1/admin/settings/operational', [
+                'version' => 1,
+                'ORDER_SLOT_MODE' => 'manual',
+            ]);
+
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors(['ORDER_SLOT_MODE']);
     }
 
     public function test_it_accepts_whatsapp_group_ids_on_update(): void
@@ -167,6 +182,7 @@ class AdminOperationalSettingsTest extends TestCase
 
         $response->assertStatus(200);
         $response->assertJson(['SETTINGS_VERSION' => 1]);
+        $response->assertJsonPath('ORDER_SLOT_MODE', 'periodo');
     }
 
     public function test_it_calls_whatsapp_client_on_test_connection(): void
@@ -180,7 +196,7 @@ class AdminOperationalSettingsTest extends TestCase
 
         $response = $this->actingAs($this->admin, 'sanctum')
             ->postJson('/api/v1/admin/settings/test-whatsapp', [
-                'number' => '+351912345678'
+                'number' => '+351912345678',
             ]);
 
         $response->assertStatus(200);
@@ -225,5 +241,6 @@ class AdminOperationalSettingsTest extends TestCase
 
         $response->assertStatus(200);
         $response->assertJsonPath('data.settings_version', 1);
+        $response->assertJsonPath('data.slot_labels.manha', 'Manhã');
     }
 }

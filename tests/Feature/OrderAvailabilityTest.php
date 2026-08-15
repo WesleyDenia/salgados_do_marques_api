@@ -2,8 +2,8 @@
 
 namespace Tests\Feature;
 
-use App\Models\Setting;
 use App\Models\Order;
+use App\Models\Setting;
 use App\Models\Store;
 use App\Models\User;
 use Carbon\Carbon;
@@ -211,7 +211,7 @@ class OrderAvailabilityTest extends TestCase
         ]);
 
         $createResponse->assertStatus(422);
-        $createResponse->assertJsonValidationErrors(['slot']);
+        $createResponse->assertJsonValidationErrors(['scheduled_at']);
     }
 
     public function test_it_validates_query_parameters_with_form_requests(): void

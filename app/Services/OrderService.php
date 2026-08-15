@@ -44,17 +44,12 @@ class OrderService
         'canceled' => [],
     ];
 
-    private const SLOT_WINDOWS = [
-        'manha' => ['start' => 0, 'end' => 11 * 60 + 59],
-        'tarde' => ['start' => 12 * 60, 'end' => 17 * 60 + 59],
-        'noite' => ['start' => 18 * 60, 'end' => 23 * 60 + 59],
-    ];
-
     public function __construct(
         protected OrderRepository $repository,
         protected ProductRepository $products,
         protected AdminFlavorService $flavors,
         protected PlanningSlotCapacityService $slotCapacities,
+        protected PreparationCapacityService $preparationCapacities,
         protected SettingService $settings,
         protected StoreService $stores,
         protected WhatsAppMessageFormatter $messages,
@@ -113,6 +108,7 @@ class OrderService
         $store = $this->stores->findById((int) $data['store_id']);
         $tagIds = $this->normalizeOrderTagIdsForActor($actor, $data['tag_ids'] ?? []);
         $allowScheduleException = $this->shouldAllowScheduleExceptionForActor($actor, $data);
+        $allowPreparationOverflow = $this->shouldAllowPreparationCapacityOverflowForActor($actor, $data);
 
         if (! $store) {
             throw ValidationException::withMessages([
@@ -120,22 +116,21 @@ class OrderService
             ]);
         }
 
-        return \Illuminate\Support\Facades\DB::transaction(function () use ($actor, $data, $orderSettings, $scheduled, $store, $tagIds, $allowScheduleException) {
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($actor, $data, $orderSettings, $scheduled, $store, $tagIds, $allowScheduleException, $allowPreparationOverflow) {
+            $slot = $this->resolveSlotFromSchedule($scheduled->copy()->timezone($orderSettings['timezone']));
+
             // Apply slot-specific lead time precedence: Slot Rule > Global Rule (whichever is more restrictive/larger)
-            $slot = $data['slot'] ?? null;
-            if ($slot) {
-                $slotRules = $this->slotCapacities->getOperationalRules();
-                $slotLeadTime = (int) ($slotRules['lead_times'][$slot] ?? 0);
-                if ($slotLeadTime > (int) $orderSettings['minimum_minutes']) {
-                    $orderSettings['minimum_minutes'] = $slotLeadTime;
-                }
+            $slotRules = $this->slotCapacities->getOperationalRules();
+            $slotLeadTime = (int) ($slotRules['lead_times'][$slot] ?? 0);
+            if ($slotLeadTime > (int) $orderSettings['minimum_minutes']) {
+                $orderSettings['minimum_minutes'] = $slotLeadTime;
             }
 
             $this->stores->validateScheduledPickup($store, $scheduled, $orderSettings, $allowScheduleException);
             $this->assertSlotAvailableForSchedule(
                 $store,
                 $scheduled,
-                $data['slot'] ?? null,
+                $slot,
                 $orderSettings,
                 null,
                 $allowScheduleException
@@ -168,12 +163,15 @@ class OrderService
                 $resolvedCustomer['customer_name'],
                 $resolvedCustomer['customer_contact'],
                 $data['payment_status'] ?? null,
-                $data['slot'] ?? null,
+                $slot,
                 $scheduled->copy()->timezone('UTC'),
                 $data['notes'] ?? null,
                 $lineItems,
                 $tagIds
             );
+
+            $this->preparationCapacities->allocateOrder($order, $allowPreparationOverflow);
+            $order = $order->fresh(['items.variant', 'store', 'user', 'tags', 'preparationAllocations.preparationSlot']);
 
             if ($resolvedCustomer['notification_contact']) {
                 try {
@@ -291,7 +289,7 @@ class OrderService
                     'consumed' => (int) ($consumedCapacity[$slot] ?? 0),
                     'remaining' => max(0, (int) (($baseCapacities[$slot] ?? 0) - ($consumedCapacity[$slot] ?? 0))),
                 ],
-                array_keys(self::SLOT_WINDOWS)
+                $this->slotCapacities->slotKeys()
             ),
         ];
     }
@@ -585,6 +583,7 @@ class OrderService
         $scheduled = $this->parseScheduledAt($data['scheduled_at'], $orderSettings['timezone']);
         $store = $this->stores->findById((int) $data['store_id']);
         $allowScheduleException = (bool) ($data['allow_schedule_exception'] ?? false);
+        $allowPreparationOverflow = (bool) ($data['allow_preparation_capacity_overflow'] ?? false);
 
         if (! $store) {
             throw ValidationException::withMessages([
@@ -592,12 +591,14 @@ class OrderService
             ]);
         }
 
-        return \Illuminate\Support\Facades\DB::transaction(function () use ($order, $data, $orderSettings, $scheduled, $store, $allowScheduleException) {
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($order, $data, $orderSettings, $scheduled, $store, $allowScheduleException, $allowPreparationOverflow) {
+            $slot = $this->resolveSlotFromSchedule($scheduled->copy()->timezone($orderSettings['timezone']));
+
             $this->stores->validateScheduledPickup($store, $scheduled, $orderSettings, $allowScheduleException);
             $this->assertSlotAvailableForSchedule(
                 $store,
                 $scheduled,
-                $data['slot'] ?? null,
+                $slot,
                 $orderSettings,
                 $order->id,
                 $allowScheduleException
@@ -629,25 +630,29 @@ class OrderService
                 'customer_contact' => $this->normalizeNullableText($data['customer_contact'] ?? null),
                 'store_id' => $this->storeSnapshotForHistory((int) $data['store_id'], $store->name),
                 'payment_status' => $data['payment_status'] ?? null,
-                'slot' => $data['slot'] ?? null,
+                'slot' => $slot,
                 'scheduled_at' => $scheduled->copy()->timezone('UTC'),
                 'notes' => $this->normalizeNullableText($data['notes'] ?? null),
                 'items' => $lineItems,
                 'tags' => $tagIds,
             ]);
 
-            return $this->repository->updateWithItems($order, [
+            $updatedOrder = $this->repository->updateWithItems($order, [
                 'customer_name' => $this->normalizeNullableText($data['customer_name'] ?? null),
                 'customer_contact' => $this->normalizeNullableText($data['customer_contact'] ?? null),
                 'store_id' => (int) $data['store_id'],
                 'payment_status' => $data['payment_status'] ?? null,
-                'slot' => $data['slot'] ?? null,
+                'slot' => $slot,
                 'scheduled_at' => $scheduled->copy()->timezone('UTC'),
                 'notes' => $this->normalizeNullableText($data['notes'] ?? null),
             ], $lineItems, $tagIds, $this->makeHistoryPayload(
                 'updated',
                 $this->calculateChanges($before, $after)
             ));
+
+            $this->preparationCapacities->allocateOrder($updatedOrder, $allowPreparationOverflow);
+
+            return $updatedOrder->fresh(['items.variant', 'store', 'user', 'history.user', 'tags', 'preparationAllocations.preparationSlot']);
         });
     }
 
@@ -690,6 +695,7 @@ class OrderService
         $scheduled = $this->parseScheduledAt($data['scheduled_at'], $orderSettings['timezone']);
         $store = $this->stores->findById((int) $order->store_id);
         $allowScheduleException = $this->shouldAllowScheduleExceptionForActor(Auth::user(), $data);
+        $allowPreparationOverflow = $this->shouldAllowPreparationCapacityOverflowForActor(Auth::user(), $data);
 
         if (! $store) {
             throw ValidationException::withMessages([
@@ -709,7 +715,7 @@ class OrderService
             $allowScheduleException
         );
 
-        return \Illuminate\Support\Facades\DB::transaction(function () use ($data, $order, $requestedUnits, $scheduled, $slot, $allocationPlan) {
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($data, $order, $requestedUnits, $scheduled, $slot, $allocationPlan, $allowPreparationOverflow) {
             $withdrawals = [];
 
             foreach ($allocationPlan as $allocation) {
@@ -753,6 +759,9 @@ class OrderService
                         'generated_order_id' => $generatedOrder->id,
                     ])->save();
                 }
+
+                $this->preparationCapacities->allocateOrder($generatedOrder, $allowPreparationOverflow);
+                $generatedOrder = $generatedOrder->fresh(['items.variant', 'store', 'user', 'tags', 'preparationAllocations.preparationSlot']);
             }
 
             $order->history()->create([
@@ -862,8 +871,7 @@ class OrderService
         array $settings,
         ?int $ignoreOrderId = null,
         bool $allowScheduleException = false
-    ): void
-    {
+    ): void {
         if ($slot === null || $slot === '') {
             return;
         }
@@ -879,7 +887,7 @@ class OrderService
 
         if ($reason !== null) {
             throw ValidationException::withMessages([
-                'slot' => [$reason],
+                'scheduled_at' => [$reason],
             ]);
         }
     }
@@ -891,8 +899,7 @@ class OrderService
         array $settings,
         ?int $ignoreOrderId = null,
         bool $allowScheduleException = false
-    ): ?string
-    {
+    ): ?string {
         $date = $scheduled->copy()->timezone($settings['timezone'])->startOfDay();
         $minuteOptions = $this->stores->availablePickupSlots(
             $store,
@@ -905,7 +912,7 @@ class OrderService
         $reason = $this->slotCapacities->getSlotBlockReason(
             $slot,
             $minuteOptions,
-            self::SLOT_WINDOWS[$slot] ?? [],
+            $this->slotCapacities->slotWindow($slot) ?? [],
             (int) ($consumedCapacity[$slot] ?? 0),
             $date
         );
@@ -1094,6 +1101,7 @@ class OrderService
             'paidCount' => $orders->where('payment_status', 'paid')->count(),
             'attentionCount' => $orders->filter(fn (Order $order): bool => in_array($order->status, ['placed', 'accepted'], true))->count(),
             'slotCounts' => $slotCounts,
+            'preparationSummary' => $this->preparationCapacities->summarizeOrders($orders),
         ];
     }
 
@@ -1165,6 +1173,7 @@ class OrderService
 
             $daySummaries[$dayKey]['slot_counts'] = $daySummaries[$dayKey]['slotCounts'];
             $daySummaries[$dayKey]['slot_occupancy'] = $daySummaries[$dayKey]['slotOccupancy'];
+            $daySummaries[$dayKey]['preparation_summary'] = $this->preparationCapacities->summarizeOrders($dayOrders);
             unset($daySummaries[$dayKey]['slotCounts'], $daySummaries[$dayKey]['slotOccupancy']);
         }
 
@@ -1178,12 +1187,9 @@ class OrderService
      */
     protected function emptyPlanningSlotCounts(): array
     {
-        return [
-            'manha' => 0,
-            'tarde' => 0,
-            'noite' => 0,
+        return array_merge(array_fill_keys($this->slotCapacities->slotKeys(), 0), [
             'sem_slot' => 0,
-        ];
+        ]);
     }
 
     /**
@@ -1207,13 +1213,16 @@ class OrderService
             return $this->buildPlanningSlotOccupancyEntries(
                 array_merge(['sem_slot' => (int) ($slotCounts['sem_slot'] ?? 0)], $consumedCounts),
                 null,
-                (string) ($context['reason'] ?? 'Contexto oficial insuficiente para determinar disponibilidade.')
+                (string) ($context['reason'] ?? 'Contexto oficial insuficiente para determinar disponibilidade.'),
+                $this->preparationCapacities->summarizeOrders($orders)
             );
         }
 
         return $this->buildPlanningSlotOccupancyEntries(
             array_merge(['sem_slot' => (int) ($slotCounts['sem_slot'] ?? 0)], $consumedCounts),
-            $this->buildOfficialSlotStatesForDay($context['store'], $day, $consumedCounts)
+            $this->buildOfficialSlotStatesForDay($context['store'], $day, $consumedCounts),
+            null,
+            $this->preparationCapacities->summarizeOrders($orders)
         );
     }
 
@@ -1289,7 +1298,7 @@ class OrderService
         $date = Carbon::createFromFormat('Y-m-d', $day->format('Y-m-d'), $settings['timezone']);
         $minuteOptions = $this->stores->availablePickupSlots($store, $date, $settings);
 
-        return collect(array_keys(self::SLOT_WINDOWS))
+        return collect($this->slotCapacities->slotKeys())
             ->mapWithKeys(fn (string $slot): array => [
                 $slot => $this->slotStateFromMinuteOptions(
                     $slot,
@@ -1309,7 +1318,8 @@ class OrderService
     protected function buildPlanningSlotOccupancyEntries(
         array $slotCounts,
         ?array $slotStates,
-        ?string $insufficientContextReason = null
+        ?string $insufficientContextReason = null,
+        array $preparationSummary = []
     ): array {
         $occupancy = [];
         $slotKeys = array_values(array_unique(array_merge(
@@ -1327,6 +1337,7 @@ class OrderService
                     'state' => null,
                     'context_status' => 'not_applicable',
                     'context_reason' => 'Sem slot atribuído não representa uma janela oficial de capacidade.',
+                    'preparation' => $preparationSummary[$slot] ?? null,
                 ];
 
                 continue;
@@ -1339,6 +1350,7 @@ class OrderService
                     'state' => $slotStates[$slot],
                     'context_status' => 'official',
                     'context_reason' => null,
+                    'preparation' => $preparationSummary[$slot] ?? null,
                 ];
 
                 continue;
@@ -1351,6 +1363,7 @@ class OrderService
                 'context_status' => 'insufficient_context',
                 'context_reason' => $insufficientContextReason
                     ?? 'Contexto oficial insuficiente para afirmar disponibilidade neste conjunto.',
+                'preparation' => $preparationSummary[$slot] ?? null,
             ];
         }
 
@@ -1371,14 +1384,11 @@ class OrderService
     /**
      * @return array<string, string>
      */
-    protected function slotLabels(): array
+    public function slotLabels(): array
     {
-        return [
-            'manha' => $this->slotCapacities->slotLabel('manha'),
-            'tarde' => $this->slotCapacities->slotLabel('tarde'),
-            'noite' => $this->slotCapacities->slotLabel('noite'),
+        return array_merge($this->slotCapacities->slotLabels(), [
             'sem_slot' => 'Sem slot',
-        ];
+        ]);
     }
 
     protected function normalizeNullableText(mixed $value): ?string
@@ -1501,6 +1511,15 @@ class OrderService
         }
 
         return (bool) ($data['allow_schedule_exception'] ?? false);
+    }
+
+    protected function shouldAllowPreparationCapacityOverflowForActor(?User $actor, array $data): bool
+    {
+        if (! $actor?->isStaff()) {
+            return false;
+        }
+
+        return (bool) ($data['allow_preparation_capacity_overflow'] ?? false);
     }
 
     /**
@@ -1645,7 +1664,7 @@ class OrderService
         return $this->slotCapacities->resolveSlotState(
             $slot,
             $minuteOptions,
-            self::SLOT_WINDOWS[$slot] ?? null,
+            $this->slotCapacities->slotWindow($slot),
             $consumedCount,
             $date
         );
@@ -1696,15 +1715,7 @@ class OrderService
 
     protected function resolveSlotFromSchedule(Carbon $scheduled): string
     {
-        $minutes = ((int) $scheduled->format('H') * 60) + (int) $scheduled->format('i');
-
-        foreach (self::SLOT_WINDOWS as $slot => $window) {
-            if ($minutes >= $window['start'] && $minutes <= $window['end']) {
-                return $slot;
-            }
-        }
-
-        return 'noite';
+        return $this->slotCapacities->resolveSlotFromSchedule($scheduled);
     }
 
     /**

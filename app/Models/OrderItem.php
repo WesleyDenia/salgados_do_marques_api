@@ -60,4 +60,9 @@ class OrderItem extends Model
             ->orderByDesc('scheduled_at')
             ->orderByDesc('id');
     }
+
+    public function preparationAllocations()
+    {
+        return $this->hasMany(OrderPreparationAllocation::class);
+    }
 }

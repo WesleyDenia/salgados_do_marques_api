@@ -13,9 +13,7 @@ return new class extends Migration
             $table->foreignId('order_id')->constrained()->cascadeOnDelete();
             $table->foreignId('order_item_id')->nullable()->constrained()->nullOnDelete();
             $table->foreignId('product_id')->nullable()->constrained()->nullOnDelete();
-            $table->foreignId('operational_preparation_slot_id')
-                ->constrained('operational_preparation_slots')
-                ->cascadeOnDelete();
+            $table->foreignId('operational_preparation_slot_id');
             $table->string('scheduled_slot', 50)->nullable();
             $table->date('scheduled_for_date');
             $table->unsignedInteger('batch_index');
@@ -28,6 +26,13 @@ return new class extends Migration
                 'order_preparation_allocations_load_idx'
             );
             $table->index(['order_id', 'order_item_id'], 'order_preparation_allocations_order_item_idx');
+            $table->foreign(
+                'operational_preparation_slot_id',
+                'order_prep_slot_fk'
+            )
+                ->references('id')
+                ->on('operational_preparation_slots')
+                ->cascadeOnDelete();
         });
     }
 

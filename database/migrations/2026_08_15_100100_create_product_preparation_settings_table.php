@@ -2,12 +2,22 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
     public function up(): void
     {
+        if (Schema::hasTable('product_preparation_settings')) {
+            if (DB::table('product_preparation_settings')->exists()) {
+                throw new RuntimeException('product_preparation_settings already exists with data; refusing to drop it.');
+            }
+
+            // Recovery path for a failed production migration that left the empty table behind.
+            Schema::drop('product_preparation_settings');
+        }
+
         Schema::create('product_preparation_settings', function (Blueprint $table) {
             $table->id();
             $table->foreignId('operational_preparation_slot_id');

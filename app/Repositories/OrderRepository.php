@@ -29,6 +29,9 @@ class OrderRepository
         if ($search !== '') {
             $query->where(function ($builder) use ($search) {
                 $likeSearch = '%'.$search.'%';
+                $phoneDigits = $this->onlyDigits($search);
+                $shouldSearchPhone = strlen($phoneDigits) >= 4;
+                $shouldSearchRawContact = ! (ctype_digit($search) && ! str_starts_with($search, '0') && ! $shouldSearchPhone);
 
                 // If it looks like a numeric ID and has NO leading zeros, search by Key
                 if (ctype_digit($search) && ! str_starts_with($search, '0')) {
@@ -37,11 +40,29 @@ class OrderRepository
 
                 $builder
                     ->orWhere('customer_name', 'like', $likeSearch)
-                    ->orWhere('customer_contact', 'like', $likeSearch)
-                    ->orWhereHas('user', function ($userQuery) use ($likeSearch) {
+                    ->when($shouldSearchRawContact, function ($query) use ($likeSearch) {
+                        $query->orWhere('customer_contact', 'like', $likeSearch);
+                    })
+                    ->when($shouldSearchPhone, function ($query) use ($phoneDigits) {
+                        $query->orWhereRaw($this->phoneDigitsExpression('customer_contact').' like ?', [
+                            '%'.$phoneDigits.'%',
+                        ]);
+                    })
+                    ->orWhereHas('user', function ($userQuery) use ($likeSearch, $phoneDigits, $shouldSearchPhone, $shouldSearchRawContact) {
+                        $userQuery->where('name', 'like', $likeSearch);
+
+                        if ($shouldSearchRawContact) {
+                            $userQuery->orWhere('phone', 'like', $likeSearch);
+                        }
+
+                        if (! $shouldSearchPhone) {
+                            return;
+                        }
+
                         $userQuery
-                            ->where('name', 'like', $likeSearch)
-                            ->orWhere('phone', 'like', $likeSearch);
+                            ->orWhereRaw($this->phoneDigitsExpression('phone').' like ?', [
+                                '%'.$phoneDigits.'%',
+                            ]);
                     });
             });
         }
@@ -86,6 +107,16 @@ class OrderRepository
         }
 
         return $query->orderBy('scheduled_at')->orderBy('id');
+    }
+
+    protected function onlyDigits(string $value): string
+    {
+        return (string) preg_replace('/\D+/', '', $value);
+    }
+
+    protected function phoneDigitsExpression(string $column): string
+    {
+        return "replace(replace(replace(replace(replace(replace(replace({$column}, '+', ''), ' ', ''), '-', ''), '/', ''), '(', ''), ')', ''), '.', '')";
     }
 
     public function paginateForUser(int $userId, int $perPage = 20): LengthAwarePaginator

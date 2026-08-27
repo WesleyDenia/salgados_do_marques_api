@@ -100,10 +100,15 @@
               </td>
               <td>
                 <span class="stack-table-label">Cliente</span>
-                <strong>{{ $order->user?->name ?? '—' }}</strong>
+                <strong>{{ $order->customerNameForDisplay() ?? '—' }}</strong>
                 <div style="color:#6b7280; font-size:0.9rem; margin-top:4px;">
-                  {{ $order->user?->email ?? '—' }}
+                  {{ $order->customerContactForDisplay() ?? 'Sem contacto' }}
                 </div>
+                @if ($order->user?->email)
+                  <div style="color:#6b7280; font-size:0.9rem; margin-top:4px;">
+                    {{ $order->user->email }}
+                  </div>
+                @endif
               </td>
               <td>
                 <span class="stack-table-label">Loja</span>

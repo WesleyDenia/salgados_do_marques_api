@@ -73,11 +73,11 @@ class OrderAdminIndexTest extends TestCase
         $admin = User::factory()->create(['role' => 'admin']);
         $customer = User::factory()->create([
             'name' => 'Carla Atendimento',
-            'phone' => '912345678',
+            'phone' => '+351 912 345 678',
         ]);
         $otherCustomer = User::factory()->create([
             'name' => 'Bruno Operacao',
-            'phone' => '934567890',
+            'phone' => '+351 934 567 890',
         ]);
         $store = $this->createStore();
 
@@ -86,9 +86,19 @@ class OrderAdminIndexTest extends TestCase
             'store_id' => $store->id,
             'status' => 'placed',
             'customer_name' => 'Carla Atendimento',
-            'customer_contact' => '912345678',
+            'customer_contact' => null,
             'scheduled_at' => Carbon::create(2026, 7, 15, 11, 30, 0, 'UTC'),
             'total' => 12.50,
+            'notes' => null,
+        ]);
+
+        $manualContactOrder = Order::create([
+            'store_id' => $store->id,
+            'status' => 'placed',
+            'customer_name' => 'Cliente WhatsApp',
+            'customer_contact' => '+351 923 456 789',
+            'scheduled_at' => Carbon::create(2026, 7, 15, 12, 30, 0, 'UTC'),
+            'total' => 7.50,
             'notes' => null,
         ]);
 
@@ -108,24 +118,37 @@ class OrderAdminIndexTest extends TestCase
         ]));
 
         $responseByName->assertOk();
-        $responseByName->assertSeeText("#{$matchingOrder->id}");
-        $responseByName->assertDontSeeText("#{$nonMatchingOrder->id}");
+        $responseByName->assertSeeText('Carla Atendimento');
+        $responseByName->assertDontSeeText('Cliente WhatsApp');
+        $responseByName->assertDontSeeText('Bruno Operacao');
 
-        $responseByPhone = $this->actingAs($admin)->get(route('admin.orders.index', [
-            'search' => '912345678',
+        $responseByUserPhone = $this->actingAs($admin)->get(route('admin.orders.index', [
+            'search' => '912 345 678',
         ]));
 
-        $responseByPhone->assertOk();
-        $responseByPhone->assertSeeText("#{$matchingOrder->id}");
-        $responseByPhone->assertDontSeeText("#{$nonMatchingOrder->id}");
+        $responseByUserPhone->assertOk();
+        $responseByUserPhone->assertSeeText('Carla Atendimento');
+        $responseByUserPhone->assertDontSeeText('Cliente WhatsApp');
+        $responseByUserPhone->assertDontSeeText('Bruno Operacao');
+
+        $responseByManualContact = $this->actingAs($admin)->get(route('admin.orders.index', [
+            'search' => '923456789',
+        ]));
+
+        $responseByManualContact->assertOk();
+        $responseByManualContact->assertSeeText('Cliente WhatsApp');
+        $responseByManualContact->assertSeeText('+351 923 456 789');
+        $responseByManualContact->assertDontSeeText('Carla Atendimento');
+        $responseByManualContact->assertDontSeeText('Bruno Operacao');
 
         $responseById = $this->actingAs($admin)->get(route('admin.orders.index', [
             'search' => (string) $matchingOrder->id,
         ]));
 
         $responseById->assertOk();
-        $responseById->assertSeeText("#{$matchingOrder->id}");
-        $responseById->assertDontSeeText("#{$nonMatchingOrder->id}");
+        $responseById->assertSeeText('Carla Atendimento');
+        $responseById->assertDontSeeText('Cliente WhatsApp');
+        $responseById->assertDontSeeText('Bruno Operacao');
     }
 
     public function test_admin_order_index_hides_terminal_orders_by_default_but_allows_explicit_filter(): void

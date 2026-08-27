@@ -39,7 +39,7 @@ class OrderFlavorValidationTest extends TestCase
 
         $response = $this->postJson('/api/v1/orders', [
             'store_id' => $store->id,
-            'scheduled_at' => now()->addHour()->format('Y-m-d H:i'),
+            'scheduled_at' => $this->validScheduledAt(),
             'items' => [
                 [
                     'product_id' => $product->id,
@@ -66,7 +66,7 @@ class OrderFlavorValidationTest extends TestCase
 
         $response = $this->postJson('/api/v1/orders', [
             'store_id' => $store->id,
-            'scheduled_at' => now()->addHour()->format('Y-m-d H:i'),
+            'scheduled_at' => $this->validScheduledAt(),
             'items' => [
                 [
                     'product_id' => $product->id,
@@ -98,7 +98,7 @@ class OrderFlavorValidationTest extends TestCase
 
         $response = $this->postJson('/api/v1/orders', [
             'store_id' => $store->id,
-            'scheduled_at' => now()->addHour()->format('Y-m-d H:i'),
+            'scheduled_at' => $this->validScheduledAt(),
             'items' => [
                 [
                     'product_id' => $product->id,
@@ -124,6 +124,44 @@ class OrderFlavorValidationTest extends TestCase
         ]);
     }
 
+    public function test_new_orders_expand_variant_multiplier_even_when_variant_unit_count_is_zero(): void
+    {
+        [$product, $variant, $store, $user, $flavors] = $this->makeOrderContext();
+        $variant->update([
+            'name' => 'Mini Churros',
+            'unit_count' => 0,
+            'max_flavors' => 1,
+        ]);
+
+        Sanctum::actingAs($user);
+
+        $response = $this->postJson('/api/v1/orders', [
+            'store_id' => $store->id,
+            'scheduled_at' => $this->validScheduledAt(),
+            'items' => [
+                [
+                    'product_id' => $product->id,
+                    'variant_id' => $variant->id,
+                    'quantity' => 2,
+                    'flavors' => [$flavors['allowedA']->id],
+                ],
+            ],
+        ]);
+
+        $response->assertOk();
+        $response->assertJsonCount(2, 'data.items');
+        $response->assertJsonPath('data.items.0.quantity', 1);
+        $response->assertJsonPath('data.items.1.quantity', 1);
+        $response->assertJsonPath('data.items.0.options.flavors.0', $flavors['allowedA']->id);
+        $response->assertJsonPath('data.items.1.options.flavors.0', $flavors['allowedA']->id);
+
+        $this->assertDatabaseCount('order_items', 2);
+        $this->assertDatabaseMissing('order_items', [
+            'variant_id' => $variant->id,
+            'quantity' => 2,
+        ]);
+    }
+
     public function test_order_rejects_flavors_for_product_without_variant(): void
     {
         [$product, $variant, $store, $user, $flavors] = $this->makeOrderContext();
@@ -132,7 +170,7 @@ class OrderFlavorValidationTest extends TestCase
 
         $response = $this->postJson('/api/v1/orders', [
             'store_id' => $store->id,
-            'scheduled_at' => now()->addHour()->format('Y-m-d H:i'),
+            'scheduled_at' => $this->validScheduledAt(),
             'items' => [
                 [
                     'product_id' => $product->id,
@@ -154,7 +192,7 @@ class OrderFlavorValidationTest extends TestCase
 
         $basePayload = [
             'store_id' => $store->id,
-            'scheduled_at' => now()->addHour()->format('Y-m-d H:i'),
+            'scheduled_at' => $this->validScheduledAt(),
             'items' => [
                 [
                     'product_id' => $product->id,
@@ -247,5 +285,10 @@ class OrderFlavorValidationTest extends TestCase
         $product->flavors()->sync([$allowedA->id, $allowedB->id]);
 
         return [$product, $variant, $store, $user, compact('allowedA', 'allowedB', 'inactive', 'other')];
+    }
+
+    protected function validScheduledAt(): string
+    {
+        return now()->addDay()->setTime(14, 0)->format('Y-m-d H:i');
     }
 }

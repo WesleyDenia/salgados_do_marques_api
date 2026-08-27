@@ -622,7 +622,7 @@ class OrderService
                 ]);
             }
 
-            $lineItems = $this->buildOrderLineItems($items, $products, $variants);
+            $lineItems = $this->buildOrderLineItems($items, $products, $variants, true);
             $tagIds = $this->normalizeOrderTagIds($data['tag_ids'] ?? []);
             $before = $this->snapshotOrderForHistory($order);
             $after = $this->snapshotOrderForHistory($order, [
@@ -2186,7 +2186,7 @@ class OrderService
                 'total' => $price * $quantity,
             ];
 
-            if (! $expandMultiplier || ! $variant || $quantity <= 1 || (int) ($variant->unit_count ?? 0) <= 0) {
+            if (! $expandMultiplier || ! $variant || $quantity <= 1) {
                 return [$baseLineItem];
             }
 

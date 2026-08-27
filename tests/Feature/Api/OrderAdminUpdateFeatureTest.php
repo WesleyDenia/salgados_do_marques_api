@@ -3,8 +3,10 @@
 namespace Tests\Feature\Api;
 
 use App\Models\Category;
+use App\Models\Flavor;
 use App\Models\Order;
 use App\Models\Product;
+use App\Models\ProductVariant;
 use App\Models\Setting;
 use App\Models\Store;
 use App\Models\User;
@@ -15,6 +17,13 @@ use Tests\TestCase;
 class OrderAdminUpdateFeatureTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function tearDown(): void
+    {
+        Carbon::setTestNow();
+
+        parent::tearDown();
+    }
 
     public function test_admin_can_update_an_existing_order_for_correction(): void
     {
@@ -170,7 +179,7 @@ class OrderAdminUpdateFeatureTest extends TestCase
             'customer_name' => 'Maria Santos',
             'customer_contact' => '919111222',
             'store_id' => $store->id,
-            'scheduled_at' => '2026-07-16T07:00:00+01:00',
+            'scheduled_at' => '2026-07-16T08:30:00+01:00',
             'allow_schedule_exception' => true,
             'payment_status' => 'paid',
             'slot' => 'manha',
@@ -187,6 +196,79 @@ class OrderAdminUpdateFeatureTest extends TestCase
             ->assertJsonPath('data.notes', 'Correção com exceção horária')
             ->assertJsonPath('data.payment_status', 'paid')
             ->assertJsonPath('data.slot', 'manha');
+    }
+
+    public function test_admin_update_expands_variant_multiplier_into_distinct_order_items(): void
+    {
+        $this->setEditWindow();
+        $admin = User::factory()->create(['role' => 'admin']);
+        $customer = User::factory()->create();
+        $store = $this->createStore();
+        $category = Category::create([
+            'name' => 'Doces',
+            'description' => 'Categoria de teste',
+            'active' => true,
+        ]);
+        $product = Product::create([
+            'category_id' => $category->id,
+            'name' => 'Mini Churros',
+            'price' => 6.50,
+            'active' => true,
+        ]);
+        $variant = ProductVariant::create([
+            'product_id' => $product->id,
+            'name' => 'Mini Churros',
+            'unit_count' => 0,
+            'max_flavors' => 1,
+            'price' => 6.50,
+            'active' => true,
+            'display_order' => 0,
+        ]);
+        $flavor = Flavor::create(['name' => 'Doce de leite', 'active' => true, 'display_order' => 1]);
+        $product->flavors()->sync([$flavor->id]);
+        $order = Order::create([
+            'user_id' => $customer->id,
+            'customer_name' => 'Maria Silva',
+            'customer_contact' => '912345678',
+            'store_id' => $store->id,
+            'status' => 'placed',
+            'payment_status' => 'pending',
+            'slot' => 'tarde',
+            'scheduled_at' => Carbon::create(2026, 7, 16, 14, 0, 0, 'Europe/Lisbon')->timezone('UTC'),
+            'total' => 6.50,
+            'notes' => null,
+        ]);
+
+        $response = $this->actingAs($admin, 'sanctum')->patchJson("/api/v1/admin/orders/{$order->id}", [
+            'customer_name' => 'Maria Silva',
+            'customer_contact' => '912345678',
+            'store_id' => $store->id,
+            'scheduled_at' => '2026-07-16T14:00:00+01:00',
+            'payment_status' => 'pending',
+            'slot' => 'tarde',
+            'items' => [
+                [
+                    'product_id' => $product->id,
+                    'variant_id' => $variant->id,
+                    'quantity' => 2,
+                    'flavors' => [$flavor->id],
+                ],
+            ],
+        ]);
+
+        $response->assertOk();
+        $response->assertJsonCount(2, 'data.items');
+        $response->assertJsonPath('data.items.0.quantity', 1);
+        $response->assertJsonPath('data.items.1.quantity', 1);
+        $response->assertJsonPath('data.items.0.options.flavors.0', $flavor->id);
+        $response->assertJsonPath('data.items.1.options.flavors.0', $flavor->id);
+
+        $this->assertDatabaseCount('order_items', 2);
+        $this->assertDatabaseMissing('order_items', [
+            'order_id' => $order->id,
+            'variant_id' => $variant->id,
+            'quantity' => 2,
+        ]);
     }
 
     public function test_order_resource_marks_orders_outside_the_window_as_not_editable(): void
@@ -264,6 +346,10 @@ class OrderAdminUpdateFeatureTest extends TestCase
 
     protected function setEditWindow(): void
     {
+        if (Carbon::getTestNow() === null) {
+            Carbon::setTestNow(Carbon::parse('2026-07-15 10:00:00', 'Europe/Lisbon'));
+        }
+
         Setting::query()->updateOrCreate(
             ['key' => 'order_cancel_minutes'],
             ['value' => 60, 'type' => 'integer', 'editable' => true],

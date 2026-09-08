@@ -842,6 +842,7 @@
             <a class="nav-link {{ request()->routeIs('admin.stores.*') ? 'active' : '' }}" href="{{ route('admin.stores.index') }}">Lojas</a>
             <a class="nav-link {{ request()->routeIs('admin.partners.*') ? 'active' : '' }}" href="{{ route('admin.partners.index') }}">Parceiros</a>
             <a class="nav-link {{ request()->routeIs('admin.partner-campaigns.*') ? 'active' : '' }}" href="{{ route('admin.partner-campaigns.index') }}">Campanhas de Parceiros</a>
+            <a class="nav-link {{ request()->routeIs('admin.urban-campaign.*') ? 'active' : '' }}" href="{{ route('admin.urban-campaign.index') }}">Campanha Urbana</a>
             <a class="nav-link {{ request()->routeIs('admin.app-testers.*') ? 'active' : '' }}" href="{{ route('admin.app-testers.index') }}">Testers do App</a>
             <a class="nav-link {{ request()->routeIs('admin.whatsapp.*') ? 'active' : '' }}" href="{{ route('admin.whatsapp.index') }}">WhatsApp</a>
             <a class="nav-link {{ request()->routeIs('admin.queue.*') ? 'active' : '' }}" href="{{ route('admin.queue.index') }}">Fila ERP</a>

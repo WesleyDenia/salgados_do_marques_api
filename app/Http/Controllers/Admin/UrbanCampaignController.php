@@ -3,12 +3,14 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\UrbanCampaignCouponConfigRequest;
 use App\Http\Requests\Admin\UrbanCampaignQrCodeRequest;
 use App\Http\Requests\Admin\UrbanCampaignQuestionRequest;
 use App\Http\Requests\Admin\UrbanCampaignResponseRequest;
 use App\Models\QrCode;
 use App\Models\Question;
 use App\Models\QuestionResponse;
+use App\Models\UrbanCampaignCouponConfig;
 use App\Services\UrbanCampaignAdminService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
@@ -102,6 +104,34 @@ class UrbanCampaignController extends Controller
         return $this->redirectToTab('responses', 'Resposta removida com sucesso.');
     }
 
+    public function editCouponConfig(UrbanCampaignCouponConfig $couponConfig): View
+    {
+        return $this->view(['editCouponConfig' => $couponConfig, 'activeTab' => 'coupon-configs']);
+    }
+
+    public function storeCouponConfig(UrbanCampaignCouponConfigRequest $request): RedirectResponse
+    {
+        $this->service->createCouponConfig($request->validated());
+
+        return $this->redirectToTab('coupon-configs', 'Configuração de cupom criada com sucesso.');
+    }
+
+    public function updateCouponConfig(
+        UrbanCampaignCouponConfigRequest $request,
+        UrbanCampaignCouponConfig $couponConfig
+    ): RedirectResponse {
+        $this->service->updateCouponConfig($couponConfig, $request->validated());
+
+        return $this->redirectToTab('coupon-configs', 'Configuração de cupom atualizada com sucesso.');
+    }
+
+    public function destroyCouponConfig(UrbanCampaignCouponConfig $couponConfig): RedirectResponse
+    {
+        $this->service->deleteCouponConfig($couponConfig);
+
+        return $this->redirectToTab('coupon-configs', 'Configuração de cupom removida com sucesso.');
+    }
+
     protected function view(array $data = []): View
     {
         return view('admin.urban-campaign.index', array_merge(
@@ -116,6 +146,11 @@ class UrbanCampaignController extends Controller
                 ]),
                 'editResponse' => new QuestionResponse([
                     'display_order' => 0,
+                ]),
+                'editCouponConfig' => new UrbanCampaignCouponConfig([
+                    'active' => true,
+                    'discount_type' => UrbanCampaignCouponConfig::TYPE_PERCENT,
+                    'amount' => 10,
                 ]),
                 'activeTab' => request('tab', 'qr-codes'),
             ],

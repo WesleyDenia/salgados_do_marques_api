@@ -30,7 +30,23 @@ export interface UrbanCampaignAnswerResult {
   response_id: number;
   is_correct: boolean;
   reward_percent: number;
+  reward_type?: "money" | "percent";
+  reward_amount?: number;
   collection_label: string;
+}
+
+export interface UrbanCampaignCouponClaimResult {
+  id: number;
+  phone: string;
+  coupon_type: string;
+  code: string | null;
+  external_id: string | null;
+  status: string;
+  is_correct: boolean;
+  discount_type: "money" | "percent";
+  amount: number;
+  expires_at?: string | null;
+  erp_error?: string | null;
 }
 
 interface ApiObjectResponse<T> {
@@ -101,6 +117,34 @@ export async function submitUrbanCampaignAnswer(payload: {
 
   if (!data.data) {
     throw new Error("Não foi possível validar a resposta.");
+  }
+
+  return data.data;
+}
+
+export async function claimUrbanCampaignCoupon(payload: {
+  code: string;
+  question_id: number;
+  response_id: number;
+  phone: string;
+}): Promise<UrbanCampaignCouponClaimResult> {
+  const response = await fetch(`${resolveApiBaseUrl()}/public/urban-campaign/claims`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const data = (await response.json().catch(() => ({}))) as ApiObjectResponse<UrbanCampaignCouponClaimResult>;
+
+  if (!response.ok) {
+    throw new Error(firstApiError(data, "Não foi possível resgatar o cupão."));
+  }
+
+  if (!data.data) {
+    throw new Error("Não foi possível resgatar o cupão.");
   }
 
   return data.data;

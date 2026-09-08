@@ -17,17 +17,14 @@ import { Seo } from "@/components/Seo";
 import { Button } from "@/components/ui/button";
 import { OG_IMAGES, SITE_NAME, SITE_URL } from "@/lib/site";
 import {
+  claimUrbanCampaignCoupon,
   fetchUrbanCampaignChallenge,
   submitUrbanCampaignAnswer,
   type UrbanCampaignAnswerResult,
+  type UrbanCampaignCouponClaimResult,
 } from "@/lib/urban-campaign";
 import quizBackground from "@/assets/campanha-urbana-perguntas.png";
 import campaignLogo from "@/assets/logo-pombal-tem-um-segredo.png";
-
-type MockClaim = {
-  phone: string;
-  couponCode: string;
-};
 
 const COLLECTION_TYPES = ["kibe", "carne", "salsicha", "queijo", "coxinha"];
 const VALID_CODE_PATTERN = /^[a-zA-Z0-9-]{4,120}$/;
@@ -59,6 +56,18 @@ function normalisePortugueseMobile(value: string) {
   return null;
 }
 
+function formatRewardAmount(value: number, type: "money" | "percent") {
+  if (type === "money") {
+    return new Intl.NumberFormat("pt-PT", {
+      style: "currency",
+      currency: "EUR",
+      maximumFractionDigits: 2,
+    }).format(value);
+  }
+
+  return `${Number(value).toLocaleString("pt-PT", { maximumFractionDigits: 2 })}%`;
+}
+
 function answerStorageKey(code: string, questionId: number) {
   return `${ANSWER_STORAGE_PREFIX}:${code.trim().toUpperCase()}:${questionId}`;
 }
@@ -77,6 +86,8 @@ function isStoredAnswerResult(value: unknown, questionId: number): value is Urba
     typeof result.response_id === "number" &&
     typeof result.is_correct === "boolean" &&
     typeof result.reward_percent === "number" &&
+    (result.reward_type === undefined || result.reward_type === "money" || result.reward_type === "percent") &&
+    (result.reward_amount === undefined || typeof result.reward_amount === "number") &&
     typeof result.collection_label === "string"
   );
 }
@@ -114,7 +125,7 @@ const CampanhaUrbana = () => {
   const [answerResult, setAnswerResult] = useState<UrbanCampaignAnswerResult | null>(null);
   const [phone, setPhone] = useState("");
   const [phoneError, setPhoneError] = useState("");
-  const [mockClaim, setMockClaim] = useState<MockClaim | null>(null);
+  const [claimResult, setClaimResult] = useState<UrbanCampaignCouponClaimResult | null>(null);
 
   const hasValidCode = VALID_CODE_PATTERN.test(code);
   const {
@@ -142,6 +153,24 @@ const CampanhaUrbana = () => {
     },
   });
 
+  const claimMutation = useMutation({
+    mutationFn: (normalisedPhone: string) => {
+      if (!answerResult) {
+        throw new Error("Responde à pista antes de resgatar o cupão.");
+      }
+
+      return claimUrbanCampaignCoupon({
+        code,
+        question_id: answerResult.question_id,
+        response_id: answerResult.response_id,
+        phone: normalisedPhone,
+      });
+    },
+    onSuccess: (result) => {
+      setClaimResult(result);
+    },
+  });
+
   useEffect(() => {
     if (!challenge) {
       return;
@@ -162,7 +191,8 @@ const CampanhaUrbana = () => {
   const isValidCampaignLink = Boolean(challenge);
   const hasAnswered = Boolean(answerResult);
   const isCorrect = Boolean(answerResult?.is_correct);
-  const reward = answerResult?.reward_percent ?? null;
+  const rewardType = answerResult?.reward_type ?? "percent";
+  const reward = answerResult?.reward_amount ?? answerResult?.reward_percent ?? null;
 
   const collection = useMemo(() => {
     if (!challenge || !answerResult) {
@@ -193,10 +223,7 @@ const CampanhaUrbana = () => {
       return;
     }
 
-    setMockClaim({
-      phone: normalisedPhone,
-      couponCode: `SEG-${code.slice(0, 4).toUpperCase()}-${reward ?? 0}`,
-    });
+    claimMutation.mutate(normalisedPhone);
   };
 
   if (!hasValidCode || (!isLoading && (!isValidCampaignLink || isError))) {
@@ -424,9 +451,11 @@ const CampanhaUrbana = () => {
                         {isCorrect ? "Acertaste!" : "Não foi desta - mas ganhas na mesma"}
                       </p>
                       <h2 className="mt-2 text-5xl font-bold text-[#4b080b] sm:text-6xl">
-                        {reward}%
+                        {reward === null ? "" : formatRewardAmount(reward, rewardType)}
                       </h2>
-                      <p className="mt-2 text-lg font-semibold text-[#5c1719]">de desconto</p>
+                      <p className="mt-2 text-lg font-semibold text-[#5c1719]">
+                        {rewardType === "money" ? "em desconto" : "de desconto"}
+                      </p>
                     </div>
 
                     <div className="px-6 py-7 sm:px-9 sm:py-9">
@@ -448,7 +477,7 @@ const CampanhaUrbana = () => {
                         </p>
                       </div>
 
-                      {!mockClaim ? (
+                      {!claimResult ? (
                         <form onSubmit={claimCoupon} className="mt-8">
                           <label htmlFor="campaign-phone" className="text-sm font-bold text-[#4b1113]">
                             Número de telemóvel
@@ -482,11 +511,19 @@ const CampanhaUrbana = () => {
                           <Button
                             type="submit"
                             size="xl"
-                            className="mt-5 w-full bg-[#761014] text-white hover:bg-[#5b090c]"
+                            disabled={claimMutation.isPending}
+                            className="mt-5 w-full bg-[#761014] text-white hover:bg-[#5b090c] disabled:cursor-not-allowed disabled:opacity-45"
                           >
                             <MessageCircle className="mr-2 h-5 w-5" />
-                            Resgatar cupão
+                            {claimMutation.isPending ? "A gerar cupão..." : "Resgatar cupão"}
                           </Button>
+
+                          {claimMutation.isError ? (
+                            <p className="mt-3 flex items-center justify-center gap-2 text-sm font-medium text-[#a41116]">
+                              <X className="h-4 w-4" />
+                              {claimMutation.error.message}
+                            </p>
+                          ) : null}
 
                           <p className="mt-4 flex items-start justify-center gap-2 text-center text-xs leading-5 text-[#816d61]">
                             <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />
@@ -496,12 +533,22 @@ const CampanhaUrbana = () => {
                       ) : (
                         <div className="mt-8 rounded-2xl border border-[#b9d5bd] bg-[#edf8ef] p-5 text-center">
                           <Check className="mx-auto h-7 w-7 text-[#247336]" />
-                          <h3 className="mt-3 text-xl font-bold text-[#174f25]">Cupão simulado criado</h3>
+                          <h3 className="mt-3 text-xl font-bold text-[#174f25]">
+                            {claimResult.code ? "Cupão criado" : "Resgate registrado"}
+                          </h3>
                           <p className="mt-2 text-sm leading-6 text-[#356440]">
-                            Código <strong>{mockClaim.couponCode}</strong> preparado para o número terminado em {mockClaim.phone.slice(-3)}.
+                            {claimResult.code ? (
+                              <>
+                                Código <strong>{claimResult.code}</strong> preparado para o número terminado em {claimResult.phone.slice(-3)}.
+                              </>
+                            ) : (
+                              <>
+                                O pedido ficou com o estado <strong>{claimResult.status}</strong> para o número terminado em {claimResult.phone.slice(-3)}.
+                              </>
+                            )}
                           </p>
                           <p className="mt-2 text-xs text-[#52775a]">
-                            Nesta primeira versão, nenhum cupão real será enviado.
+                            Apresenta este código em loja para aplicar a recompensa.
                           </p>
                         </div>
                       )}

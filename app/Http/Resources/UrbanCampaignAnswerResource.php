@@ -20,6 +20,8 @@ class UrbanCampaignAnswerResource extends JsonResource
             'response_id' => $response->id,
             'is_correct' => (bool) $this->resource['is_correct'],
             'reward_percent' => (int) $this->resource['reward_percent'],
+            'reward_type' => $this->resource['reward_type'],
+            'reward_amount' => (float) $this->resource['reward_amount'],
             'collection_label' => $question->collection_label,
         ];
     }

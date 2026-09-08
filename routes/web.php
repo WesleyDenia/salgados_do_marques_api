@@ -69,6 +69,10 @@ Route::middleware(['auth', 'can:manage'])
         Route::get('urban-campaign/responses/{response}/edit', [AdminUrbanCampaignController::class, 'editResponse'])->name('urban-campaign.responses.edit');
         Route::put('urban-campaign/responses/{response}', [AdminUrbanCampaignController::class, 'updateResponse'])->name('urban-campaign.responses.update');
         Route::delete('urban-campaign/responses/{response}', [AdminUrbanCampaignController::class, 'destroyResponse'])->name('urban-campaign.responses.destroy');
+        Route::post('urban-campaign/coupon-configs', [AdminUrbanCampaignController::class, 'storeCouponConfig'])->name('urban-campaign.coupon-configs.store');
+        Route::get('urban-campaign/coupon-configs/{couponConfig}/edit', [AdminUrbanCampaignController::class, 'editCouponConfig'])->name('urban-campaign.coupon-configs.edit');
+        Route::put('urban-campaign/coupon-configs/{couponConfig}', [AdminUrbanCampaignController::class, 'updateCouponConfig'])->name('urban-campaign.coupon-configs.update');
+        Route::delete('urban-campaign/coupon-configs/{couponConfig}', [AdminUrbanCampaignController::class, 'destroyCouponConfig'])->name('urban-campaign.coupon-configs.destroy');
         Route::resource('loyalty-rewards', LoyaltyRewardController::class)->except('show');
         Route::resource('stores', StoreController::class)->except('show');
         Route::resource('settings', AdminSettingController::class)->only(['index', 'create', 'store', 'edit', 'update']);

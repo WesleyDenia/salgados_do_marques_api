@@ -5,6 +5,8 @@ namespace App\Repositories;
 use App\Models\QrCode;
 use App\Models\Question;
 use App\Models\QuestionResponse;
+use App\Models\UrbanCampaignCouponClaim;
+use App\Models\UrbanCampaignCouponConfig;
 use Illuminate\Database\Eloquent\Collection;
 
 class UrbanCampaignAdminRepository
@@ -34,6 +36,22 @@ class UrbanCampaignAdminRepository
             ->orderBy('question_id')
             ->orderBy('display_order')
             ->orderBy('id')
+            ->get();
+    }
+
+    public function couponConfigs(): Collection
+    {
+        return UrbanCampaignCouponConfig::query()
+            ->orderBy('coupon_type')
+            ->get();
+    }
+
+    public function couponClaims(): Collection
+    {
+        return UrbanCampaignCouponClaim::query()
+            ->with(['config', 'qrCode', 'question'])
+            ->orderByDesc('created_at')
+            ->limit(50)
             ->get();
     }
 
@@ -104,6 +122,23 @@ class UrbanCampaignAdminRepository
     public function deleteResponse(QuestionResponse $response): void
     {
         $response->delete();
+    }
+
+    public function createCouponConfig(array $data): UrbanCampaignCouponConfig
+    {
+        return UrbanCampaignCouponConfig::query()->create($data);
+    }
+
+    public function updateCouponConfig(UrbanCampaignCouponConfig $config, array $data): UrbanCampaignCouponConfig
+    {
+        $config->update($data);
+
+        return $config->fresh();
+    }
+
+    public function deleteCouponConfig(UrbanCampaignCouponConfig $config): void
+    {
+        $config->delete();
     }
 
     public function clearCorrectResponsesForQuestion(int $questionId, ?int $exceptResponseId = null): void

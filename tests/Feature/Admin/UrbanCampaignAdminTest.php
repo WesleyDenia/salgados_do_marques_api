@@ -22,7 +22,8 @@ class UrbanCampaignAdminTest extends TestCase
             ->assertSee('Campanha Urbana')
             ->assertSee('QR Codes')
             ->assertSee('Perguntas')
-            ->assertSee('Respostas');
+            ->assertSee('Respostas')
+            ->assertSee('Cupons');
 
         $this->assertSame(1, substr_count($response->getContent(), '>Campanha Urbana</a>'));
     }
@@ -143,5 +144,30 @@ class UrbanCampaignAdminTest extends TestCase
         $response->assertRedirect(route('admin.urban-campaign.index', ['tab' => 'responses']));
         $this->assertFalse($first->fresh()->is_correct);
         $this->assertTrue($second->fresh()->is_correct);
+    }
+
+    public function test_admin_can_create_coupon_config(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+
+        $response = $this->actingAs($admin)->post(route('admin.urban-campaign.coupon-configs.store'), [
+            'coupon_type' => ' Kibe ',
+            'title' => 'Campanha Urbana - Kibe',
+            'description' => 'Cupom gerado pela campanha urbana.',
+            'starts_at' => now()->format('Y-m-d H:i:s'),
+            'ends_at' => now()->addDays(7)->format('Y-m-d H:i:s'),
+            'discount_type' => 'percent',
+            'amount' => 10,
+            'active' => '1',
+        ]);
+
+        $response->assertRedirect(route('admin.urban-campaign.index', ['tab' => 'coupon-configs']));
+        $this->assertDatabaseHas('urban_campaign_coupon_configs', [
+            'coupon_type' => 'kibe',
+            'title' => 'Campanha Urbana - Kibe',
+            'discount_type' => 'percent',
+            'amount' => 10,
+            'active' => true,
+        ]);
     }
 }

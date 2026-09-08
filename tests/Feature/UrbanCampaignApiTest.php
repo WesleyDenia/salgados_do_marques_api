@@ -5,8 +5,10 @@ namespace Tests\Feature;
 use App\Models\QrCode;
 use App\Models\Question;
 use App\Models\QuestionResponse;
+use App\Models\UrbanCampaignCouponConfig;
 use Database\Seeders\UrbanCampaignSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 class UrbanCampaignApiTest extends TestCase
@@ -124,6 +126,86 @@ class UrbanCampaignApiTest extends TestCase
             ->assertJsonPath('data.question.collection_label', 'Kibe')
             ->assertJsonPath('data.question.responses.0.response', 'Kibe')
             ->assertJsonMissing(['is_correct' => true]);
+    }
+
+    public function test_public_user_can_claim_vendus_coupon_once_per_phone_and_type(): void
+    {
+        config([
+            'services.vendus.base_url' => 'https://vendus.test/ws/v1.1',
+            'services.vendus.token' => 'test-token',
+        ]);
+
+        $challenge = $this->createChallenge();
+        UrbanCampaignCouponConfig::create([
+            'coupon_type' => 'quiz-praca',
+            'title' => 'Campanha Urbana - Kibe',
+            'description' => 'Cupom gerado pela campanha urbana.',
+            'starts_at' => now()->subDay(),
+            'ends_at' => now()->addDays(7),
+            'discount_type' => 'percent',
+            'amount' => 10,
+            'active' => true,
+        ]);
+
+        Http::fake([
+            'vendus.test/ws/v1.1/discountcards/*' => Http::response([
+                'id' => 123,
+                'code' => 'VD-URBANA-10',
+                'status' => 'available',
+                'type' => 'percent',
+                'amount' => 10,
+            ], 200),
+        ]);
+
+        $first = $this->postJson('/api/v1/public/urban-campaign/claims', [
+            'code' => 'urbana-001',
+            'question_id' => $challenge['question']->id,
+            'response_id' => $challenge['correct']->id,
+            'phone' => '912 345 678',
+        ]);
+
+        $second = $this->postJson('/api/v1/public/urban-campaign/claims', [
+            'code' => 'URBANA-001',
+            'question_id' => $challenge['question']->id,
+            'response_id' => $challenge['wrong']->id,
+            'phone' => '+351 912 345 678',
+        ]);
+
+        $first->assertOk()
+            ->assertJsonPath('data.phone', '351912345678')
+            ->assertJsonPath('data.coupon_type', 'quiz-praca')
+            ->assertJsonPath('data.code', 'VD-URBANA-10')
+            ->assertJsonPath('data.status', 'synced')
+            ->assertJsonPath('data.discount_type', 'percent')
+            ->assertJsonPath('data.amount', 10);
+
+        $second->assertOk()
+            ->assertJsonPath('data.code', 'VD-URBANA-10')
+            ->assertJsonPath('data.status', 'synced');
+
+        $this->assertDatabaseCount('urban_campaign_coupon_claims', 1);
+        $this->assertDatabaseHas('urban_campaign_coupon_claims', [
+            'phone' => '351912345678',
+            'coupon_type' => 'quiz-praca',
+            'code' => 'VD-URBANA-10',
+            'status' => 'synced',
+        ]);
+        Http::assertSentCount(1);
+    }
+
+    public function test_claim_requires_active_coupon_config(): void
+    {
+        $challenge = $this->createChallenge();
+
+        $response = $this->postJson('/api/v1/public/urban-campaign/claims', [
+            'code' => 'URBANA-001',
+            'question_id' => $challenge['question']->id,
+            'response_id' => $challenge['correct']->id,
+            'phone' => '912345678',
+        ]);
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['phone']);
     }
 
     protected function createChallenge(): array

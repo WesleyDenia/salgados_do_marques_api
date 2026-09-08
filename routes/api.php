@@ -44,6 +44,7 @@ Route::prefix('v1')->group(function () {
         Route::get('partners/{partner}', [PartnerController::class, 'publicShow']);
         Route::get('urban-campaign/qr-codes/{code}', [UrbanCampaignController::class, 'show']);
         Route::post('urban-campaign/answers', [UrbanCampaignController::class, 'answer']);
+        Route::post('urban-campaign/claims', [UrbanCampaignController::class, 'claim']);
     });
     Route::prefix('auth')->group(function () {
         Route::post('forgot-password', [PasswordResetController::class, 'forgot'])

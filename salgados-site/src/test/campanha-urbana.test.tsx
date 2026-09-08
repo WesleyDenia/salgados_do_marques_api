@@ -78,6 +78,28 @@ describe("CampanhaUrbana", () => {
         } as Response;
       }
 
+      if (url.includes("/public/urban-campaign/claims") && init?.method === "POST") {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            data: {
+              id: 500,
+              phone: "351912345678",
+              coupon_type: "kibe",
+              code: "VD-URBANA-10",
+              external_id: "123",
+              status: "synced",
+              is_correct: true,
+              discount_type: "percent",
+              amount: 10,
+              expires_at: "2026-09-15T23:59:59+00:00",
+              erp_error: null,
+            },
+          }),
+        } as Response;
+      }
+
       throw new Error(`Unexpected request: ${url}`);
     });
 
@@ -101,6 +123,27 @@ describe("CampanhaUrbana", () => {
           code: "qrxpto",
           question_id: 10,
           response_id: 100,
+        }),
+      }),
+    );
+
+    fireEvent.change(screen.getByLabelText(/número de telemóvel/i), {
+      target: { value: "912 345 678" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /resgatar cupão/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText("VD-URBANA-10")).toBeInTheDocument();
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining("/public/urban-campaign/claims"),
+      expect.objectContaining({
+        body: JSON.stringify({
+          code: "qrxpto",
+          question_id: 10,
+          response_id: 100,
+          phone: "351912345678",
         }),
       }),
     );

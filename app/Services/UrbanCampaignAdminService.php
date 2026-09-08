@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\QrCode;
 use App\Models\Question;
 use App\Models\QuestionResponse;
+use App\Models\UrbanCampaignCouponConfig;
 use App\Repositories\UrbanCampaignAdminRepository;
 use Illuminate\Support\Facades\DB;
 
@@ -20,6 +21,8 @@ class UrbanCampaignAdminService
             'qrCodes' => $this->repository->qrCodes(),
             'questions' => $this->repository->questions(),
             'responses' => $this->repository->responses(),
+            'couponConfigs' => $this->repository->couponConfigs(),
+            'couponClaims' => $this->repository->couponClaims(),
             'questionOptions' => $this->repository->questionOptions(),
             'codeTypeOptions' => $this->repository->codeTypeOptions(),
         ];
@@ -86,6 +89,21 @@ class UrbanCampaignAdminService
         $this->repository->deleteResponse($response);
     }
 
+    public function createCouponConfig(array $data): UrbanCampaignCouponConfig
+    {
+        return $this->repository->createCouponConfig($this->normalizeCouponConfig($data));
+    }
+
+    public function updateCouponConfig(UrbanCampaignCouponConfig $config, array $data): UrbanCampaignCouponConfig
+    {
+        return $this->repository->updateCouponConfig($config, $this->normalizeCouponConfig($data));
+    }
+
+    public function deleteCouponConfig(UrbanCampaignCouponConfig $config): void
+    {
+        $this->repository->deleteCouponConfig($config);
+    }
+
     protected function normalizeQrCode(array $data): array
     {
         $data['code'] = mb_strtoupper(trim((string) $data['code']));
@@ -112,6 +130,15 @@ class UrbanCampaignAdminService
         $data['question_id'] = (int) $data['question_id'];
         $data['display_order'] = isset($data['display_order']) ? (int) $data['display_order'] : 0;
         $data['is_correct'] = (bool) ($data['is_correct'] ?? false);
+
+        return $data;
+    }
+
+    protected function normalizeCouponConfig(array $data): array
+    {
+        $data['coupon_type'] = mb_strtolower(trim((string) $data['coupon_type']));
+        $data['active'] = (bool) ($data['active'] ?? false);
+        $data['amount'] = (float) $data['amount'];
 
         return $data;
     }

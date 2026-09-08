@@ -86,11 +86,17 @@
       'qr-codes' => 'QR Codes',
       'questions' => 'Perguntas',
       'responses' => 'Respostas',
+      'coupon-configs' => 'Cupons',
+    ];
+    $discountTypes = [
+      'percent' => 'Percentual',
+      'money' => 'Valor fixo',
     ];
     $activeTab = array_key_exists($activeTab, $tabs) ? $activeTab : 'qr-codes';
     $editingQrCode = $editQrCode->exists;
     $editingQuestion = $editQuestion->exists;
     $editingResponse = $editResponse->exists;
+    $editingCouponConfig = $editCouponConfig->exists;
   @endphp
 
   <div class="card">
@@ -519,6 +525,223 @@
                 @empty
                   <tr>
                     <td colspan="5" style="text-align:center; padding:32px 0; color:#6b7280;">Nenhuma resposta cadastrada.</td>
+                  </tr>
+                @endforelse
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    @endif
+
+    @if ($activeTab === 'coupon-configs')
+      <section class="campaign-panel-grid">
+        <div class="form-section">
+          <h3 class="campaign-form-title">{{ $editingCouponConfig ? 'Editar configuração' : 'Nova configuração' }}</h3>
+          <p class="form-section-description">Configure o cupom que será criado no Vendus para cada tipo de QR Code.</p>
+
+          <form method="POST" action="{{ $editingCouponConfig ? route('admin.urban-campaign.coupon-configs.update', $editCouponConfig) : route('admin.urban-campaign.coupon-configs.store') }}">
+            @csrf
+            @if ($editingCouponConfig)
+              @method('PUT')
+            @endif
+
+            <div class="form-grid">
+              <div class="form-group">
+                <label for="coupon_type">Tipo do cupom *</label>
+                <input type="text" id="coupon_type" name="coupon_type" value="{{ old('coupon_type', $editCouponConfig->coupon_type) }}" placeholder="kibe" list="code-type-options" required />
+                @error('coupon_type')
+                  <span class="alert alert-error">{{ $message }}</span>
+                @enderror
+              </div>
+
+              <div class="form-group">
+                <label for="coupon_title">Título *</label>
+                <input type="text" id="coupon_title" name="title" value="{{ old('title', $editCouponConfig->title) }}" placeholder="Campanha Urbana - Kibe" required />
+                @error('title')
+                  <span class="alert alert-error">{{ $message }}</span>
+                @enderror
+              </div>
+
+              <div class="form-group">
+                <label for="discount_type">Tipo de desconto *</label>
+                <select id="discount_type" name="discount_type" required>
+                  @foreach ($discountTypes as $value => $label)
+                    <option value="{{ $value }}" @selected(old('discount_type', $editCouponConfig->discount_type ?? 'percent') === $value)>
+                      {{ $label }}
+                    </option>
+                  @endforeach
+                </select>
+                @error('discount_type')
+                  <span class="alert alert-error">{{ $message }}</span>
+                @enderror
+              </div>
+
+              <div class="form-group">
+                <label for="coupon_amount">Valor *</label>
+                <input type="number" step="0.01" min="0.01" id="coupon_amount" name="amount" value="{{ old('amount', $editCouponConfig->amount) }}" required />
+                @error('amount')
+                  <span class="alert alert-error">{{ $message }}</span>
+                @enderror
+              </div>
+
+              <div class="form-group">
+                <label for="coupon_starts_at">Início</label>
+                <input type="datetime-local" id="coupon_starts_at" name="starts_at" value="{{ old('starts_at', optional($editCouponConfig->starts_at)->format('Y-m-d\TH:i')) }}" />
+                @error('starts_at')
+                  <span class="alert alert-error">{{ $message }}</span>
+                @enderror
+              </div>
+
+              <div class="form-group">
+                <label for="coupon_ends_at">Término</label>
+                <input type="datetime-local" id="coupon_ends_at" name="ends_at" value="{{ old('ends_at', optional($editCouponConfig->ends_at)->format('Y-m-d\TH:i')) }}" />
+                @error('ends_at')
+                  <span class="alert alert-error">{{ $message }}</span>
+                @enderror
+              </div>
+
+              <div class="form-group form-span-full">
+                <label for="coupon_description">Descrição</label>
+                <textarea id="coupon_description" name="description" placeholder="Texto enviado para o Vendus como observação do cupom.">{{ old('description', $editCouponConfig->description) }}</textarea>
+                @error('description')
+                  <span class="alert alert-error">{{ $message }}</span>
+                @enderror
+              </div>
+
+              <div class="form-group">
+                <label class="checkbox-row">
+                  <input type="checkbox" name="active" value="1" {{ old('active', $editCouponConfig->active ?? true) ? 'checked' : '' }} />
+                  Configuração ativa
+                </label>
+              </div>
+            </div>
+
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary">{{ $editingCouponConfig ? 'Atualizar' : 'Criar' }} configuração</button>
+              @if ($editingCouponConfig)
+                <a href="{{ route('admin.urban-campaign.index', ['tab' => 'coupon-configs']) }}" class="btn btn-secondary">Cancelar edição</a>
+              @endif
+            </div>
+          </form>
+        </div>
+
+        <div>
+          <div class="responsive-table-wrap">
+            <table class="responsive-table">
+              <thead>
+              <tr>
+                <th>Tipo</th>
+                <th>Desconto</th>
+                <th>Vigência</th>
+                <th>Status</th>
+                <th style="width:76px;">Ações</th>
+              </tr>
+              </thead>
+              <tbody>
+                @forelse ($couponConfigs as $config)
+                  <tr>
+                    <td>
+                      <span class="stack-table-label">Tipo</span>
+                      <strong>{{ $config->coupon_type }}</strong>
+                      <div class="campaign-table-note">{{ $config->title }}</div>
+                    </td>
+                    <td>
+                      <span class="stack-table-label">Desconto</span>
+                      {{ $discountTypes[$config->discount_type] ?? $config->discount_type }}
+                      <div class="campaign-table-note">
+                        @if ($config->discount_type === 'percent')
+                          {{ number_format((float) $config->amount, 2, ',', '.') }}%
+                        @else
+                          €{{ number_format((float) $config->amount, 2, ',', '.') }}
+                        @endif
+                      </div>
+                    </td>
+                    <td>
+                      <span class="stack-table-label">Vigência</span>
+                      <div class="campaign-table-note">Início: {{ optional($config->starts_at)->format('d/m/Y H:i') ?? 'imediato' }}</div>
+                      <div class="campaign-table-note">Fim: {{ optional($config->ends_at)->format('d/m/Y H:i') ?? 'sem prazo' }}</div>
+                    </td>
+                    <td>
+                      <span class="stack-table-label">Status</span>
+                      @if ($config->active)
+                        <span class="badge badge-success">Ativa</span>
+                      @else
+                        <span class="badge badge-muted">Inativa</span>
+                      @endif
+                    </td>
+                    <td>
+                      <span class="stack-table-label">Ações</span>
+                      <details class="action-menu">
+                        <summary class="btn action-menu-trigger" aria-label="Abrir ações da configuração">
+                          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                            <circle cx="8" cy="3" r="1.4" />
+                            <circle cx="8" cy="8" r="1.4" />
+                            <circle cx="8" cy="13" r="1.4" />
+                          </svg>
+                        </summary>
+
+                        <div class="action-menu-panel">
+                          <a class="btn action-menu-item" href="{{ route('admin.urban-campaign.coupon-configs.edit', $config) }}">Editar</a>
+                          <form action="{{ route('admin.urban-campaign.coupon-configs.destroy', $config) }}" method="POST" onsubmit="return confirm('Remover esta configuração de cupom?');">
+                            @csrf
+                            @method('DELETE')
+                            <button type="submit" class="btn action-menu-item action-menu-item-danger">Excluir</button>
+                          </form>
+                        </div>
+                      </details>
+                    </td>
+                  </tr>
+                @empty
+                  <tr>
+                    <td colspan="5" style="text-align:center; padding:32px 0; color:#6b7280;">Nenhuma configuração de cupom cadastrada.</td>
+                  </tr>
+                @endforelse
+              </tbody>
+            </table>
+          </div>
+
+          <h3 class="campaign-form-title" style="margin-top:28px;">Resgates recentes</h3>
+          <div class="responsive-table-wrap">
+            <table class="responsive-table">
+              <thead>
+              <tr>
+                <th>Telemóvel</th>
+                <th>Tipo</th>
+                <th>Código Vendus</th>
+                <th>Status</th>
+              </tr>
+              </thead>
+              <tbody>
+                @forelse ($couponClaims as $claim)
+                  <tr>
+                    <td>
+                      <span class="stack-table-label">Telemóvel</span>
+                      {{ $claim->phone }}
+                    </td>
+                    <td>
+                      <span class="stack-table-label">Tipo</span>
+                      {{ $claim->coupon_type }}
+                    </td>
+                    <td>
+                      <span class="stack-table-label">Código Vendus</span>
+                      <strong>{{ $claim->code ?? 'Pendente' }}</strong>
+                      <div class="campaign-table-note">{{ $claim->external_id }}</div>
+                    </td>
+                    <td>
+                      <span class="stack-table-label">Status</span>
+                      @if ($claim->status === 'synced')
+                        <span class="badge badge-success">Sincronizado</span>
+                      @elseif ($claim->status === 'failed_erp')
+                        <span class="badge badge-muted">Falhou</span>
+                      @else
+                        <span class="badge badge-muted">{{ $claim->status }}</span>
+                      @endif
+                    </td>
+                  </tr>
+                @empty
+                  <tr>
+                    <td colspan="4" style="text-align:center; padding:32px 0; color:#6b7280;">Nenhum resgate registrado.</td>
                   </tr>
                 @endforelse
               </tbody>

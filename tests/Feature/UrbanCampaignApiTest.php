@@ -201,6 +201,10 @@ class UrbanCampaignApiTest extends TestCase
         $claim = UrbanCampaignCouponClaim::query()->firstOrFail();
         $this->assertSame('2026-09-08 12:00:00', $claim->generated_at->format('Y-m-d H:i:s'));
         $this->assertSame('2026-09-15 12:00:00', $claim->expires_at->format('Y-m-d H:i:s'));
+        $this->assertStringStartsWith(
+            'Cupom gerado pela campanha urbana.',
+            (string) WhatsAppQueueItem::query()->firstOrFail()->message
+        );
 
         Http::assertSentCount(1);
         Http::assertSent(fn ($request) => $request['date_expire'] === '2026-09-15');

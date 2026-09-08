@@ -68,17 +68,20 @@ class WhatsAppMessageFormatter
 
     public function urbanCampaignCoupon(UrbanCampaignCouponClaim $claim, string $timezone): string
     {
+        $description = trim((string) ($claim->config?->description ?? ''));
         $expiresAt = $claim->expires_at
             ? $claim->expires_at->copy()->timezone($timezone)->format('d/m/Y H:i')
             : '-';
 
         return implode("\n", [
-            'O teu cupom da Campanha Urbana foi gerado.',
+            $description !== '' ? $description : 'O teu cupom da Campanha Urbana foi gerado.',
             'Codigo: '.($claim->code ?: '-'),
             'Desconto: '.$this->formatDiscount((string) $claim->discount_type, (float) $claim->amount),
             'Valido ate: '.$expiresAt,
             'Apresente este codigo no momento da compra.',
             'Salgados do Marques',
+            '',
+            'Dizem que quem consegue achar os 5 desafios ganha uma surpresa!! 👀',
         ]);
     }
 

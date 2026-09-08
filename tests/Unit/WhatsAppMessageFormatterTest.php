@@ -5,6 +5,7 @@ namespace Tests\Unit;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\UrbanCampaignCouponClaim;
+use App\Models\UrbanCampaignCouponConfig;
 use App\Models\User;
 use App\Services\Notifications\WhatsAppMessageFormatter;
 use Carbon\Carbon;
@@ -32,14 +33,19 @@ class WhatsAppMessageFormatterTest extends TestCase
             'amount' => 10,
             'expires_at' => Carbon::create(2026, 9, 15, 12, 0, 0, 'UTC'),
         ]);
+        $claim->setRelation('config', new UrbanCampaignCouponConfig([
+            'description' => 'Parabens, encontraste o segredo do Kibe. Aqui esta o teu premio.',
+        ]));
 
         $this->assertSame(
-            "O teu cupom da Campanha Urbana foi gerado.\n"
+            "Parabens, encontraste o segredo do Kibe. Aqui esta o teu premio.\n"
                 ."Codigo: VD-URBANA-10\n"
                 ."Desconto: 10%\n"
                 ."Valido ate: 15/09/2026 12:00\n"
                 ."Apresente este codigo no momento da compra.\n"
-                .'Salgados do Marques',
+                ."Salgados do Marques\n"
+                ."\n"
+                .'Dizem que quem consegue achar os 5 desafios ganha uma surpresa!! 👀',
             $formatter->urbanCampaignCoupon($claim, 'Europe/Lisbon')
         );
     }

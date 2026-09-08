@@ -16,6 +16,7 @@ import {
 import { Seo } from "@/components/Seo";
 import { Button } from "@/components/ui/button";
 import { OG_IMAGES, SITE_NAME, SITE_URL } from "@/lib/site";
+import quizBackground from "@/assets/campanha-urbana-perguntas.png";
 
 type CampaignType = "kibe" | "carne" | "salsicha" | "queijo" | "coxinha";
 
@@ -263,7 +264,6 @@ const CampanhaUrbana = () => {
           description="Esta pista não está disponível."
           canonical={`${SITE_URL}/campanha-urbana`}
           ogImage={OG_IMAGES.aniversario}
-          noIndex
         />
 
         <section className="flex min-h-screen items-center justify-center px-5 py-12">
@@ -293,13 +293,18 @@ const CampanhaUrbana = () => {
         description="Encontraste uma das pistas espalhadas por Pombal. Resolve a adivinha e descobre a tua recompensa."
         canonical={`${SITE_URL}/campanha-urbana`}
         ogImage={OG_IMAGES.aniversario}
-        noIndex
       />
 
       <section className="relative isolate min-h-screen overflow-hidden bg-[#4a0507] text-white">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_12%_15%,rgba(244,204,112,0.18),transparent_25%),radial-gradient(circle_at_88%_80%,rgba(244,204,112,0.12),transparent_28%),linear-gradient(145deg,#390305_0%,#740d11_48%,#300204_100%)]" />
-        <div className="absolute left-[-5rem] top-1/3 h-64 w-64 rounded-full border border-[#f2cf7c]/15" />
-        <div className="absolute bottom-[-8rem] right-[-5rem] h-80 w-80 rounded-full border border-[#f2cf7c]/10" />
+        <div
+          className="absolute inset-0 bg-cover bg-center opacity-80"
+          style={{ backgroundImage: `url(${quizBackground})` }}
+          aria-hidden="true"
+        />
+        <div
+          className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(53,2,4,0.34),rgba(34,1,3,0.72)_78%),linear-gradient(145deg,rgba(57,3,5,0.28),rgba(91,6,8,0.42))]"
+          aria-hidden="true"
+        />
 
         <div className="section-container relative z-10 flex min-h-screen flex-col py-6 sm:py-10">
           <header className="flex items-center justify-between gap-4">

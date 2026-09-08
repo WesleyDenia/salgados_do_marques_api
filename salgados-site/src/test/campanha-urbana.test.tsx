@@ -25,6 +25,7 @@ function renderPage() {
 describe("CampanhaUrbana", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    window.localStorage.clear();
     window.history.replaceState({}, "", "/campanha-urbana?code=qrxpto");
   });
 
@@ -102,6 +103,65 @@ describe("CampanhaUrbana", () => {
           response_id: 100,
         }),
       }),
+    );
+  });
+
+  it("loads the stored answer after refresh and skips the answer options", async () => {
+    window.localStorage.setItem(
+      "urban-campaign-answer:QRXPTO:10",
+      JSON.stringify({
+        qr_code_id: 1,
+        type: "kibe",
+        question_id: 10,
+        response_id: 100,
+        is_correct: true,
+        reward_percent: 10,
+        collection_label: "Kibe",
+      }),
+    );
+
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+      const url = String(input);
+
+      if (url.includes("/public/urban-campaign/qr-codes/qrxpto")) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            data: {
+              id: 1,
+              type: "kibe",
+              code: "QRXPTO",
+              question: {
+                id: 10,
+                code_type: "kibe",
+                question: "Por fora sou dourado.\nQuem sou eu?",
+                secret_number: 1,
+                collection_label: "Kibe",
+                eyebrow: "Uma pista de forma comprida",
+                riddle: ["Por fora sou dourado.", "Quem sou eu?"],
+                responses: [
+                  { id: 100, response: "Kibe" },
+                  { id: 101, response: "Coxinha de Frango" },
+                ],
+              },
+            },
+          }),
+        } as Response;
+      }
+
+      throw new Error(`Unexpected request: ${url}`);
+    });
+
+    renderPage();
+
+    expect(await screen.findByText("10%")).toBeInTheDocument();
+    expect(screen.getByText(/encontraste: kibe/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /revelar o segredo/i })).not.toBeInTheDocument();
+    expect(screen.queryByText("Coxinha de Frango")).not.toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalledWith(
+      expect.stringContaining("/public/urban-campaign/answers"),
+      expect.anything(),
     );
   });
 });

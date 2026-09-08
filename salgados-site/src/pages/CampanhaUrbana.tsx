@@ -1,4 +1,4 @@
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   ArrowRight,
@@ -31,6 +31,7 @@ type MockClaim = {
 
 const COLLECTION_TYPES = ["kibe", "carne", "salsicha", "queijo", "coxinha"];
 const VALID_CODE_PATTERN = /^[a-zA-Z0-9-]{4,120}$/;
+const ANSWER_STORAGE_PREFIX = "urban-campaign-answer";
 
 function readCampaignParams() {
   if (typeof window === "undefined") {
@@ -56,6 +57,55 @@ function normalisePortugueseMobile(value: string) {
   }
 
   return null;
+}
+
+function answerStorageKey(code: string, questionId: number) {
+  return `${ANSWER_STORAGE_PREFIX}:${code.trim().toUpperCase()}:${questionId}`;
+}
+
+function isStoredAnswerResult(value: unknown, questionId: number): value is UrbanCampaignAnswerResult {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const result = value as Partial<UrbanCampaignAnswerResult>;
+
+  return (
+    typeof result.qr_code_id === "number" &&
+    typeof result.type === "string" &&
+    result.question_id === questionId &&
+    typeof result.response_id === "number" &&
+    typeof result.is_correct === "boolean" &&
+    typeof result.reward_percent === "number" &&
+    typeof result.collection_label === "string"
+  );
+}
+
+function readStoredAnswer(code: string, questionId: number) {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  try {
+    const raw = window.localStorage.getItem(answerStorageKey(code, questionId));
+    const parsed = raw ? JSON.parse(raw) : null;
+
+    return isStoredAnswerResult(parsed, questionId) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function storeAnswer(code: string, result: UrbanCampaignAnswerResult) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(answerStorageKey(code, result.question_id), JSON.stringify(result));
+  } catch {
+    // Ignore unavailable storage and keep the quiz flow functional.
+  }
 }
 
 const CampanhaUrbana = () => {
@@ -86,9 +136,28 @@ const CampanhaUrbana = () => {
         response_id: responseId,
       }),
     onSuccess: (result) => {
+      storeAnswer(code, result);
+      setSelectedOptionId(result.response_id);
       setAnswerResult(result);
     },
   });
+
+  useEffect(() => {
+    if (!challenge) {
+      return;
+    }
+
+    const storedAnswer = readStoredAnswer(code, challenge.question.id);
+
+    if (storedAnswer) {
+      setSelectedOptionId(storedAnswer.response_id);
+      setAnswerResult(storedAnswer);
+      return;
+    }
+
+    setAnswerResult(null);
+    setSelectedOptionId(null);
+  }, [challenge, code]);
 
   const isValidCampaignLink = Boolean(challenge);
   const hasAnswered = Boolean(answerResult);

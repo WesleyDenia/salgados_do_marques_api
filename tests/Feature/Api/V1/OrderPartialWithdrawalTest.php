@@ -125,13 +125,29 @@ class OrderPartialWithdrawalTest extends TestCase
         $response->assertOk()
             ->assertJsonPath('data.withdrawal.flavor_ids.0', $flavors['frango']->id)
             ->assertJsonPath('data.withdrawal.flavor_names.0', 'Frango')
+            ->assertJsonPath('data.generated_order.items.0.variant_name', 'Pack 25')
+            ->assertJsonPath('data.generated_order.items.0.quantity', 1)
+            ->assertJsonPath('data.generated_order.items.0.original_units', 25)
             ->assertJsonPath('data.generated_order.items.0.options.flavors.0', $flavors['frango']->id)
             ->assertJsonPath('data.parent_order.partial_withdrawals.0.flavor_names.0', 'Frango');
+
+        $pack25 = ProductVariant::query()
+            ->where('product_id', $parentItem->product_id)
+            ->where('unit_count', 25)
+            ->firstOrFail();
 
         $this->assertDatabaseHas('order_partial_withdrawals', [
             'parent_order_id' => $order->id,
             'parent_order_item_id' => $parentItem->id,
             'generated_order_id' => 2,
+        ]);
+        $this->assertDatabaseHas('order_items', [
+            'order_id' => 2,
+            'parent_order_item_id' => $parentItem->id,
+            'product_id' => $parentItem->product_id,
+            'variant_id' => $pack25->id,
+            'quantity' => 1,
+            'total' => 30,
         ]);
 
         $this->assertSame(
@@ -168,8 +184,12 @@ class OrderPartialWithdrawalTest extends TestCase
             ->assertJsonPath('data.withdrawals.1.requested_units', 25)
             ->assertJsonCount(2, 'data.withdrawals')
             ->assertJsonCount(2, 'data.generated_order.items')
-            ->assertJsonPath('data.generated_order.items.0.quantity', 100)
-            ->assertJsonPath('data.generated_order.items.1.quantity', 25);
+            ->assertJsonPath('data.generated_order.items.0.variant_name', 'Pack 100')
+            ->assertJsonPath('data.generated_order.items.0.quantity', 1)
+            ->assertJsonPath('data.generated_order.items.0.original_units', 100)
+            ->assertJsonPath('data.generated_order.items.1.variant_name', 'Pack 25')
+            ->assertJsonPath('data.generated_order.items.1.quantity', 1)
+            ->assertJsonPath('data.generated_order.items.1.original_units', 25);
 
         $this->assertDatabaseHas('order_partial_withdrawals', [
             'parent_order_id' => $order->id,
@@ -180,6 +200,76 @@ class OrderPartialWithdrawalTest extends TestCase
             'parent_order_id' => $order->id,
             'parent_order_item_id' => $items[1]->id,
             'requested_units' => 25,
+        ]);
+    }
+
+    public function test_admin_cannot_generate_child_order_when_no_active_pack_represents_the_withdrawal(): void
+    {
+        $this->setEditWindow();
+        $admin = User::factory()->create(['role' => 'admin']);
+        [$order, $parentItem, $store, $flavors] = $this->makePackParentOrder(includeWithdrawalVariants: false);
+
+        $response = $this->actingAs($admin, 'sanctum')->postJson(
+            "/api/v1/admin/orders/{$order->id}/partial-withdrawals",
+            [
+                'parent_order_item_id' => $parentItem->id,
+                'requested_units' => 25,
+                'flavor_ids' => [$flavors['frango']->id],
+                'scheduled_at' => '2026-07-20T18:00:00+01:00',
+                'generate_child_order' => true,
+            ],
+        );
+
+        $response->assertStatus(422)->assertJsonValidationErrors(['requested_units']);
+
+        $this->assertDatabaseMissing('order_partial_withdrawals', [
+            'parent_order_id' => $order->id,
+            'parent_order_item_id' => $parentItem->id,
+        ]);
+        $this->assertDatabaseMissing('orders', [
+            'parent_order_id' => $order->id,
+        ]);
+    }
+
+    public function test_admin_can_generate_child_order_by_splitting_withdrawal_into_active_pack_variants(): void
+    {
+        $this->setEditWindow();
+        $admin = User::factory()->create(['role' => 'admin']);
+        [$order, $parentItem, $store, $flavors] = $this->makePackParentOrder();
+
+        $response = $this->actingAs($admin, 'sanctum')->postJson(
+            "/api/v1/admin/orders/{$order->id}/partial-withdrawals",
+            [
+                'parent_order_item_id' => $parentItem->id,
+                'requested_units' => 75,
+                'flavor_ids' => [
+                    $flavors['frango']->id,
+                    $flavors['carne']->id,
+                    $flavors['frango']->id,
+                ],
+                'scheduled_at' => '2026-07-20T18:00:00+01:00',
+                'generate_child_order' => true,
+            ],
+        );
+
+        $response->assertOk()
+            ->assertJsonPath('data.generated_order.store.id', $store->id)
+            ->assertJsonCount(2, 'data.generated_order.items')
+            ->assertJsonPath('data.generated_order.items.0.variant_name', 'Pack 50')
+            ->assertJsonPath('data.generated_order.items.0.quantity', 1)
+            ->assertJsonPath('data.generated_order.items.0.original_units', 50)
+            ->assertJsonPath('data.generated_order.items.0.options.flavors.0', $flavors['frango']->id)
+            ->assertJsonPath('data.generated_order.items.0.options.flavors.1', $flavors['carne']->id)
+            ->assertJsonPath('data.generated_order.items.1.variant_name', 'Pack 25')
+            ->assertJsonPath('data.generated_order.items.1.quantity', 1)
+            ->assertJsonPath('data.generated_order.items.1.original_units', 25)
+            ->assertJsonPath('data.generated_order.items.1.options.flavors.0', $flavors['frango']->id);
+
+        $this->assertDatabaseHas('order_partial_withdrawals', [
+            'parent_order_id' => $order->id,
+            'parent_order_item_id' => $parentItem->id,
+            'requested_units' => 75,
+            'generated_order_id' => 2,
         ]);
     }
 
@@ -323,7 +413,7 @@ class OrderPartialWithdrawalTest extends TestCase
     /**
      * @return array{0: Order, 1: \App\Models\OrderItem, 2: Store, 3: array{frango: Flavor, carne: Flavor}}
      */
-    protected function makePackParentOrder(): array
+    protected function makePackParentOrder(bool $includeWithdrawalVariants = true): array
     {
         $customer = User::factory()->create();
         $store = $this->createStore();
@@ -338,6 +428,26 @@ class OrderPartialWithdrawalTest extends TestCase
             'price' => 120,
             'active' => true,
         ]);
+        if ($includeWithdrawalVariants) {
+            ProductVariant::create([
+                'product_id' => $product->id,
+                'name' => 'Pack 25',
+                'unit_count' => 25,
+                'max_flavors' => 1,
+                'price' => 30,
+                'active' => true,
+                'display_order' => 1,
+            ]);
+            ProductVariant::create([
+                'product_id' => $product->id,
+                'name' => 'Pack 50',
+                'unit_count' => 50,
+                'max_flavors' => 2,
+                'price' => 60,
+                'active' => true,
+                'display_order' => 2,
+            ]);
+        }
         $variant = ProductVariant::create([
             'product_id' => $product->id,
             'name' => 'Pack 100',
@@ -345,7 +455,7 @@ class OrderPartialWithdrawalTest extends TestCase
             'max_flavors' => 4,
             'price' => 120,
             'active' => true,
-            'display_order' => 1,
+            'display_order' => 3,
         ]);
         $frango = Flavor::create(['name' => 'Frango', 'active' => true, 'display_order' => 1]);
         $carne = Flavor::create(['name' => 'Carne', 'active' => true, 'display_order' => 2]);
@@ -401,6 +511,8 @@ class OrderPartialWithdrawalTest extends TestCase
 
     protected function setEditWindow(): void
     {
+        Carbon::setTestNow(Carbon::parse('2026-07-20 12:00', 'Europe/Lisbon'));
+
         Setting::query()->updateOrCreate(
             ['key' => 'order_cancel_minutes'],
             ['value' => 60, 'type' => 'integer', 'editable' => true],

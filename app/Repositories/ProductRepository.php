@@ -8,16 +8,21 @@ use Illuminate\Database\Eloquent\Collection;
 
 class ProductRepository extends BaseRepository
 {
-    public function __construct(Product $model) { parent::__construct($model); }
+    public function __construct(Product $model)
+    {
+        parent::__construct($model);
+    }
 
     public function publicList()
     {
-        return $this->paginate(['category', 'variants', 'allowedFlavors'], function($q){
+        return $this->paginate(['category', 'variants', 'allowedFlavors'], function ($q) {
             $q->where('active', true);
-            if ($cid = request('category_id')) { $q->where('category_id', $cid); }
+            if ($cid = request('category_id')) {
+                $q->where('category_id', $cid);
+            }
             if ($s = request('search')) {
-                $q->where(function($qq) use ($s){
-                    $qq->where('name','like',"%$s%")->orWhere('description','like',"%$s%");
+                $q->where(function ($qq) use ($s) {
+                    $qq->where('name', 'like', "%$s%")->orWhere('description', 'like', "%$s%");
                 });
             }
         });
@@ -26,7 +31,7 @@ class ProductRepository extends BaseRepository
     public function findActiveForOrder(array $productIds): Collection
     {
         if ($productIds === []) {
-            return new Collection();
+            return new Collection;
         }
 
         return Product::query()
@@ -40,7 +45,7 @@ class ProductRepository extends BaseRepository
     public function findActiveVariantsForOrder(array $variantIds): Collection
     {
         if ($variantIds === []) {
-            return new Collection();
+            return new Collection;
         }
 
         return ProductVariant::query()
@@ -48,5 +53,19 @@ class ProductRepository extends BaseRepository
             ->where('active', true)
             ->get()
             ->keyBy('id');
+    }
+
+    public function findActiveVariantsForProductUnitsUpTo(int $productId, int $maxUnitCount): Collection
+    {
+        return ProductVariant::query()
+            ->where('product_id', $productId)
+            ->where('unit_count', '>', 0)
+            ->where('unit_count', '<=', $maxUnitCount)
+            ->where('max_flavors', '>', 0)
+            ->where('active', true)
+            ->orderByDesc('unit_count')
+            ->orderByDesc('max_flavors')
+            ->orderBy('id')
+            ->get();
     }
 }

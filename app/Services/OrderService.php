@@ -743,7 +743,7 @@ class OrderService
                     $scheduled->copy()->timezone('UTC'),
                     $this->buildDerivedOrderNotes($order, $withdrawals),
                     collect($allocationPlan)
-                        ->map(fn (array $allocation): array => $this->buildDerivedWithdrawalLineItem(
+                        ->flatMap(fn (array $allocation): array => $this->buildDerivedWithdrawalLineItems(
                             $allocation['item'],
                             $allocation['requested_units'],
                             $allocation['flavor_ids']
@@ -1719,26 +1719,164 @@ class OrderService
     }
 
     /**
-     * @return array<string, mixed>
+     * @return array<int, array<string, mixed>>
      */
-    protected function buildDerivedWithdrawalLineItem(OrderItem $parentItem, int $requestedUnits, array $selectedFlavorIds): array
+    protected function buildDerivedWithdrawalLineItems(OrderItem $parentItem, int $requestedUnits, array $selectedFlavorIds): array
     {
         $originalUnits = max(1, $this->resolveOrderItemUnits($parentItem));
-        $lineTotal = round(((float) $parentItem->total / $originalUnits) * $requestedUnits, 2);
-        $unitPrice = round($lineTotal / max(1, $requestedUnits), 2);
-        $nameSnapshot = $parentItem->product?->name ?? $parentItem->name_snapshot;
+        $targetTotal = round(((float) $parentItem->total / $originalUnits) * $requestedUnits, 2);
+
+        if ($selectedFlavorIds === []) {
+            return [
+                $this->buildDerivedWithdrawalLineItem(
+                    $parentItem,
+                    $requestedUnits,
+                    [],
+                    null,
+                    $targetTotal
+                ),
+            ];
+        }
+
+        $variantPlan = $this->resolveDerivedWithdrawalVariantPlan($parentItem, $requestedUnits);
+
+        if ($variantPlan === []) {
+            throw ValidationException::withMessages([
+                'requested_units' => 'Não há packs ativos configurados para representar a quantidade desta retirada parcial.',
+            ]);
+        }
+
+        $lineItems = [];
+        $allocatedTotal = 0.0;
+        $flavorCursor = 0;
+        $repeatSingleFlavor = count($selectedFlavorIds) === 1 && count($variantPlan) > 1;
+
+        foreach ($variantPlan as $index => $variant) {
+            $lineUnits = (int) $variant->unit_count;
+            $isLastLine = $index === array_key_last($variantPlan);
+            $lineTotal = $isLastLine
+                ? round($targetTotal - $allocatedTotal, 2)
+                : round(((float) $parentItem->total / $originalUnits) * $lineUnits, 2);
+            $allocatedTotal += $lineTotal;
+            $lineFlavorIds = $repeatSingleFlavor
+                ? [$selectedFlavorIds[0]]
+                : $this->sliceDerivedWithdrawalFlavorIds(
+                    $selectedFlavorIds,
+                    $flavorCursor,
+                    $variant,
+                    count($variantPlan) - $index - 1
+                );
+            $flavorCursor += $repeatSingleFlavor ? 0 : count($lineFlavorIds);
+            $lineItems[] = $this->buildDerivedWithdrawalLineItem(
+                $parentItem,
+                $lineUnits,
+                $lineFlavorIds,
+                $variant,
+                $lineTotal
+            );
+        }
+
+        if (! $repeatSingleFlavor && $flavorCursor !== count($selectedFlavorIds)) {
+            throw ValidationException::withMessages([
+                'flavor_ids' => 'Os sabores selecionados não cabem nos packs configurados para esta retirada parcial.',
+            ]);
+        }
+
+        return $lineItems;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected function buildDerivedWithdrawalLineItem(
+        OrderItem $parentItem,
+        int $requestedUnits,
+        array $selectedFlavorIds,
+        ?ProductVariant $derivedVariant,
+        float $lineTotal
+    ): array {
+        $nameSnapshot = $derivedVariant?->name ?? ($parentItem->product?->name ?? $parentItem->name_snapshot);
+        $quantity = $derivedVariant !== null ? 1 : $requestedUnits;
+        $priceSnapshot = $derivedVariant !== null ? $lineTotal : round($lineTotal / max(1, $requestedUnits), 2);
 
         return [
             'parent_order_item_id' => $parentItem->id,
             'product_id' => $parentItem->product_id,
-            'variant_id' => null,
-            'variant_name_snapshot' => null,
+            'variant_id' => $derivedVariant?->id,
+            'variant_name_snapshot' => $derivedVariant?->name,
             'name_snapshot' => $nameSnapshot,
-            'price_snapshot' => $unitPrice,
-            'quantity' => $requestedUnits,
+            'price_snapshot' => $priceSnapshot,
+            'quantity' => $quantity,
             'options' => $selectedFlavorIds !== [] ? ['flavors' => $selectedFlavorIds] : null,
             'total' => $lineTotal,
         ];
+    }
+
+    /**
+     * @return array<int, ProductVariant>
+     */
+    protected function resolveDerivedWithdrawalVariantPlan(OrderItem $parentItem, int $requestedUnits): array
+    {
+        if (! $parentItem->product_id) {
+            return [];
+        }
+
+        $variants = $this->products->findActiveVariantsForProductUnitsUpTo(
+            (int) $parentItem->product_id,
+            $requestedUnits
+        );
+
+        $remainingUnits = $requestedUnits;
+        $plan = [];
+
+        while ($remainingUnits > 0) {
+            /** @var ProductVariant|null $variant */
+            $variant = $variants->first(
+                fn (ProductVariant $candidate): bool => (int) $candidate->unit_count <= $remainingUnits
+            );
+
+            if ($variant === null) {
+                return [];
+            }
+
+            $plan[] = $variant;
+            $remainingUnits -= (int) $variant->unit_count;
+        }
+
+        return $plan;
+    }
+
+    /**
+     * @param  array<int, int>  $selectedFlavorIds
+     * @return array<int, int>
+     */
+    protected function sliceDerivedWithdrawalFlavorIds(
+        array $selectedFlavorIds,
+        int $cursor,
+        ProductVariant $variant,
+        int $remainingLineCount
+    ): array {
+        $remainingFlavorIds = count($selectedFlavorIds) - $cursor;
+        $lineFlavorCount = min(
+            (int) $variant->max_flavors,
+            max(1, $remainingFlavorIds - $remainingLineCount)
+        );
+
+        if ($lineFlavorCount < 1 || $lineFlavorCount > (int) $variant->max_flavors) {
+            throw ValidationException::withMessages([
+                'flavor_ids' => 'Os sabores selecionados não cabem nos packs configurados para esta retirada parcial.',
+            ]);
+        }
+
+        $lineFlavorIds = array_slice($selectedFlavorIds, $cursor, $lineFlavorCount);
+
+        if (count($lineFlavorIds) !== $lineFlavorCount) {
+            throw ValidationException::withMessages([
+                'flavor_ids' => 'Os sabores selecionados não cabem nos packs configurados para esta retirada parcial.',
+            ]);
+        }
+
+        return $lineFlavorIds;
     }
 
     /**

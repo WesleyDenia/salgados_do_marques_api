@@ -32,6 +32,7 @@ export default defineConfig(({ mode }) => ({
         routes: [
           "/",
           "/aniversario",
+          "/campanha-urbana",
           "/festas",
           "/produtos",
           "/parceiros",

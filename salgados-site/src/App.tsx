@@ -8,6 +8,7 @@ import { SiteLayout } from "@/components/SiteLayout";
 
 const Index = lazy(() => import("./pages/Index"));
 const Aniversario = lazy(() => import("./pages/Aniversario"));
+const CampanhaUrbana = lazy(() => import("./pages/CampanhaUrbana"));
 const Festas = lazy(() => import("./pages/Festas"));
 const Parceiros = lazy(() => import("./pages/Parceiros"));
 const ParceiroDetalhe = lazy(() => import("./pages/ParceiroDetalhe"));
@@ -43,6 +44,7 @@ const App = () => (
             <Route element={<SiteLayout />}>
               <Route path="/" element={<Index />} />
               <Route path="/aniversario" element={<Aniversario />} />
+              <Route path="/campanha-urbana" element={<CampanhaUrbana />} />
               <Route path="/festas" element={<Festas />} />
               <Route path="/parceiros" element={<Parceiros />} />
               <Route path="/parceiros/:partnerId" element={<ParceiroDetalhe />} />

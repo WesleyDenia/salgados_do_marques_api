@@ -263,6 +263,7 @@ const CampanhaUrbana = () => {
           description="Esta pista não está disponível."
           canonical={`${SITE_URL}/campanha-urbana`}
           ogImage={OG_IMAGES.aniversario}
+          noIndex
         />
 
         <section className="flex min-h-screen items-center justify-center px-5 py-12">
@@ -292,6 +293,7 @@ const CampanhaUrbana = () => {
         description="Encontraste uma das pistas espalhadas por Pombal. Resolve a adivinha e descobre a tua recompensa."
         canonical={`${SITE_URL}/campanha-urbana`}
         ogImage={OG_IMAGES.aniversario}
+        noIndex
       />
 
       <section className="relative isolate min-h-screen overflow-hidden bg-[#4a0507] text-white">

@@ -367,11 +367,13 @@ const CampanhaUrbana = () => {
                           Encontraste: {answerResult.collection_label}
                         </p>
                         <h2 className="mt-5 text-3xl font-semibold">O segredo é nosso.</h2>
-                        <img
-                          src="/logo_site.png"
-                          alt="Salgados do Marquês"
-                          className="mx-auto mt-4 h-auto w-44"
-                        />
+                        <div className="mx-auto mt-4 inline-flex rounded-2xl border border-[#f2cf7c]/25 bg-[#761014] px-5 py-3 shadow-[0_14px_34px_-18px_rgba(64,16,19,0.72)]">
+                          <img
+                            src="/logo_site_branco.png"
+                            alt="Salgados do Marquês"
+                            className="h-auto w-44"
+                          />
+                        </div>
                         <p className="mt-3 text-base leading-7 text-[#755e52]">
                           No Shopping de Pombal. Guarda o teu prémio e continua à procura dos outros segredos.
                         </p>

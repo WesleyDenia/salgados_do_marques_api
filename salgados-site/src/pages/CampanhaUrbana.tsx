@@ -372,7 +372,7 @@ const CampanhaUrbana = () => {
                           Segredo #{challenge.secretNumber}
                         </p>
                       </div>
-                      <p className="mt-3 text-sm font-semibold text-[#a06b26]">
+                      <p className="mt-3 text-lg font-semibold text-[#a06b26]">
                         {challenge.eyebrow}
                       </p>
                     </div>

@@ -5,7 +5,6 @@ import {
   CircleHelp,
   Gift,
   LockKeyhole,
-  MapPin,
   MessageCircle,
   Search,
   ShieldCheck,
@@ -17,6 +16,7 @@ import { Seo } from "@/components/Seo";
 import { Button } from "@/components/ui/button";
 import { OG_IMAGES, SITE_NAME, SITE_URL } from "@/lib/site";
 import quizBackground from "@/assets/campanha-urbana-perguntas.png";
+import campaignLogo from "@/assets/logo-pombal-tem-um-segredo.png";
 
 type CampaignType = "kibe" | "carne" | "salsicha" | "queijo" | "coxinha";
 
@@ -271,9 +271,11 @@ const CampanhaUrbana = () => {
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-[#f2cf7c] text-[#5b0608]">
               <Search className="h-7 w-7" />
             </div>
-            <p className="mt-7 text-sm font-bold uppercase tracking-[0.22em] text-[#f6dfaa]">
-              Pombal tem um segredo
-            </p>
+            <img
+              src={campaignLogo}
+              alt="Pombal tem um segredo"
+              className="mx-auto mt-7 h-auto w-full max-w-sm drop-shadow-[0_12px_28px_rgba(0,0,0,0.42)]"
+            />
             <h1 className="mt-3 text-3xl font-semibold sm:text-4xl">
               Esta pista não foi encontrada
             </h1>
@@ -308,17 +310,11 @@ const CampanhaUrbana = () => {
 
         <div className="section-container relative z-10 flex min-h-screen flex-col py-6 sm:py-10">
           <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#f2cf7c]/30 bg-[#f2cf7c]/10 text-[#f6dfaa]">
-                <MapPin className="h-5 w-5" />
-              </div>
-              <div>
-                <p className="text-xs font-bold uppercase tracking-[0.24em] text-[#f6dfaa]">
-                  Pombal
-                </p>
-                <p className="text-sm text-white/68">Tem um segredo</p>
-              </div>
-            </div>
+            <img
+              src={campaignLogo}
+              alt="Pombal tem um segredo"
+              className="h-auto w-[min(68vw,18rem)] max-w-sm drop-shadow-[0_12px_28px_rgba(0,0,0,0.5)] sm:w-80"
+            />
 
             <div className="rounded-full border border-white/10 bg-white/[0.07] px-4 py-2 text-xs font-semibold text-white/72 backdrop-blur-sm">
               Pista {challenge.secretNumber} de 5

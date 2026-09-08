@@ -8,9 +8,7 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 class WhatsAppQueueService
 {
-    public function __construct(protected WhatsAppQueueItemRepository $items)
-    {
-    }
+    public function __construct(protected WhatsAppQueueItemRepository $items) {}
 
     public function enqueue(array $attributes): WhatsAppQueueItem
     {
@@ -19,6 +17,11 @@ class WhatsAppQueueService
             'status' => WhatsAppQueueItem::STATUS_QUEUED,
             'queued_at' => now(),
         ], $attributes);
+    }
+
+    public function findOutboundByEntity(string $type, string $entityType, int $entityId): ?WhatsAppQueueItem
+    {
+        return $this->items->findOutboundByEntity($type, $entityType, $entityId);
     }
 
     public function enqueueReceived(array $attributes): WhatsAppQueueItem

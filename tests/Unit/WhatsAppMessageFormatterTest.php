@@ -4,6 +4,7 @@ namespace Tests\Unit;
 
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\UrbanCampaignCouponClaim;
 use App\Models\User;
 use App\Services\Notifications\WhatsAppMessageFormatter;
 use Carbon\Carbon;
@@ -14,7 +15,7 @@ class WhatsAppMessageFormatterTest extends TestCase
 {
     public function test_it_formats_otp_message(): void
     {
-        $formatter = new WhatsAppMessageFormatter();
+        $formatter = new WhatsAppMessageFormatter;
 
         $this->assertSame(
             'Seu código de verificação Coinxinhas - Salgados do Marquês é 123456. Ele expira em 15 minutos.',
@@ -22,27 +23,48 @@ class WhatsAppMessageFormatterTest extends TestCase
         );
     }
 
+    public function test_it_formats_urban_campaign_coupon_message(): void
+    {
+        $formatter = new WhatsAppMessageFormatter;
+        $claim = new UrbanCampaignCouponClaim([
+            'code' => 'VD-URBANA-10',
+            'discount_type' => 'percent',
+            'amount' => 10,
+            'expires_at' => Carbon::create(2026, 9, 15, 12, 0, 0, 'UTC'),
+        ]);
+
+        $this->assertSame(
+            "O teu cupom da Campanha Urbana foi gerado.\n"
+                ."Codigo: VD-URBANA-10\n"
+                ."Desconto: 10%\n"
+                ."Valido ate: 15/09/2026 12:00\n"
+                ."Apresente este codigo no momento da compra.\n"
+                .'Salgados do Marques',
+            $formatter->urbanCampaignCoupon($claim, 'Europe/Lisbon')
+        );
+    }
+
     public function test_it_formats_order_message(): void
     {
-        $formatter = new WhatsAppMessageFormatter();
+        $formatter = new WhatsAppMessageFormatter;
 
-        $user = new User();
+        $user = new User;
         $user->name = 'Joao Silva';
         $user->phone = '351911928481';
 
-        $order = new Order();
+        $order = new Order;
         $order->scheduled_at = Carbon::create(2026, 1, 15, 12, 30, 0, 'UTC');
         $order->setRelation('user', $user);
 
-        $items = new Collection();
+        $items = new Collection;
 
-        $firstItem = new OrderItem();
+        $firstItem = new OrderItem;
         $firstItem->quantity = 3;
         $firstItem->name_snapshot = 'Coxinha';
         $firstItem->options = ['flavors' => [1, 2]];
         $items->push($firstItem);
 
-        $secondItem = new OrderItem();
+        $secondItem = new OrderItem;
         $secondItem->quantity = 1;
         $secondItem->name_snapshot = 'Pastel';
         $secondItem->options = null;
@@ -52,13 +74,13 @@ class WhatsAppMessageFormatterTest extends TestCase
 
         $this->assertSame(
             "Nome: Joao Silva\n"
-                . "Tel: 351911928481\n"
-                . "Data/Hora: 15/01/2026 12:30\n"
-                . "Pedido:\n"
-                . "3x Coxinha\n"
-                . " - Pack Mix\n"
-                . " - Pack Doce\n"
-                . "1x Pastel",
+                ."Tel: 351911928481\n"
+                ."Data/Hora: 15/01/2026 12:30\n"
+                ."Pedido:\n"
+                ."3x Coxinha\n"
+                ." - Pack Mix\n"
+                ." - Pack Doce\n"
+                .'1x Pastel',
             $formatter->orderPlacedSnapshot(
                 'Joao Silva',
                 '351911928481',
@@ -74,19 +96,19 @@ class WhatsAppMessageFormatterTest extends TestCase
 
     public function test_it_formats_order_message_from_array_items(): void
     {
-        $formatter = new WhatsAppMessageFormatter();
+        $formatter = new WhatsAppMessageFormatter;
 
         $scheduledAt = Carbon::create(2026, 1, 15, 12, 30, 0, 'UTC');
 
         $this->assertSame(
             "Nome: Joao Silva\n"
-                . "Tel: 351911928481\n"
-                . "Data/Hora: 15/01/2026 12:30\n"
-                . "Pedido:\n"
-                . "3x Coxinha\n"
-                . " - Pack Mix\n"
-                . " - Pack Doce\n"
-                . "1x Pastel",
+                ."Tel: 351911928481\n"
+                ."Data/Hora: 15/01/2026 12:30\n"
+                ."Pedido:\n"
+                ."3x Coxinha\n"
+                ." - Pack Mix\n"
+                ." - Pack Doce\n"
+                .'1x Pastel',
             $formatter->orderPlacedSnapshot(
                 'Joao Silva',
                 '351911928481',

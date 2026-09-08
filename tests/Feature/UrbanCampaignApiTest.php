@@ -2,15 +2,18 @@
 
 namespace Tests\Feature;
 
+use App\Jobs\SendUrbanCampaignCouponWhatsAppJob;
 use App\Models\QrCode;
 use App\Models\Question;
 use App\Models\QuestionResponse;
 use App\Models\UrbanCampaignCouponClaim;
 use App\Models\UrbanCampaignCouponConfig;
+use App\Models\WhatsAppQueueItem;
 use Carbon\Carbon;
 use Database\Seeders\UrbanCampaignSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
 class UrbanCampaignApiTest extends TestCase
@@ -133,6 +136,7 @@ class UrbanCampaignApiTest extends TestCase
     public function test_public_user_can_claim_vendus_coupon_once_per_phone_and_type(): void
     {
         $this->travelTo(Carbon::parse('2026-09-08 12:00:00'));
+        Queue::fake();
 
         config([
             'services.vendus.base_url' => 'https://vendus.test/ws/v1.1',
@@ -200,6 +204,16 @@ class UrbanCampaignApiTest extends TestCase
 
         Http::assertSentCount(1);
         Http::assertSent(fn ($request) => $request['date_expire'] === '2026-09-15');
+        Queue::assertPushed(SendUrbanCampaignCouponWhatsAppJob::class, 1);
+        $this->assertDatabaseCount('whatsapp_queue_items', 1);
+        $this->assertDatabaseHas('whatsapp_queue_items', [
+            'type' => WhatsAppQueueItem::TYPE_URBAN_CAMPAIGN_COUPON,
+            'direction' => WhatsAppQueueItem::DIRECTION_OUTBOUND,
+            'entity_type' => 'urban_campaign_coupon_claim',
+            'entity_id' => $claim->id,
+            'phone' => '351912345678',
+            'status' => WhatsAppQueueItem::STATUS_QUEUED,
+        ]);
         $this->travelBack();
     }
 

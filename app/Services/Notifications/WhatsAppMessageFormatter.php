@@ -3,6 +3,7 @@
 namespace App\Services\Notifications;
 
 use App\Models\Order;
+use App\Models\UrbanCampaignCouponClaim;
 use Carbon\Carbon;
 
 class WhatsAppMessageFormatter
@@ -25,8 +26,7 @@ class WhatsAppMessageFormatter
         Carbon $scheduledAt,
         iterable $items,
         array $flavorNamesById = []
-    ): string
-    {
+    ): string {
         $lines = collect($items)->flatMap(function ($item) use ($flavorNamesById): array {
             $quantity = (int) data_get($item, 'quantity', 0);
             $nameSnapshot = (string) data_get($item, 'name_snapshot', '-');
@@ -42,7 +42,7 @@ class WhatsAppMessageFormatter
 
             if ($flavors->isNotEmpty()) {
                 foreach ($flavors as $flavorId) {
-                    $lines[] = ' - ' . ($flavorNamesById[$flavorId] ?? ('Sabor #' . $flavorId));
+                    $lines[] = ' - '.($flavorNamesById[$flavorId] ?? ('Sabor #'.$flavorId));
                 }
             }
 
@@ -50,9 +50,9 @@ class WhatsAppMessageFormatter
         })->implode("\n");
 
         return implode("\n", [
-            'Nome: ' . $name,
-            'Tel: ' . $phone,
-            'Data/Hora: ' . $scheduledAt->format('d/m/Y H:i'),
+            'Nome: '.$name,
+            'Tel: '.$phone,
+            'Data/Hora: '.$scheduledAt->format('d/m/Y H:i'),
             'Pedido:',
             $lines !== '' ? $lines : '-',
         ]);
@@ -64,5 +64,30 @@ class WhatsAppMessageFormatter
             'Seu código de verificação Coinxinhas - Salgados do Marquês é %s. Ele expira em 15 minutos.',
             $token
         );
+    }
+
+    public function urbanCampaignCoupon(UrbanCampaignCouponClaim $claim, string $timezone): string
+    {
+        $expiresAt = $claim->expires_at
+            ? $claim->expires_at->copy()->timezone($timezone)->format('d/m/Y H:i')
+            : '-';
+
+        return implode("\n", [
+            'O teu cupom da Campanha Urbana foi gerado.',
+            'Codigo: '.($claim->code ?: '-'),
+            'Desconto: '.$this->formatDiscount((string) $claim->discount_type, (float) $claim->amount),
+            'Valido ate: '.$expiresAt,
+            'Apresente este codigo no momento da compra.',
+            'Salgados do Marques',
+        ]);
+    }
+
+    protected function formatDiscount(string $type, float $amount): string
+    {
+        if ($type === 'percent') {
+            return rtrim(rtrim(number_format($amount, 2, ',', '.'), '0'), ',').'%';
+        }
+
+        return '€'.number_format($amount, 2, ',', '.');
     }
 }

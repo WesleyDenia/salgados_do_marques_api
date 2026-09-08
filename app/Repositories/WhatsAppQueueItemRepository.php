@@ -28,4 +28,15 @@ class WhatsAppQueueItemRepository extends BaseRepository
     {
         return $this->queryForAdmin($statuses, $types, $directions)->paginate($perPage, ['*'], $pageName);
     }
+
+    public function findOutboundByEntity(string $type, string $entityType, int $entityId): ?WhatsAppQueueItem
+    {
+        return $this->model
+            ->newQuery()
+            ->where('type', $type)
+            ->where('direction', WhatsAppQueueItem::DIRECTION_OUTBOUND)
+            ->where('entity_type', $entityType)
+            ->where('entity_id', $entityId)
+            ->first();
+    }
 }

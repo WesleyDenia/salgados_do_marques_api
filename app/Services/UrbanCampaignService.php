@@ -2,12 +2,16 @@
 
 namespace App\Services;
 
+use App\Jobs\SendUrbanCampaignCouponWhatsAppJob;
 use App\Models\Question;
 use App\Models\QuestionResponse;
 use App\Models\UrbanCampaignCouponClaim;
 use App\Models\UrbanCampaignCouponConfig;
+use App\Models\WhatsAppQueueItem;
 use App\Repositories\UrbanCampaignRepository;
 use App\Services\Erp\Vendus\VendusCouponSyncService;
+use App\Services\Notifications\WhatsAppMessageFormatter;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Throwable;
 
@@ -16,6 +20,8 @@ class UrbanCampaignService
     public function __construct(
         protected UrbanCampaignRepository $repository,
         protected VendusCouponSyncService $vendus,
+        protected WhatsAppMessageFormatter $messages,
+        protected WhatsAppQueueService $whatsAppQueue,
     ) {}
 
     public function getChallengePayload(string $code): array
@@ -61,6 +67,8 @@ class UrbanCampaignService
         $claim = $this->repository->findClaimByPhoneAndType($phone, $couponType);
 
         if ($claim?->hasSyncedCode()) {
+            $this->enqueueCouponWhatsApp($claim);
+
             return $claim;
         }
 
@@ -117,7 +125,10 @@ class UrbanCampaignService
                 ]);
             }
 
-            return $this->repository->markClaimSynced($claim, $erpResponse);
+            $syncedClaim = $this->repository->markClaimSynced($claim, $erpResponse);
+            $this->enqueueCouponWhatsApp($syncedClaim);
+
+            return $syncedClaim;
         } catch (ValidationException $exception) {
             $this->repository->markClaimFailed($claim, $exception->getMessage());
 
@@ -127,6 +138,51 @@ class UrbanCampaignService
 
             throw ValidationException::withMessages([
                 'phone' => 'Não foi possível gerar o cupom no Vendus. Tente novamente.',
+            ]);
+        }
+    }
+
+    protected function enqueueCouponWhatsApp(UrbanCampaignCouponClaim $claim): void
+    {
+        if (! $claim->hasSyncedCode()) {
+            return;
+        }
+
+        $existing = $this->whatsAppQueue->findOutboundByEntity(
+            WhatsAppQueueItem::TYPE_URBAN_CAMPAIGN_COUPON,
+            'urban_campaign_coupon_claim',
+            $claim->id
+        );
+
+        if ($existing) {
+            return;
+        }
+
+        try {
+            $queueItem = $this->whatsAppQueue->enqueue([
+                'type' => WhatsAppQueueItem::TYPE_URBAN_CAMPAIGN_COUPON,
+                'entity_type' => 'urban_campaign_coupon_claim',
+                'entity_id' => $claim->id,
+                'recipient_name' => null,
+                'phone' => $claim->phone,
+                'message' => $this->messages->urbanCampaignCoupon($claim, config('app.timezone', 'UTC')),
+                'payload' => [
+                    'coupon_type' => $claim->coupon_type,
+                    'coupon_code' => $claim->code,
+                    'discount_type' => $claim->discount_type,
+                    'amount' => (float) $claim->amount,
+                    'expires_at' => optional($claim->expires_at)->toIso8601String(),
+                ],
+            ]);
+
+            SendUrbanCampaignCouponWhatsAppJob::dispatch($queueItem->id)
+                ->onQueue('notifications')
+                ->afterCommit();
+        } catch (Throwable $exception) {
+            Log::warning('[UrbanCampaignService] Falha ao enfileirar WhatsApp do cupom urbano', [
+                'claim_id' => $claim->id,
+                'coupon_type' => $claim->coupon_type,
+                'message' => $exception->getMessage(),
             ]);
         }
     }

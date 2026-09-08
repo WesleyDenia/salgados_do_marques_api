@@ -7,22 +7,23 @@ use App\Http\Requests\Admin\CloseCouponImportRequest;
 use App\Http\Requests\Admin\CloseWhatsAppQueueItemRequest;
 use App\Http\Requests\Admin\UpdateErpSyncTaskStatusRequest;
 use App\Jobs\CreateVendusDiscountCardJob;
-use App\Jobs\SendOrderPlacedWhatsAppJob;
-use App\Jobs\SendWhatsAppOtpJob;
 use App\Jobs\ProcessVendusDiscountCardImportJob;
+use App\Jobs\SendOrderPlacedWhatsAppJob;
+use App\Jobs\SendUrbanCampaignCouponWhatsAppJob;
+use App\Jobs\SendWhatsAppOtpJob;
 use App\Jobs\SyncCustomerToErpJob;
 use App\Models\ErpSyncTask;
-use App\Models\UserCoupon;
 use App\Models\User;
-use App\Models\WhatsAppQueueItem;
+use App\Models\UserCoupon;
 use App\Models\VendusDiscountCardImport;
+use App\Models\WhatsAppQueueItem;
 use App\Repositories\ErpSyncTaskRepository;
-use App\Repositories\WhatsAppQueueItemRepository;
 use App\Repositories\UserCouponRepository;
+use App\Repositories\WhatsAppQueueItemRepository;
 use App\Services\ErpSyncTaskService;
 use App\Services\WhatsAppQueueService;
-use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 
 class QueueMonitorController extends Controller
 {
@@ -32,8 +33,7 @@ class QueueMonitorController extends Controller
         protected UserCouponRepository $userCoupons,
         protected WhatsAppQueueItemRepository $whatsAppQueueItems,
         protected WhatsAppQueueService $whatsAppQueue,
-    ) {
-    }
+    ) {}
 
     public function index(Request $request)
     {
@@ -54,6 +54,7 @@ class QueueMonitorController extends Controller
         $whatsappSentTypeOptions = [
             WhatsAppQueueItem::TYPE_OTP => 'OTP',
             WhatsAppQueueItem::TYPE_ORDER_PLACED => 'Pedido',
+            WhatsAppQueueItem::TYPE_URBAN_CAMPAIGN_COUPON => 'Cupom Campanha Urbana',
         ];
         $whatsappStatusOptions = [
             WhatsAppQueueItem::STATUS_QUEUED => 'Enfileirado',
@@ -88,19 +89,19 @@ class QueueMonitorController extends Controller
             VendusDiscountCardImport::STATUS_MANUALLY_CLOSED => 'Baixa manual',
         ];
 
-        if (!array_key_exists($couponFilters['status'], $couponStatusOptions)) {
+        if (! array_key_exists($couponFilters['status'], $couponStatusOptions)) {
             $couponFilters['status'] = '';
         }
 
-        if (!array_key_exists($whatsappSentFilters['status'], $whatsappStatusOptions)) {
+        if (! array_key_exists($whatsappSentFilters['status'], $whatsappStatusOptions)) {
             $whatsappSentFilters['status'] = '';
         }
 
-        if (!array_key_exists($whatsappSentFilters['type'], $whatsappSentTypeOptions)) {
+        if (! array_key_exists($whatsappSentFilters['type'], $whatsappSentTypeOptions)) {
             $whatsappSentFilters['type'] = '';
         }
 
-        if (!array_key_exists($whatsappReceivedFilters['status'], $whatsappReceivedStatusOptions)) {
+        if (! array_key_exists($whatsappReceivedFilters['status'], $whatsappReceivedStatusOptions)) {
             $whatsappReceivedFilters['status'] = '';
         }
 
@@ -239,7 +240,7 @@ class QueueMonitorController extends Controller
         } elseif ($task->operation === ErpSyncTask::OPERATION_CREATE_DISCOUNT_CARD && $task->entity_type === ErpSyncTask::ENTITY_USER_COUPON) {
             $userCoupon = UserCoupon::query()->find($task->entity_id);
 
-            if (!$userCoupon) {
+            if (! $userCoupon) {
                 return back()->with('status', 'Cupom local não encontrado para reprocessamento.');
             }
 
@@ -269,7 +270,7 @@ class QueueMonitorController extends Controller
 
         $userCoupon = UserCoupon::query()->find($task->entity_id);
 
-        if (!$userCoupon) {
+        if (! $userCoupon) {
             return back()->with('status', 'Cupom local não encontrado para atualização manual.');
         }
 
@@ -280,6 +281,7 @@ class QueueMonitorController extends Controller
         if ($payload['target_status'] === ErpSyncTask::STATUS_MANUAL_REVIEW) {
             $this->userCoupons->markManualReview($userCoupon, $note);
             $this->taskService->markManualReview($task, $note, $actorId);
+
             return back()->with('status', "Tarefa ERP #{$task->id} marcada para revisão manual.");
         }
 
@@ -360,7 +362,7 @@ class QueueMonitorController extends Controller
             return back()->with('status', 'Mensagens recebidas ainda não possuem reprocessamento automático.');
         }
 
-        if (!in_array($item->type, [WhatsAppQueueItem::TYPE_OTP, WhatsAppQueueItem::TYPE_ORDER_PLACED], true)) {
+        if (! in_array($item->type, [WhatsAppQueueItem::TYPE_OTP, WhatsAppQueueItem::TYPE_ORDER_PLACED, WhatsAppQueueItem::TYPE_URBAN_CAMPAIGN_COUPON], true)) {
             return back()->with('status', 'Este tipo de mensagem WhatsApp ainda não suporta reprocessamento.');
         }
 
@@ -370,6 +372,8 @@ class QueueMonitorController extends Controller
             SendWhatsAppOtpJob::dispatch($item->id)->onQueue('notifications');
         } elseif ($item->type === WhatsAppQueueItem::TYPE_ORDER_PLACED) {
             SendOrderPlacedWhatsAppJob::dispatch($item->id)->onQueue('notifications');
+        } elseif ($item->type === WhatsAppQueueItem::TYPE_URBAN_CAMPAIGN_COUPON) {
+            SendUrbanCampaignCouponWhatsAppJob::dispatch($item->id)->onQueue('notifications');
         }
 
         return back()->with('status', "Mensagem WhatsApp #{$item->id} reenfileirada.");

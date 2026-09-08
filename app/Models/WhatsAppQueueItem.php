@@ -10,16 +10,25 @@ class WhatsAppQueueItem extends Model
     protected $table = 'whatsapp_queue_items';
 
     public const TYPE_RECEIVED = 'received';
+
     public const TYPE_OTP = 'otp';
+
     public const TYPE_ORDER_PLACED = 'order_placed';
 
+    public const TYPE_URBAN_CAMPAIGN_COUPON = 'urban_campaign_coupon';
+
     public const DIRECTION_OUTBOUND = 'outbound';
+
     public const DIRECTION_INBOUND = 'inbound';
 
     public const STATUS_QUEUED = 'queued';
+
     public const STATUS_PROCESSING = 'processing';
+
     public const STATUS_SENT = 'sent';
+
     public const STATUS_FAILED = 'failed';
+
     public const STATUS_MANUALLY_CLOSED = 'manually_closed';
 
     public const TERMINAL_STATUSES = [

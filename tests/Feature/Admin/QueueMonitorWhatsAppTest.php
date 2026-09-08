@@ -3,6 +3,7 @@
 namespace Tests\Feature\Admin;
 
 use App\Jobs\SendOrderPlacedWhatsAppJob;
+use App\Jobs\SendUrbanCampaignCouponWhatsAppJob;
 use App\Jobs\SendWhatsAppOtpJob;
 use App\Models\User;
 use App\Models\WhatsAppQueueItem;
@@ -18,9 +19,9 @@ class QueueMonitorWhatsAppTest extends TestCase
     {
         parent::setUp();
 
-        $compiledPath = sys_get_temp_dir() . '/salgados-api-views';
+        $compiledPath = sys_get_temp_dir().'/salgados-api-views';
 
-        if (!is_dir($compiledPath)) {
+        if (! is_dir($compiledPath)) {
             mkdir($compiledPath, 0777, true);
         }
 
@@ -133,6 +134,36 @@ class QueueMonitorWhatsAppTest extends TestCase
         $response->assertRedirect();
 
         Queue::assertPushed(SendOrderPlacedWhatsAppJob::class, fn (SendOrderPlacedWhatsAppJob $job) => $job->queueItemId === $item->id);
+        $this->assertDatabaseHas('whatsapp_queue_items', [
+            'id' => $item->id,
+            'status' => WhatsAppQueueItem::STATUS_QUEUED,
+            'last_error' => null,
+        ]);
+    }
+
+    public function test_retry_whatsapp_message_requeues_urban_campaign_coupon_items(): void
+    {
+        Queue::fake();
+
+        $admin = User::factory()->create(['role' => 'admin']);
+
+        $item = WhatsAppQueueItem::create([
+            'type' => WhatsAppQueueItem::TYPE_URBAN_CAMPAIGN_COUPON,
+            'direction' => WhatsAppQueueItem::DIRECTION_OUTBOUND,
+            'entity_type' => 'urban_campaign_coupon_claim',
+            'entity_id' => 99,
+            'recipient_name' => 'Cliente Teste',
+            'phone' => '351912345678',
+            'message' => 'Codigo: VD-URBANA-10',
+            'status' => WhatsAppQueueItem::STATUS_FAILED,
+            'last_error' => 'HTTP 500: WhatsApp not ready',
+        ]);
+
+        $response = $this->actingAs($admin)->post(route('admin.queue.whatsapp.retry', $item));
+
+        $response->assertRedirect();
+
+        Queue::assertPushed(SendUrbanCampaignCouponWhatsAppJob::class, fn (SendUrbanCampaignCouponWhatsAppJob $job) => $job->queueItemId === $item->id);
         $this->assertDatabaseHas('whatsapp_queue_items', [
             'id' => $item->id,
             'status' => WhatsAppQueueItem::STATUS_QUEUED,

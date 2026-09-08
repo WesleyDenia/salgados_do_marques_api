@@ -2,13 +2,13 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\Hash;
-use App\Models\User;
 use App\Models\Category;
+use App\Models\Coupon;
 use App\Models\Product;
 use App\Models\Promotion;
-use App\Models\Coupon;
+use App\Models\User;
+use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Hash;
 
 class DatabaseSeeder extends Seeder
 {
@@ -89,7 +89,7 @@ class DatabaseSeeder extends Seeder
         Coupon::firstOrCreate(
             ['code' => 'VIP-CLIENTE'],
             [
-                'title' => 'Cliente VIP',                
+                'title' => 'Cliente VIP',
                 'body' => 'Cupom especial cliente',
                 'recurrence' => 'none',
                 'image_url' => 'https://picsum.photos/seed/festa/800/400',
@@ -105,6 +105,7 @@ class DatabaseSeeder extends Seeder
             SettingSeeder::class,
             ContentHomeSeeder::class,
             ContentHomeSecondarySeeder::class,
+            UrbanCampaignSeeder::class,
         ]);
     }
 }

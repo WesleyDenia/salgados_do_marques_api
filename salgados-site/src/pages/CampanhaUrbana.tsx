@@ -1,4 +1,5 @@
 import { useMemo, useState, type FormEvent } from "react";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   ArrowRight,
   Check,
@@ -15,151 +16,21 @@ import {
 import { Seo } from "@/components/Seo";
 import { Button } from "@/components/ui/button";
 import { OG_IMAGES, SITE_NAME, SITE_URL } from "@/lib/site";
+import {
+  fetchUrbanCampaignChallenge,
+  submitUrbanCampaignAnswer,
+  type UrbanCampaignAnswerResult,
+} from "@/lib/urban-campaign";
 import quizBackground from "@/assets/campanha-urbana-perguntas.png";
 import campaignLogo from "@/assets/logo-pombal-tem-um-segredo.png";
-
-type CampaignType = "kibe" | "carne" | "salsicha" | "queijo" | "coxinha";
-
-type QuizOption = {
-  id: string;
-  label: string;
-};
-
-type CampaignChallenge = {
-  type: CampaignType;
-  secretNumber: number;
-  collectionLabel: string;
-  eyebrow: string;
-  riddle: string[];
-  options: QuizOption[];
-  correctOptionId: string;
-  rewardWhenCorrect: number;
-  rewardWhenWrong: number;
-};
 
 type MockClaim = {
   phone: string;
   couponCode: string;
 };
 
-const MOCK_CHALLENGES: Record<CampaignType, CampaignChallenge> = {
-  kibe: {
-    type: "kibe",
-    secretNumber: 1,
-    collectionLabel: "Kibe",
-    eyebrow: "Uma pista de forma comprida",
-    riddle: [
-      "Por fora sou dourado e estaladiço.",
-      "Por dentro, carne bem temperada.",
-      "Tenho raízes no Médio Oriente e desapareço num instante.",
-      "Quem sou eu?",
-    ],
-    options: [
-      { id: "kibe", label: "Kibe" },
-      { id: "coxinha", label: "Coxinha de Frango" },
-      { id: "queijo", label: "Bolinha de Queijo" },
-      { id: "carne", label: "Travesseirinho de Carne" },
-    ],
-    correctOptionId: "kibe",
-    rewardWhenCorrect: 10,
-    rewardWhenWrong: 5,
-  },
-  carne: {
-    type: "carne",
-    secretNumber: 2,
-    collectionLabel: "Travesseirinho de Carne",
-    eyebrow: "Uma pista macia por dentro",
-    riddle: [
-      "Tenho nome de coisa que ajuda a descansar.",
-      "Mas ninguém me leva para a cama.",
-      "Sou pequeno, recheado de carne e feito para partilhar.",
-      "Quem sou eu?",
-    ],
-    options: [
-      { id: "carne", label: "Travesseirinho de Carne" },
-      { id: "salsicha", label: "Enroladinho de Salsicha" },
-      { id: "kibe", label: "Kibe" },
-      { id: "queijo", label: "Bolinha de Queijo" },
-    ],
-    correctOptionId: "carne",
-    rewardWhenCorrect: 15,
-    rewardWhenWrong: 10,
-  },
-  salsicha: {
-    type: "salsicha",
-    secretNumber: 3,
-    collectionLabel: "Enroladinho de Salsicha",
-    eyebrow: "Uma pista bem enrolada",
-    riddle: [
-      "Levo o recheio escondido num abraço dourado.",
-      "Sou comprido, divertido e desapareço antes da festa começar.",
-      "Quem sou eu?",
-    ],
-    options: [
-      { id: "queijo", label: "Bolinha de Queijo" },
-      { id: "salsicha", label: "Enroladinho de Salsicha" },
-      { id: "coxinha", label: "Coxinha de Frango" },
-      { id: "carne", label: "Travesseirinho de Carne" },
-    ],
-    correctOptionId: "salsicha",
-    rewardWhenCorrect: 20,
-    rewardWhenWrong: 10,
-  },
-  queijo: {
-    type: "queijo",
-    secretNumber: 4,
-    collectionLabel: "Bolinha de Queijo",
-    eyebrow: "Uma pista redonda e irresistível",
-    riddle: [
-      "Sou pequena, redonda e dourada.",
-      "Quando me abrem, o meu coração pode esticar.",
-      "Quem sou eu?",
-    ],
-    options: [
-      { id: "kibe", label: "Kibe" },
-      { id: "carne", label: "Travesseirinho de Carne" },
-      { id: "queijo", label: "Bolinha de Queijo" },
-      { id: "salsicha", label: "Enroladinho de Salsicha" },
-    ],
-    correctOptionId: "queijo",
-    rewardWhenCorrect: 25,
-    rewardWhenWrong: 15,
-  },
-  coxinha: {
-    type: "coxinha",
-    secretNumber: 5,
-    collectionLabel: "Coxinha de Frango",
-    eyebrow: "Talvez tenhas encontrado o lendário",
-    riddle: [
-      "Tenho uma armadura dourada,",
-      "um coração cremoso",
-      "e desapareço rapidamente quando chego à mesa.",
-      "Quem sou eu?",
-    ],
-    options: [
-      { id: "coxinha", label: "Coxinha de Frango" },
-      { id: "kibe", label: "Kibe" },
-      { id: "queijo", label: "Bolinha de Queijo" },
-      { id: "carne", label: "Travesseirinho de Carne" },
-    ],
-    correctOptionId: "coxinha",
-    rewardWhenCorrect: 50,
-    rewardWhenWrong: 25,
-  },
-};
-
-// Simula o inventário que, na versão final, será consultado no backend.
-// O código é a única entrada pública e determina internamente o desafio.
-const MOCK_QR_INVENTORY: Record<string, CampaignType> = {
-  qrxpto: "kibe",
-  "qr-carne": "carne",
-  "qr-salsicha": "salsicha",
-  "qr-queijo": "queijo",
-  "qr-lendario": "coxinha",
-};
-
-const MOCK_COLLECTION: CampaignType[] = [];
-const VALID_CODE_PATTERN = /^[a-zA-Z0-9-]{4,64}$/;
+const COLLECTION_TYPES = ["kibe", "carne", "salsicha", "queijo", "coxinha"];
+const VALID_CODE_PATTERN = /^[a-zA-Z0-9-]{4,120}$/;
 
 function readCampaignParams() {
   if (typeof window === "undefined") {
@@ -171,16 +42,6 @@ function readCampaignParams() {
   return {
     code: params.get("code")?.trim() ?? "",
   };
-}
-
-function getMockChallengeByCode(code: string) {
-  const campaignType = MOCK_QR_INVENTORY[code.toLowerCase()];
-
-  if (!campaignType) {
-    return null;
-  }
-
-  return MOCK_CHALLENGES[campaignType];
 }
 
 function normalisePortugueseMobile(value: string) {
@@ -199,44 +60,57 @@ function normalisePortugueseMobile(value: string) {
 
 const CampanhaUrbana = () => {
   const [{ code }] = useState(readCampaignParams);
-  const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
-  const [hasAnswered, setHasAnswered] = useState(false);
+  const [selectedOptionId, setSelectedOptionId] = useState<number | null>(null);
+  const [answerResult, setAnswerResult] = useState<UrbanCampaignAnswerResult | null>(null);
   const [phone, setPhone] = useState("");
   const [phoneError, setPhoneError] = useState("");
   const [mockClaim, setMockClaim] = useState<MockClaim | null>(null);
 
   const hasValidCode = VALID_CODE_PATTERN.test(code);
-  const challenge = hasValidCode ? getMockChallengeByCode(code) : null;
+  const {
+    data: challenge,
+    isLoading,
+    isError,
+  } = useQuery({
+    queryKey: ["urban-campaign", code],
+    queryFn: () => fetchUrbanCampaignChallenge(code),
+    enabled: hasValidCode,
+    retry: false,
+  });
+
+  const answerMutation = useMutation({
+    mutationFn: (responseId: number) =>
+      submitUrbanCampaignAnswer({
+        code,
+        question_id: challenge?.question.id ?? 0,
+        response_id: responseId,
+      }),
+    onSuccess: (result) => {
+      setAnswerResult(result);
+    },
+  });
+
   const isValidCampaignLink = Boolean(challenge);
-
-  const isCorrect = Boolean(
-    challenge && selectedOptionId === challenge.correctOptionId,
-  );
-
-  const reward = useMemo(() => {
-    if (!challenge || !hasAnswered) {
-      return null;
-    }
-
-    return isCorrect ? challenge.rewardWhenCorrect : challenge.rewardWhenWrong;
-  }, [challenge, hasAnswered, isCorrect]);
+  const hasAnswered = Boolean(answerResult);
+  const isCorrect = Boolean(answerResult?.is_correct);
+  const reward = answerResult?.reward_percent ?? null;
 
   const collection = useMemo(() => {
-    if (!challenge || !hasAnswered) {
-      return MOCK_COLLECTION;
+    if (!challenge || !answerResult) {
+      return [];
     }
 
-    return Array.from(new Set([...MOCK_COLLECTION, challenge.type]));
-  }, [challenge, hasAnswered]);
+    return [challenge.type];
+  }, [challenge, answerResult]);
 
   const submitAnswer = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    if (!selectedOptionId || hasAnswered) {
+    if (!selectedOptionId || hasAnswered || answerMutation.isPending) {
       return;
     }
 
-    setHasAnswered(true);
+    answerMutation.mutate(selectedOptionId);
   };
 
   const claimCoupon = (event: FormEvent<HTMLFormElement>) => {
@@ -256,7 +130,7 @@ const CampanhaUrbana = () => {
     });
   };
 
-  if (!isValidCampaignLink || !challenge) {
+  if (!hasValidCode || (!isLoading && (!isValidCampaignLink || isError))) {
     return (
       <main className="min-h-screen bg-[#390305] text-white">
         <Seo
@@ -288,10 +162,36 @@ const CampanhaUrbana = () => {
     );
   }
 
+  if (isLoading || !challenge) {
+    return (
+      <main className="min-h-screen bg-[#390305] text-white">
+        <Seo
+          title={`A abrir pista | ${SITE_NAME}`}
+          description="Estamos a abrir a pista da campanha urbana."
+          canonical={`${SITE_URL}/campanha-urbana`}
+          ogImage={OG_IMAGES.aniversario}
+        />
+
+        <section className="flex min-h-screen items-center justify-center px-5 py-12">
+          <div className="w-full max-w-xl rounded-[2rem] border border-white/10 bg-white/[0.07] p-7 text-center shadow-2xl backdrop-blur-sm sm:p-10">
+            <img
+              src={campaignLogo}
+              alt="Pombal tem um segredo"
+              className="mx-auto h-auto w-full max-w-sm drop-shadow-[0_12px_28px_rgba(0,0,0,0.42)]"
+            />
+            <div className="mx-auto mt-8 h-3 w-48 overflow-hidden rounded-full bg-white/10">
+              <div className="h-full w-1/2 animate-pulse rounded-full bg-[#f2cf7c]" />
+            </div>
+          </div>
+        </section>
+      </main>
+    );
+  }
+
   return (
     <main className="min-h-screen overflow-hidden bg-[#fff8ee] text-[#401013]">
       <Seo
-        title={`Segredo #${challenge.secretNumber} | Pombal tem um segredo`}
+        title={`Segredo #${challenge.question.secret_number} | Pombal tem um segredo`}
         description="Encontraste uma das pistas espalhadas por Pombal. Resolve a adivinha e descobre a tua recompensa."
         canonical={`${SITE_URL}/campanha-urbana`}
         ogImage={OG_IMAGES.aniversario}
@@ -317,7 +217,7 @@ const CampanhaUrbana = () => {
             />
 
             <div className="rounded-full border border-white/10 bg-white/[0.07] px-4 py-2 text-xs font-semibold text-white/72 backdrop-blur-sm">
-              Pista {challenge.secretNumber} de 5
+              Pista {challenge.question.secret_number} de 5
             </div>
           </div>
 
@@ -339,25 +239,23 @@ const CampanhaUrbana = () => {
               </div>
 
               <div className="grid max-w-md grid-cols-5 gap-2">
-                {(["kibe", "carne", "salsicha", "queijo", "coxinha"] as CampaignType[]).map(
-                  (item, index) => {
-                    const found = collection.includes(item);
+                {COLLECTION_TYPES.map((item, index) => {
+                  const found = collection.includes(item);
 
-                    return (
-                      <div
-                        key={item}
-                        className={`flex aspect-square items-center justify-center rounded-xl border text-sm font-bold ${
-                          found
-                            ? "border-[#f2cf7c] bg-[#f2cf7c] text-[#5b0608]"
-                            : "border-white/12 bg-white/[0.06] text-white/40"
-                        }`}
-                        aria-label={found ? `Segredo ${index + 1} descoberto` : `Segredo ${index + 1} por descobrir`}
-                      >
-                        {found ? <Check className="h-5 w-5" /> : index + 1}
-                      </div>
-                    );
-                  },
-                )}
+                  return (
+                    <div
+                      key={item}
+                      className={`flex aspect-square items-center justify-center rounded-xl border text-sm font-bold ${
+                        found
+                          ? "border-[#f2cf7c] bg-[#f2cf7c] text-[#5b0608]"
+                          : "border-white/12 bg-white/[0.06] text-white/40"
+                      }`}
+                      aria-label={found ? `Segredo ${index + 1} descoberto` : `Segredo ${index + 1} por descobrir`}
+                    >
+                      {found ? <Check className="h-5 w-5" /> : index + 1}
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
@@ -369,24 +267,24 @@ const CampanhaUrbana = () => {
                       <div className="flex items-center gap-3 text-[#761014]">
                         <CircleHelp className="h-5 w-5" />
                         <p className="text-sm font-bold uppercase tracking-[0.2em]">
-                          Segredo #{challenge.secretNumber}
+                          Segredo #{challenge.question.secret_number}
                         </p>
                       </div>
                       <p className="mt-3 text-lg font-semibold text-[#a06b26]">
-                        {challenge.eyebrow}
+                        {challenge.question.eyebrow}
                       </p>
                     </div>
 
                     <div className="px-6 py-7 sm:px-9 sm:py-9">
                       <div className="space-y-1 text-xl font-semibold leading-8 sm:text-2xl sm:leading-9">
-                        {challenge.riddle.map((line) => (
+                        {challenge.question.riddle.map((line) => (
                           <p key={line}>{line}</p>
                         ))}
                       </div>
 
                       <fieldset className="mt-8 space-y-3">
                         <legend className="sr-only">Escolhe uma resposta</legend>
-                        {challenge.options.map((option) => {
+                        {challenge.question.responses.map((option) => {
                           const selected = selectedOptionId === option.id;
 
                           return (
@@ -413,19 +311,26 @@ const CampanhaUrbana = () => {
                               >
                                 {selected && <Check className="h-4 w-4" />}
                               </span>
-                              <span className="text-base font-semibold sm:text-lg">{option.label}</span>
+                              <span className="text-base font-semibold sm:text-lg">{option.response}</span>
                             </label>
                           );
                         })}
                       </fieldset>
 
+                      {answerMutation.isError ? (
+                        <p className="mt-4 flex items-center justify-center gap-2 text-sm font-medium text-[#a41116]">
+                          <X className="h-4 w-4" />
+                          {answerMutation.error.message}
+                        </p>
+                      ) : null}
+
                       <Button
                         type="submit"
                         size="xl"
-                        disabled={!selectedOptionId}
+                        disabled={!selectedOptionId || answerMutation.isPending}
                         className="mt-7 w-full bg-[#761014] text-white hover:bg-[#5b090c] disabled:cursor-not-allowed disabled:opacity-45"
                       >
-                        Revelar o segredo
+                        {answerMutation.isPending ? "A revelar..." : "Revelar o segredo"}
                         <ArrowRight className="ml-2 h-5 w-5" />
                       </Button>
 
@@ -447,7 +352,7 @@ const CampanhaUrbana = () => {
                         {isCorrect ? <Trophy className="h-8 w-8" /> : <Gift className="h-8 w-8" />}
                       </div>
                       <p className="mt-5 text-sm font-bold uppercase tracking-[0.22em] text-[#741014]">
-                        {isCorrect ? "Acertaste!" : "Não foi desta — mas ganhas na mesma"}
+                        {isCorrect ? "Acertaste!" : "Não foi desta - mas ganhas na mesma"}
                       </p>
                       <h2 className="mt-2 text-5xl font-bold text-[#4b080b] sm:text-6xl">
                         {reward}%
@@ -459,7 +364,7 @@ const CampanhaUrbana = () => {
                       <div className="text-center">
                         <div className="inline-flex items-center gap-2 rounded-full bg-[#761014]/8 px-4 py-2 text-sm font-semibold text-[#761014]">
                           <Sparkles className="h-4 w-4" />
-                          Encontraste: {challenge.collectionLabel}
+                          Encontraste: {answerResult.collection_label}
                         </div>
                         <h2 className="mt-5 text-3xl font-semibold">O segredo é nosso.</h2>
                         <p className="mt-3 text-base leading-7 text-[#755e52]">
@@ -532,16 +437,14 @@ const CampanhaUrbana = () => {
                             <p className="mt-1 text-sm text-[#816d61]">{collection.length} de 5 descobertos</p>
                           </div>
                           <div className="flex gap-1.5">
-                            {(["kibe", "carne", "salsicha", "queijo", "coxinha"] as CampaignType[]).map(
-                              (item) => (
-                                <span
-                                  key={item}
-                                  className={`h-3 w-3 rounded-full ${
-                                    collection.includes(item) ? "bg-[#761014]" : "bg-[#ddcdbc]"
-                                  }`}
-                                />
-                              ),
-                            )}
+                            {COLLECTION_TYPES.map((item) => (
+                              <span
+                                key={item}
+                                className={`h-3 w-3 rounded-full ${
+                                  collection.includes(item) ? "bg-[#761014]" : "bg-[#ddcdbc]"
+                                }`}
+                              />
+                            ))}
                           </div>
                         </div>
                       </div>
@@ -551,7 +454,7 @@ const CampanhaUrbana = () => {
               </div>
 
               <p className="mt-5 text-center text-xs leading-5 text-white/52">
-                Protótipo com dados simulados · QR {code}
+                QR {code}
               </p>
             </div>
           </div>

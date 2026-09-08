@@ -2,8 +2,8 @@
 
 use App\Http\Controllers\Api\V1\AdminOperationalSettingsController;
 use App\Http\Controllers\Api\V1\AdminOrderTagController;
-use App\Http\Controllers\Api\V1\AdminPreparationCapacityController;
 use App\Http\Controllers\Api\V1\AdminPlanningSlotCapacityController;
+use App\Http\Controllers\Api\V1\AdminPreparationCapacityController;
 use App\Http\Controllers\Api\V1\AppTesterController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\CategoryController;
@@ -26,6 +26,7 @@ use App\Http\Controllers\Api\V1\PromotionController;
 use App\Http\Controllers\Api\V1\SettingController;
 use App\Http\Controllers\Api\V1\StoreController;
 use App\Http\Controllers\Api\V1\UploadController;
+use App\Http\Controllers\Api\V1\UrbanCampaignController;
 use App\Http\Controllers\Api\V1\UserAdminController;
 use App\Http\Controllers\Api\V1\UserController;
 use App\Http\Controllers\Api\V1\UserCouponAdminController;
@@ -41,6 +42,8 @@ Route::prefix('v1')->group(function () {
     Route::prefix('public')->group(function () {
         Route::get('partners', [PartnerController::class, 'publicIndex']);
         Route::get('partners/{partner}', [PartnerController::class, 'publicShow']);
+        Route::get('urban-campaign/qr-codes/{code}', [UrbanCampaignController::class, 'show']);
+        Route::post('urban-campaign/answers', [UrbanCampaignController::class, 'answer']);
     });
     Route::prefix('auth')->group(function () {
         Route::post('forgot-password', [PasswordResetController::class, 'forgot'])

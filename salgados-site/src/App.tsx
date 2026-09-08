@@ -41,10 +41,10 @@ const App = () => (
         <ScrollToTop />
         <Suspense fallback={null}>
           <Routes>
+            <Route path="/campanha-urbana" element={<CampanhaUrbana />} />
             <Route element={<SiteLayout />}>
               <Route path="/" element={<Index />} />
               <Route path="/aniversario" element={<Aniversario />} />
-              <Route path="/campanha-urbana" element={<CampanhaUrbana />} />
               <Route path="/festas" element={<Festas />} />
               <Route path="/parceiros" element={<Parceiros />} />
               <Route path="/parceiros/:partnerId" element={<ParceiroDetalhe />} />

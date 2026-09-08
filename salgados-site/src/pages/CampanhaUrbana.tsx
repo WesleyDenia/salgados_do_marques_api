@@ -307,7 +307,7 @@ const CampanhaUrbana = () => {
         />
 
         <div className="section-container relative z-10 flex min-h-screen flex-col py-6 sm:py-10">
-          <header className="flex items-center justify-between gap-4">
+          <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#f2cf7c]/30 bg-[#f2cf7c]/10 text-[#f6dfaa]">
                 <MapPin className="h-5 w-5" />
@@ -323,7 +323,7 @@ const CampanhaUrbana = () => {
             <div className="rounded-full border border-white/10 bg-white/[0.07] px-4 py-2 text-xs font-semibold text-white/72 backdrop-blur-sm">
               Pista {challenge.secretNumber} de 5
             </div>
-          </header>
+          </div>
 
           <div className="mx-auto grid w-full max-w-6xl flex-1 items-center gap-8 py-10 lg:grid-cols-[0.82fr_1.18fr] lg:gap-14">
             <div className="hidden space-y-6 lg:block">

@@ -362,13 +362,18 @@ const CampanhaUrbana = () => {
 
                     <div className="px-6 py-7 sm:px-9 sm:py-9">
                       <div className="text-center">
-                        <div className="inline-flex text-2xl items-center gap-2 rounded-full bg-[#761014]/8 px-4 py-2 text-sm font-semibold text-[#761014]">
+                        <p className="inline-flex items-center gap-2 rounded-full bg-[#761014]/8 px-4 py-2 text-2xl font-semibold text-[#761014]">
                           <Sparkles className="h-4 w-4" />
                           Encontraste: {answerResult.collection_label}
-                        </div>
+                        </p>
                         <h2 className="mt-5 text-3xl font-semibold">O segredo é nosso.</h2>
+                        <img
+                          src="/logo_site.png"
+                          alt="Salgados do Marquês"
+                          className="mx-auto mt-4 h-auto w-44"
+                        />
                         <p className="mt-3 text-base leading-7 text-[#755e52]">
-                          Salgados do Marquês, no Shopping de Pombal. Guarda o teu prémio e continua à procura dos outros segredos.
+                          No Shopping de Pombal. Guarda o teu prémio e continua à procura dos outros segredos.
                         </p>
                       </div>
 

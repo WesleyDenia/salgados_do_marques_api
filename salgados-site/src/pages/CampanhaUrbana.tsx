@@ -362,7 +362,7 @@ const CampanhaUrbana = () => {
 
                     <div className="px-6 py-7 sm:px-9 sm:py-9">
                       <div className="text-center">
-                        <div className="inline-flex items-center gap-2 rounded-full bg-[#761014]/8 px-4 py-2 text-sm font-semibold text-[#761014]">
+                        <div className="inline-flex text-2xl items-center gap-2 rounded-full bg-[#761014]/8 px-4 py-2 text-sm font-semibold text-[#761014]">
                           <Sparkles className="h-4 w-4" />
                           Encontraste: {answerResult.collection_label}
                         </div>

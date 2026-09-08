@@ -53,14 +53,6 @@ class UrbanCampaignRepository
         return UrbanCampaignCouponConfig::query()
             ->whereRaw('LOWER(coupon_type) = ?', [mb_strtolower(trim($couponType))])
             ->where('active', true)
-            ->where(function ($query): void {
-                $query->whereNull('starts_at')
-                    ->orWhere('starts_at', '<=', now());
-            })
-            ->where(function ($query): void {
-                $query->whereNull('ends_at')
-                    ->orWhere('ends_at', '>=', now());
-            })
             ->first();
     }
 

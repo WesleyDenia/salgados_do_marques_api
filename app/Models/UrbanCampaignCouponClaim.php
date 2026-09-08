@@ -28,6 +28,8 @@ class UrbanCampaignCouponClaim extends Model
         'is_correct',
         'discount_type',
         'amount',
+        'generated_at',
+        'expires_at',
         'external_id',
         'code',
         'status',
@@ -43,6 +45,8 @@ class UrbanCampaignCouponClaim extends Model
         'response_id' => 'integer',
         'is_correct' => 'boolean',
         'amount' => 'decimal:2',
+        'generated_at' => 'datetime',
+        'expires_at' => 'datetime',
         'erp_synced_at' => 'datetime',
         'erp_sync_attempts' => 'integer',
     ];

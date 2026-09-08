@@ -586,17 +586,9 @@
               </div>
 
               <div class="form-group">
-                <label for="coupon_starts_at">Início</label>
-                <input type="datetime-local" id="coupon_starts_at" name="starts_at" value="{{ old('starts_at', optional($editCouponConfig->starts_at)->format('Y-m-d\TH:i')) }}" />
-                @error('starts_at')
-                  <span class="alert alert-error">{{ $message }}</span>
-                @enderror
-              </div>
-
-              <div class="form-group">
-                <label for="coupon_ends_at">Término</label>
-                <input type="datetime-local" id="coupon_ends_at" name="ends_at" value="{{ old('ends_at', optional($editCouponConfig->ends_at)->format('Y-m-d\TH:i')) }}" />
-                @error('ends_at')
+                <label for="coupon_duration_days">Duração do cupom *</label>
+                <input type="number" min="1" max="365" id="coupon_duration_days" name="duration_days" value="{{ old('duration_days', $editCouponConfig->duration_days ?? 7) }}" required />
+                @error('duration_days')
                   <span class="alert alert-error">{{ $message }}</span>
                 @enderror
               </div>
@@ -633,7 +625,7 @@
               <tr>
                 <th>Tipo</th>
                 <th>Desconto</th>
-                <th>Vigência</th>
+                <th>Duração</th>
                 <th>Status</th>
                 <th style="width:76px;">Ações</th>
               </tr>
@@ -658,9 +650,9 @@
                       </div>
                     </td>
                     <td>
-                      <span class="stack-table-label">Vigência</span>
-                      <div class="campaign-table-note">Início: {{ optional($config->starts_at)->format('d/m/Y H:i') ?? 'imediato' }}</div>
-                      <div class="campaign-table-note">Fim: {{ optional($config->ends_at)->format('d/m/Y H:i') ?? 'sem prazo' }}</div>
+                      <span class="stack-table-label">Duração</span>
+                      <strong>{{ $config->duration_days }} {{ $config->duration_days === 1 ? 'dia' : 'dias' }}</strong>
+                      <div class="campaign-table-note">A contar do momento do resgate</div>
                     </td>
                     <td>
                       <span class="stack-table-label">Status</span>
@@ -709,6 +701,7 @@
                 <th>Telemóvel</th>
                 <th>Tipo</th>
                 <th>Código Vendus</th>
+                <th>Validade</th>
                 <th>Status</th>
               </tr>
               </thead>
@@ -729,6 +722,11 @@
                       <div class="campaign-table-note">{{ $claim->external_id }}</div>
                     </td>
                     <td>
+                      <span class="stack-table-label">Validade</span>
+                      {{ optional($claim->expires_at)->format('d/m/Y H:i') ?? 'Pendente' }}
+                      <div class="campaign-table-note">Gerado: {{ optional($claim->generated_at)->format('d/m/Y H:i') ?? 'Pendente' }}</div>
+                    </td>
+                    <td>
                       <span class="stack-table-label">Status</span>
                       @if ($claim->status === 'synced')
                         <span class="badge badge-success">Sincronizado</span>
@@ -741,7 +739,7 @@
                   </tr>
                 @empty
                   <tr>
-                    <td colspan="4" style="text-align:center; padding:32px 0; color:#6b7280;">Nenhum resgate registrado.</td>
+                    <td colspan="5" style="text-align:center; padding:32px 0; color:#6b7280;">Nenhum resgate registrado.</td>
                   </tr>
                 @endforelse
               </tbody>

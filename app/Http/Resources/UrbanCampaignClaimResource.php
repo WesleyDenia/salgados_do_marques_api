@@ -19,7 +19,8 @@ class UrbanCampaignClaimResource extends JsonResource
             'is_correct' => (bool) $this->is_correct,
             'discount_type' => $this->discount_type,
             'amount' => (float) $this->amount,
-            'expires_at' => optional($this->config?->ends_at)->toIso8601String(),
+            'generated_at' => optional($this->generated_at)->toIso8601String(),
+            'expires_at' => optional($this->expires_at)->toIso8601String(),
             'erp_error' => $this->erp_sync_error,
         ];
     }

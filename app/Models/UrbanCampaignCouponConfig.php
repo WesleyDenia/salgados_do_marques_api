@@ -18,16 +18,14 @@ class UrbanCampaignCouponConfig extends Model
         'coupon_type',
         'title',
         'description',
-        'starts_at',
-        'ends_at',
+        'duration_days',
         'discount_type',
         'amount',
         'active',
     ];
 
     protected $casts = [
-        'starts_at' => 'datetime',
-        'ends_at' => 'datetime',
+        'duration_days' => 'integer',
         'amount' => 'decimal:2',
         'active' => 'boolean',
     ];

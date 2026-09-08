@@ -37,8 +37,7 @@ class UrbanCampaignCouponConfigRequest extends FormRequest
             ],
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:2000'],
-            'starts_at' => ['nullable', 'date'],
-            'ends_at' => ['nullable', 'date'],
+            'duration_days' => ['required', 'integer', 'min:1', 'max:365'],
             'discount_type' => ['required', Rule::in([UrbanCampaignCouponConfig::TYPE_MONEY, UrbanCampaignCouponConfig::TYPE_PERCENT])],
             'amount' => ['required', 'numeric', 'min:0.01', 'max:999999.99'],
             'active' => ['nullable', 'boolean'],
@@ -50,14 +49,6 @@ class UrbanCampaignCouponConfigRequest extends FormRequest
         $validator->after(function ($validator): void {
             if ($this->input('discount_type') === UrbanCampaignCouponConfig::TYPE_PERCENT && (float) $this->input('amount') > 100) {
                 $validator->errors()->add('amount', 'O percentual não pode ser maior que 100.');
-            }
-
-            if (
-                filled($this->input('starts_at')) &&
-                filled($this->input('ends_at')) &&
-                strtotime((string) $this->input('ends_at')) < strtotime((string) $this->input('starts_at'))
-            ) {
-                $validator->errors()->add('ends_at', 'A data final deve ser igual ou posterior à data inicial.');
             }
         });
     }

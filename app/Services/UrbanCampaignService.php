@@ -70,6 +70,9 @@ class UrbanCampaignService
             ]);
         }
 
+        $generatedAt = now();
+        $expiresAt = $generatedAt->copy()->addDays((int) $config->duration_days);
+
         if (! $claim) {
             $claim = $this->repository->createClaim([
                 'phone' => $phone,
@@ -81,6 +84,8 @@ class UrbanCampaignService
                 'is_correct' => $response->is_correct,
                 'discount_type' => $config->discount_type,
                 'amount' => $config->amount,
+                'generated_at' => $generatedAt,
+                'expires_at' => $expiresAt,
                 'status' => UrbanCampaignCouponClaim::STATUS_PENDING_ERP,
             ]);
         } else {
@@ -92,6 +97,8 @@ class UrbanCampaignService
                 'is_correct' => $response->is_correct,
                 'discount_type' => $config->discount_type,
                 'amount' => $config->amount,
+                'generated_at' => $generatedAt,
+                'expires_at' => $expiresAt,
             ]);
         }
 
@@ -180,7 +187,7 @@ class UrbanCampaignService
         return [
             'amount' => number_format((float) $config->amount, 2, '.', ''),
             'type' => $config->discount_type,
-            'date_expire' => optional($config->ends_at)->toDateString(),
+            'date_expire' => optional($claim->expires_at)->toDateString(),
             'obs' => $config->description ?: sprintf(
                 'Cupom Campanha Urbana %s para %s',
                 $claim->coupon_type,

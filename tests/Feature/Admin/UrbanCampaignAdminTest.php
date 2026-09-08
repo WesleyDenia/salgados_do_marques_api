@@ -154,8 +154,7 @@ class UrbanCampaignAdminTest extends TestCase
             'coupon_type' => ' Kibe ',
             'title' => 'Campanha Urbana - Kibe',
             'description' => 'Cupom gerado pela campanha urbana.',
-            'starts_at' => now()->format('Y-m-d H:i:s'),
-            'ends_at' => now()->addDays(7)->format('Y-m-d H:i:s'),
+            'duration_days' => 7,
             'discount_type' => 'percent',
             'amount' => 10,
             'active' => '1',
@@ -165,6 +164,7 @@ class UrbanCampaignAdminTest extends TestCase
         $this->assertDatabaseHas('urban_campaign_coupon_configs', [
             'coupon_type' => 'kibe',
             'title' => 'Campanha Urbana - Kibe',
+            'duration_days' => 7,
             'discount_type' => 'percent',
             'amount' => 10,
             'active' => true,

@@ -5,7 +5,9 @@ namespace Tests\Feature;
 use App\Models\QrCode;
 use App\Models\Question;
 use App\Models\QuestionResponse;
+use App\Models\UrbanCampaignCouponClaim;
 use App\Models\UrbanCampaignCouponConfig;
+use Carbon\Carbon;
 use Database\Seeders\UrbanCampaignSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
@@ -130,6 +132,8 @@ class UrbanCampaignApiTest extends TestCase
 
     public function test_public_user_can_claim_vendus_coupon_once_per_phone_and_type(): void
     {
+        $this->travelTo(Carbon::parse('2026-09-08 12:00:00'));
+
         config([
             'services.vendus.base_url' => 'https://vendus.test/ws/v1.1',
             'services.vendus.token' => 'test-token',
@@ -140,8 +144,7 @@ class UrbanCampaignApiTest extends TestCase
             'coupon_type' => 'quiz-praca',
             'title' => 'Campanha Urbana - Kibe',
             'description' => 'Cupom gerado pela campanha urbana.',
-            'starts_at' => now()->subDay(),
-            'ends_at' => now()->addDays(7),
+            'duration_days' => 7,
             'discount_type' => 'percent',
             'amount' => 10,
             'active' => true,
@@ -190,7 +193,14 @@ class UrbanCampaignApiTest extends TestCase
             'code' => 'VD-URBANA-10',
             'status' => 'synced',
         ]);
+
+        $claim = UrbanCampaignCouponClaim::query()->firstOrFail();
+        $this->assertSame('2026-09-08 12:00:00', $claim->generated_at->format('Y-m-d H:i:s'));
+        $this->assertSame('2026-09-15 12:00:00', $claim->expires_at->format('Y-m-d H:i:s'));
+
         Http::assertSentCount(1);
+        Http::assertSent(fn ($request) => $request['date_expire'] === '2026-09-15');
+        $this->travelBack();
     }
 
     public function test_claim_requires_active_coupon_config(): void

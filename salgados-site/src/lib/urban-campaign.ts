@@ -45,6 +45,7 @@ export interface UrbanCampaignCouponClaimResult {
   is_correct: boolean;
   discount_type: "money" | "percent";
   amount: number;
+  generated_at?: string | null;
   expires_at?: string | null;
   erp_error?: string | null;
 }

@@ -917,7 +917,13 @@ class OrderService
             $date
         );
 
-        if ($allowScheduleException && $reason === 'SLOT_LEAD_TIME_VIOLATION') {
+        if ($allowScheduleException && in_array($reason, ['SLOT_LEAD_TIME_VIOLATION', 'SLOT_NO_WINDOW'], true)) {
+            // A lead-time violation is evaluated before capacity, so keep the
+            // hard capacity limit authoritative even when the exception is on.
+            if ((int) ($consumedCapacity[$slot] ?? 0) >= $this->slotCapacities->capacityForSlot($slot)) {
+                return 'SLOT_CAPACITY_FULL';
+            }
+
             return null;
         }
 

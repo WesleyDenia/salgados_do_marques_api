@@ -203,6 +203,53 @@ class OrderPartialWithdrawalTest extends TestCase
         ]);
     }
 
+    public function test_admin_can_use_the_aggregate_balance_of_ten_compatible_packs_across_successive_withdrawals(): void
+    {
+        $this->setEditWindow();
+        $admin = User::factory()->create(['role' => 'admin']);
+        [$order, $items, $flavors] = $this->makeMultiPackParentOrder(10);
+        $endpoint = "/api/v1/admin/orders/{$order->id}/partial-withdrawals";
+
+        $firstResponse = $this->actingAs($admin, 'sanctum')->postJson($endpoint, [
+            'parent_order_item_id' => $items[0]->id,
+            'requested_units' => 100,
+            'flavor_ids' => array_fill(0, 4, $flavors['frango']->id),
+            'scheduled_at' => '2026-07-20T18:00:00+01:00',
+            'generate_child_order' => false,
+        ]);
+
+        $firstResponse->assertOk()
+            ->assertJsonCount(1, 'data.withdrawals')
+            ->assertJsonPath('data.withdrawals.0.parent_order_item_id', $items[0]->id)
+            ->assertJsonPath('data.withdrawals.0.requested_units', 100);
+
+        $secondResponse = $this->actingAs($admin, 'sanctum')->postJson($endpoint, [
+            'parent_order_item_id' => $items[0]->id,
+            'requested_units' => 900,
+            'flavor_ids' => array_fill(0, 36, $flavors['carne']->id),
+            'scheduled_at' => '2026-07-20T18:00:00+01:00',
+            'generate_child_order' => false,
+        ]);
+
+        $secondResponse->assertOk()
+            ->assertJsonCount(9, 'data.withdrawals')
+            ->assertJsonPath('data.withdrawals.0.parent_order_item_id', $items[1]->id)
+            ->assertJsonPath('data.withdrawals.0.requested_units', 100)
+            ->assertJsonPath('data.withdrawals.4.requested_units', 100)
+            ->assertJsonPath('data.withdrawals.8.requested_units', 100)
+            ->assertJsonPath('data.withdrawals.8.parent_order_item_id', $items[9]->id);
+
+        $this->actingAs($admin, 'sanctum')->postJson($endpoint, [
+            'parent_order_item_id' => $items[0]->id,
+            'requested_units' => 25,
+            'flavor_ids' => [$flavors['frango']->id],
+            'scheduled_at' => '2026-07-20T18:00:00+01:00',
+            'generate_child_order' => false,
+        ])->assertStatus(422)->assertJsonValidationErrors(['requested_units']);
+
+        $this->assertDatabaseCount('order_partial_withdrawals', 10);
+    }
+
     public function test_admin_cannot_generate_child_order_when_no_active_pack_represents_the_withdrawal(): void
     {
         $this->setEditWindow();
@@ -490,23 +537,30 @@ class OrderPartialWithdrawalTest extends TestCase
     /**
      * @return array{0: Order, 1: array<int, \App\Models\OrderItem>, 2: array{frango: Flavor, carne: Flavor}}
      */
-    protected function makeMultiPackParentOrder(): array
+    protected function makeMultiPackParentOrder(int $packCount = 2): array
     {
         [$order, $item, $store, $flavors] = $this->makePackParentOrder();
+        $items = [$item];
 
-        $secondItem = $order->items()->create([
-            'product_id' => $item->product_id,
-            'variant_id' => $item->variant_id,
-            'name_snapshot' => $item->name_snapshot,
-            'price_snapshot' => $item->price_snapshot,
-            'quantity' => 1,
-            'options' => ['flavors' => [$flavors['carne']->id, $flavors['frango']->id, $flavors['carne']->id, $flavors['frango']->id]],
-            'total' => 120,
-        ]);
+        for ($index = 1; $index < $packCount; $index++) {
+            $items[] = $order->items()->create([
+                'product_id' => $item->product_id,
+                'variant_id' => $item->variant_id,
+                'name_snapshot' => $item->name_snapshot,
+                'price_snapshot' => $item->price_snapshot,
+                'quantity' => 1,
+                'options' => ['flavors' => [$flavors['carne']->id, $flavors['frango']->id, $flavors['carne']->id, $flavors['frango']->id]],
+                'total' => 120,
+            ]);
+        }
 
-        $order->update(['total' => 240]);
+        $order->update(['total' => $packCount * 120]);
 
-        return [$order->fresh(), [$item->fresh(), $secondItem->fresh()], $flavors];
+        return [
+            $order->fresh(),
+            collect($items)->map(fn ($currentItem) => $currentItem->fresh())->all(),
+            $flavors,
+        ];
     }
 
     protected function setEditWindow(): void

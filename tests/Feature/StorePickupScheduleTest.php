@@ -3,12 +3,14 @@
 namespace Tests\Feature;
 
 use App\Models\Category;
+use App\Models\Order;
 use App\Models\Product;
 use App\Models\Setting;
 use App\Models\Store;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -163,6 +165,125 @@ class StorePickupScheduleTest extends TestCase
             ...$payload,
             'scheduled_at' => '2026-03-18 15:00',
         ])->assertStatus(422)->assertJsonValidationErrors(['scheduled_at']);
+    }
+
+    public function test_staff_can_schedule_at_eleven_before_store_opening_with_exception(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-03-16 10:00', 'Europe/Lisbon'));
+        [$user, $product, $store] = $this->makeOrderContext();
+        $user->update(['role' => 'atendimento']);
+
+        Sanctum::actingAs($user);
+
+        $this->postJson('/api/v1/orders', [
+            'store_id' => $store->id,
+            'scheduled_at' => '2026-03-17 11:00',
+            'allow_schedule_exception' => true,
+            'items' => [
+                [
+                    'product_id' => $product->id,
+                    'quantity' => 1,
+                ],
+            ],
+        ])->assertOk()->assertJsonPath('data.slot', 'manha');
+    }
+
+    public function test_order_at_eleven_before_store_opening_is_rejected_without_exception(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-03-16 10:00', 'Europe/Lisbon'));
+        [$user, $product, $store] = $this->makeOrderContext();
+        $user->update(['role' => 'atendimento']);
+
+        Sanctum::actingAs($user);
+
+        $this->postJson('/api/v1/orders', [
+            'store_id' => $store->id,
+            'scheduled_at' => '2026-03-17 11:00',
+            'items' => [
+                [
+                    'product_id' => $product->id,
+                    'quantity' => 1,
+                ],
+            ],
+        ])->assertStatus(422)
+            ->assertJsonValidationErrors(['scheduled_at'])
+            ->assertJsonPath('errors.scheduled_at.0', 'O horário escolhido está fora do funcionamento dessa loja.');
+    }
+
+    public function test_schedule_exception_does_not_bypass_full_slot_capacity(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-03-16 10:00', 'Europe/Lisbon'));
+        [$user, $product, $store] = $this->makeOrderContext();
+        $user->update(['role' => 'atendimento']);
+        Setting::create([
+            'key' => 'ORDER_SLOT_BASE_CAPACITY',
+            'value' => json_encode(['manha' => 1, 'tarde' => 10, 'noite' => 10], JSON_THROW_ON_ERROR),
+            'type' => 'json',
+            'editable' => true,
+        ]);
+        Cache::forget('setting_ORDER_SLOT_BASE_CAPACITY');
+        Order::create([
+            'user_id' => $user->id,
+            'store_id' => $store->id,
+            'status' => 'accepted',
+            'payment_status' => 'pending',
+            'slot' => 'manha',
+            'scheduled_at' => Carbon::parse('2026-03-17 10:00', 'Europe/Lisbon')->utc(),
+            'total' => 2.5,
+        ]);
+
+        Sanctum::actingAs($user);
+
+        $this->postJson('/api/v1/orders', [
+            'store_id' => $store->id,
+            'scheduled_at' => '2026-03-17 11:00',
+            'allow_schedule_exception' => true,
+            'items' => [
+                [
+                    'product_id' => $product->id,
+                    'quantity' => 1,
+                ],
+            ],
+        ])->assertStatus(422)
+            ->assertJsonPath('errors.scheduled_at.0', 'SLOT_CAPACITY_FULL');
+
+        $this->assertDatabaseCount('orders', 1);
+    }
+
+    public function test_schedule_exception_does_not_bypass_operationally_blocked_date(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-03-16 10:00', 'Europe/Lisbon'));
+        [$user, $product, $store] = $this->makeOrderContext();
+        $user->update(['role' => 'atendimento']);
+        Setting::create([
+            'key' => 'ORDER_SLOT_OPERATIONAL_RULES',
+            'value' => json_encode([
+                'lead_times' => ['manha' => 120, 'tarde' => 60, 'noite' => 60],
+                'blocked_dates' => [
+                    ['date' => '2026-03-17', 'slots' => ['manha']],
+                ],
+            ], JSON_THROW_ON_ERROR),
+            'type' => 'json',
+            'editable' => true,
+        ]);
+        Cache::forget('setting_ORDER_SLOT_OPERATIONAL_RULES');
+
+        Sanctum::actingAs($user);
+
+        $this->postJson('/api/v1/orders', [
+            'store_id' => $store->id,
+            'scheduled_at' => '2026-03-17 11:00',
+            'allow_schedule_exception' => true,
+            'items' => [
+                [
+                    'product_id' => $product->id,
+                    'quantity' => 1,
+                ],
+            ],
+        ])->assertStatus(422)
+            ->assertJsonPath('errors.scheduled_at.0', 'SLOT_DATE_BLOCKED');
+
+        $this->assertDatabaseCount('orders', 0);
     }
 
     public function test_order_accepts_retroactive_schedule_exception_for_staff(): void

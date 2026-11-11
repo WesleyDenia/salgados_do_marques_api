@@ -12,7 +12,7 @@ use Illuminate\Support\LazyCollection;
 
 class OrderRepository
 {
-    protected function buildAdminQuery(array $filters)
+    protected function buildAdminQuery(array $filters, bool $applyScheduleFilters = true)
     {
         $query = Order::query()->with([
             'items.variant',
@@ -97,16 +97,35 @@ class OrderRepository
             });
         }
 
-        if (! empty($filters['scheduled_from'])) {
-            $query->where('scheduled_at', '>=', $filters['scheduled_from']);
+        if ($applyScheduleFilters && (! empty($filters['scheduled_from']) || ! empty($filters['scheduled_to']))) {
+            $query->where(function ($scheduleQuery) use ($filters) {
+                // New records use their explicit local pickup date. Records created
+                // before that field existed retain the legacy UTC timestamp path.
+                $scheduleQuery->where(function ($pickupDateQuery) use ($filters) {
+                    $pickupDateQuery->whereNotNull('pickup_date');
+
+                    if (! empty($filters['pickup_date_from'])) {
+                        $pickupDateQuery->where('pickup_date', '>=', $filters['pickup_date_from']);
+                    }
+
+                    if (! empty($filters['pickup_date_to'])) {
+                        $pickupDateQuery->where('pickup_date', '<=', $filters['pickup_date_to']);
+                    }
+                })->orWhere(function ($legacyQuery) use ($filters) {
+                    $legacyQuery->whereNull('pickup_date');
+
+                    if (! empty($filters['scheduled_from'])) {
+                        $legacyQuery->where('scheduled_at', '>=', $filters['scheduled_from']);
+                    }
+
+                    if (! empty($filters['scheduled_to'])) {
+                        $legacyQuery->where('scheduled_at', '<=', $filters['scheduled_to']);
+                    }
+                });
+            });
         }
 
-        if (! empty($filters['scheduled_to'])) {
-            // Boundary fix: ensuring coverage of the specified end time
-            $query->where('scheduled_at', '<=', $filters['scheduled_to']);
-        }
-
-        return $query->orderBy('scheduled_at')->orderBy('id');
+        return $query->orderByRaw('pickup_date is null')->orderBy('pickup_date')->orderBy('scheduled_at')->orderBy('id');
     }
 
     protected function onlyDigits(string $value): string
@@ -144,6 +163,47 @@ class OrderRepository
     public function listForAdmin(array $filters): Collection
     {
         return $this->buildAdminQuery($filters)->get();
+    }
+
+    /**
+     * Returns scheduling work that must be shown operationally but must not be
+     * counted as a slot or preparation load.
+     *
+     * @return array{undefined_pickup_date: array{count:int,orders:array<int, array<string, mixed>>}, undefined_pickup_time: array{count:int,orders:array<int, array<string, mixed>>}}
+     */
+    public function pickupAttention(array $filters, string $pickupDateFrom, string $pickupDateTo): array
+    {
+        $baseQuery = $this->buildAdminQuery($filters, false);
+        $fields = ['id', 'user_id', 'customer_name', 'status', 'pickup_date', 'pickup_time', 'scheduled_at'];
+
+        $serialize = static fn (Collection $orders): array => $orders
+            ->map(fn (Order $order): array => [
+                'id' => $order->id,
+                'customer_name' => $order->customerNameForDisplay(),
+                'status' => $order->status,
+                'pickup_date' => $order->pickupDateForDisplay(),
+                'pickup_time' => $order->pickupTimeForDisplay(),
+            ])
+            ->values()
+            ->all();
+
+        $pickupDateUndefinedQuery = (clone $baseQuery)
+            ->whereNull('pickup_date')
+            ->whereNull('scheduled_at');
+        $pickupTimeUndefinedQuery = (clone $baseQuery)
+            ->whereBetween('pickup_date', [$pickupDateFrom, $pickupDateTo])
+            ->whereNull('pickup_time');
+
+        return [
+            'undefined_pickup_date' => [
+                'count' => (clone $pickupDateUndefinedQuery)->count(),
+                'orders' => $serialize($pickupDateUndefinedQuery->limit(5)->get($fields)),
+            ],
+            'undefined_pickup_time' => [
+                'count' => (clone $pickupTimeUndefinedQuery)->count(),
+                'orders' => $serialize($pickupTimeUndefinedQuery->limit(5)->get($fields)),
+            ],
+        ];
     }
 
     /**
@@ -284,14 +344,16 @@ class OrderRepository
         ?string $customerContact,
         ?string $paymentStatus,
         ?string $slot,
-        CarbonInterface $scheduledAtUtc,
+        ?CarbonInterface $scheduledAtUtc,
+        ?string $pickupDate,
+        ?string $pickupTime,
         ?string $notes,
         array $lineItems,
         array $tagIds = [],
         ?int $parentOrderId = null
     ): Order {
         /** @var Order $order */
-        $order = DB::transaction(function () use ($customerContact, $customerName, $lineItems, $notes, $parentOrderId, $paymentStatus, $scheduledAtUtc, $slot, $storeId, $tagIds, $userId) {
+        $order = DB::transaction(function () use ($customerContact, $customerName, $lineItems, $notes, $parentOrderId, $paymentStatus, $pickupDate, $pickupTime, $scheduledAtUtc, $slot, $storeId, $tagIds, $userId) {
             $order = Order::query()->create([
                 'user_id' => $userId,
                 'parent_order_id' => $parentOrderId,
@@ -302,6 +364,8 @@ class OrderRepository
                 'payment_status' => $paymentStatus,
                 'slot' => $slot,
                 'scheduled_at' => $scheduledAtUtc,
+                'pickup_date' => $pickupDate,
+                'pickup_time' => $pickupTime,
                 'total' => 0,
                 'notes' => $notes,
             ]);

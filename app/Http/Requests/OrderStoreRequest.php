@@ -27,7 +27,11 @@ class OrderStoreRequest extends FormRequest
                     ->where('is_active', true)
                     ->where('accepts_orders', true),
             ],
-            'scheduled_at' => ['required', 'date'],
+            // `scheduled_at` is kept for existing clients. New clients submit the
+            // two independent pickup parts and may leave either (or both) empty.
+            'scheduled_at' => ['nullable', 'date'],
+            'pickup_date' => ['nullable', 'date_format:Y-m-d'],
+            'pickup_time' => ['nullable', 'date_format:H:i'],
             'allow_schedule_exception' => ['nullable', 'boolean'],
             'allow_preparation_capacity_overflow' => ['nullable', 'boolean'],
             'payment_status' => ['nullable', 'string', Rule::in(['pending', 'partial', 'paid'])],
@@ -56,8 +60,9 @@ class OrderStoreRequest extends FormRequest
             'items.*.flavors.array' => 'Os sabores do item devem ser enviados como uma lista de IDs.',
             'items.*.flavors.*.integer' => 'Cada sabor informado deve ser um ID numérico válido.',
             'items.*.flavors.*.exists' => 'Um dos sabores informados não existe.',
-            'scheduled_at.required' => 'Indique a data e hora da encomenda.',
             'scheduled_at.date' => 'A data e hora da encomenda devem ser válidas.',
+            'pickup_date.date_format' => 'A data de retirada deve estar no formato AAAA-MM-DD.',
+            'pickup_time.regex' => 'A hora de retirada deve estar no formato HH:MM.',
             'allow_schedule_exception.boolean' => 'A exceção de horário deve ser verdadeira ou falsa.',
             'allow_preparation_capacity_overflow.boolean' => 'A exceção de capacidade de preparo deve ser verdadeira ou falsa.',
             'payment_status.in' => 'O estado de pagamento informado não é válido.',

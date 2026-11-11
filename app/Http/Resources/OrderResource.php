@@ -22,6 +22,8 @@ class OrderResource extends JsonResource
             'customer_name' => $this->customer_name,
             'customer_contact' => $this->customer_contact,
             'scheduled_at' => $this->scheduled_at?->toIso8601String(),
+            'pickup_date' => $this->pickupDateForDisplay(),
+            'pickup_time' => $this->pickupTimeForDisplay(),
             'total' => (float) $this->total,
             'notes' => $this->notes,
             'cancelled_at' => $this->cancelled_at?->toIso8601String(),

@@ -22,6 +22,8 @@ class Order extends Model
         'payment_status',
         'slot',
         'scheduled_at',
+        'pickup_date',
+        'pickup_time',
         'total',
         'notes',
         'cancelled_at',
@@ -29,6 +31,7 @@ class Order extends Model
 
     protected $casts = [
         'scheduled_at' => 'datetime',
+        'pickup_date' => 'date',
         'cancelled_at' => 'datetime',
         'total' => 'decimal:2',
     ];
@@ -116,5 +119,30 @@ class Order extends Model
         }
 
         return Carbon::parse($rawScheduledAt, 'UTC')->timezone($timezone);
+    }
+
+    public function setPickupDateAttribute(mixed $value): void
+    {
+        $this->attributes['pickup_date'] = $value instanceof CarbonInterface
+            ? $value->format('Y-m-d')
+            : $value;
+    }
+
+    public function pickupDateForDisplay(string $timezone = 'Europe/Lisbon'): ?string
+    {
+        if ($this->pickup_date !== null) {
+            return $this->pickup_date->format('Y-m-d');
+        }
+
+        return $this->scheduledAtForDisplay($timezone)?->format('Y-m-d');
+    }
+
+    public function pickupTimeForDisplay(string $timezone = 'Europe/Lisbon'): ?string
+    {
+        if ($this->pickup_time !== null && $this->pickup_time !== '') {
+            return substr((string) $this->pickup_time, 0, 5);
+        }
+
+        return $this->scheduledAtForDisplay($timezone)?->format('H:i');
     }
 }

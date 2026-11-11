@@ -226,6 +226,13 @@ class PreparationCapacityService
         OrderPreparationAllocation::query()->insert($allocations);
     }
 
+    public function releaseOrder(Order $order): void
+    {
+        OrderPreparationAllocation::query()
+            ->where('order_id', $order->id)
+            ->delete();
+    }
+
     /**
      * @param  iterable<int, Order>  $orders
      * @return array<string, array<string, mixed>>

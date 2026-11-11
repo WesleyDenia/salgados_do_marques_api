@@ -104,7 +104,8 @@ class OrderService
     public function createForUser(User $actor, array $data): Order
     {
         $orderSettings = $this->orderSettings();
-        $scheduled = $this->parseScheduledAt($data['scheduled_at'], $orderSettings['timezone']);
+        $pickupSchedule = $this->resolvePickupSchedule($data, $orderSettings['timezone']);
+        $scheduled = $pickupSchedule['scheduled_at'];
         $store = $this->stores->findById((int) $data['store_id']);
         $tagIds = $this->normalizeOrderTagIdsForActor($actor, $data['tag_ids'] ?? []);
         $allowScheduleException = $this->shouldAllowScheduleExceptionForActor($actor, $data);
@@ -116,25 +117,29 @@ class OrderService
             ]);
         }
 
-        return \Illuminate\Support\Facades\DB::transaction(function () use ($actor, $data, $orderSettings, $scheduled, $store, $tagIds, $allowScheduleException, $allowPreparationOverflow) {
-            $slot = $this->resolveSlotFromSchedule($scheduled->copy()->timezone($orderSettings['timezone']));
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($actor, $data, $orderSettings, $pickupSchedule, $scheduled, $store, $tagIds, $allowScheduleException, $allowPreparationOverflow) {
+            $slot = null;
 
-            // Apply slot-specific lead time precedence: Slot Rule > Global Rule (whichever is more restrictive/larger)
-            $slotRules = $this->slotCapacities->getOperationalRules();
-            $slotLeadTime = (int) ($slotRules['lead_times'][$slot] ?? 0);
-            if ($slotLeadTime > (int) $orderSettings['minimum_minutes']) {
-                $orderSettings['minimum_minutes'] = $slotLeadTime;
+            if ($scheduled !== null) {
+                $slot = $this->resolveSlotFromSchedule($scheduled->copy()->timezone($orderSettings['timezone']));
+
+                // Apply slot-specific lead time precedence: Slot Rule > Global Rule (whichever is more restrictive/larger)
+                $slotRules = $this->slotCapacities->getOperationalRules();
+                $slotLeadTime = (int) ($slotRules['lead_times'][$slot] ?? 0);
+                if ($slotLeadTime > (int) $orderSettings['minimum_minutes']) {
+                    $orderSettings['minimum_minutes'] = $slotLeadTime;
+                }
+
+                $this->stores->validateScheduledPickup($store, $scheduled, $orderSettings, $allowScheduleException);
+                $this->assertSlotAvailableForSchedule(
+                    $store,
+                    $scheduled,
+                    $slot,
+                    $orderSettings,
+                    null,
+                    $allowScheduleException
+                );
             }
-
-            $this->stores->validateScheduledPickup($store, $scheduled, $orderSettings, $allowScheduleException);
-            $this->assertSlotAvailableForSchedule(
-                $store,
-                $scheduled,
-                $slot,
-                $orderSettings,
-                null,
-                $allowScheduleException
-            );
 
             $items = collect($data['items']);
             $productIds = $items->pluck('product_id')->unique()->values()->all();
@@ -164,16 +169,20 @@ class OrderService
                 $resolvedCustomer['customer_contact'],
                 $data['payment_status'] ?? null,
                 $slot,
-                $scheduled->copy()->timezone('UTC'),
+                $scheduled?->copy()->timezone('UTC'),
+                $pickupSchedule['pickup_date'],
+                $pickupSchedule['pickup_time'],
                 $data['notes'] ?? null,
                 $lineItems,
                 $tagIds
             );
 
-            $this->preparationCapacities->allocateOrder($order, $allowPreparationOverflow);
+            if ($scheduled !== null) {
+                $this->preparationCapacities->allocateOrder($order, $allowPreparationOverflow);
+            }
             $order = $order->fresh(['items.variant', 'store', 'user', 'tags', 'preparationAllocations.preparationSlot']);
 
-            if ($resolvedCustomer['notification_contact']) {
+            if ($scheduled !== null && $resolvedCustomer['notification_contact']) {
                 try {
                     $recipient = $this->whatsappOrderRecipient();
                     $flavorIds = $items
@@ -304,6 +313,15 @@ class OrderService
 
         $orderSettings = $this->orderSettings();
         $timezone = $orderSettings['timezone'];
+
+        // A cancellation deadline only exists for a fully scheduled pickup.
+        if ($order->scheduled_at === null) {
+            return $this->repository->cancel($order, [
+                'status' => 'canceled',
+                'cancelled_at' => Carbon::now('UTC'),
+            ]);
+        }
+
         $cancelMinutes = max(0, (int) $orderSettings['cancel_minutes']);
         $now = Carbon::now($timezone);
         $scheduled = Carbon::parse($order->scheduled_at, 'UTC')->timezone($timezone);
@@ -392,6 +410,11 @@ class OrderService
                 $summary['slotCounts'],
                 $storeContext['store'] ?? null
             ),
+            'operationalAttention' => $this->repository->pickupAttention(
+                $normalizedFilters,
+                $preparedFilters['day'],
+                $preparedFilters['day']
+            ),
         ];
     }
 
@@ -437,6 +460,11 @@ class OrderService
                 $preparedFilters['week_start'],
                 $preparedFilters['week_end'],
                 $storeContext['store'] ?? null
+            ),
+            'operationalAttention' => $this->repository->pickupAttention(
+                $normalizedFilters,
+                $preparedFilters['week_start'],
+                $preparedFilters['week_end']
             ),
         ];
     }
@@ -496,6 +524,11 @@ class OrderService
                 $preparedFilters['end_date'],
                 $storeContext['store'] ?? null
             ),
+            'operationalAttention' => $this->repository->pickupAttention(
+                $normalizedFilters,
+                $preparedFilters['start_date'],
+                $preparedFilters['end_date']
+            ),
         ];
     }
 
@@ -533,7 +566,7 @@ class OrderService
             $willConsume = in_array($newStatus, $consumingStatuses, true);
             $didConsume = in_array($order->status, $consumingStatuses, true);
 
-            if ($willConsume && ! $didConsume) {
+            if ($willConsume && ! $didConsume && $order->scheduled_at !== null && $order->slot !== null) {
                 $this->assertSlotAvailableForSchedule(
                     $order->store,
                     Carbon::parse($order->scheduled_at),
@@ -580,7 +613,8 @@ class OrderService
         }
 
         $orderSettings = $this->orderSettings();
-        $scheduled = $this->parseScheduledAt($data['scheduled_at'], $orderSettings['timezone']);
+        $pickupSchedule = $this->resolvePickupSchedule($data, $orderSettings['timezone']);
+        $scheduled = $pickupSchedule['scheduled_at'];
         $store = $this->stores->findById((int) $data['store_id']);
         $allowScheduleException = (bool) ($data['allow_schedule_exception'] ?? false);
         $allowPreparationOverflow = (bool) ($data['allow_preparation_capacity_overflow'] ?? false);
@@ -591,18 +625,22 @@ class OrderService
             ]);
         }
 
-        return \Illuminate\Support\Facades\DB::transaction(function () use ($order, $data, $orderSettings, $scheduled, $store, $allowScheduleException, $allowPreparationOverflow) {
-            $slot = $this->resolveSlotFromSchedule($scheduled->copy()->timezone($orderSettings['timezone']));
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($order, $data, $orderSettings, $pickupSchedule, $scheduled, $store, $allowScheduleException, $allowPreparationOverflow) {
+            $slot = null;
 
-            $this->stores->validateScheduledPickup($store, $scheduled, $orderSettings, $allowScheduleException);
-            $this->assertSlotAvailableForSchedule(
-                $store,
-                $scheduled,
-                $slot,
-                $orderSettings,
-                $order->id,
-                $allowScheduleException
-            );
+            if ($scheduled !== null) {
+                $slot = $this->resolveSlotFromSchedule($scheduled->copy()->timezone($orderSettings['timezone']));
+
+                $this->stores->validateScheduledPickup($store, $scheduled, $orderSettings, $allowScheduleException);
+                $this->assertSlotAvailableForSchedule(
+                    $store,
+                    $scheduled,
+                    $slot,
+                    $orderSettings,
+                    $order->id,
+                    $allowScheduleException
+                );
+            }
 
             $items = collect($data['items']);
             $productIds = $items->pluck('product_id')->unique()->values()->all();
@@ -631,7 +669,9 @@ class OrderService
                 'store_id' => $this->storeSnapshotForHistory((int) $data['store_id'], $store->name),
                 'payment_status' => $data['payment_status'] ?? null,
                 'slot' => $slot,
-                'scheduled_at' => $scheduled->copy()->timezone('UTC'),
+                'scheduled_at' => $scheduled?->copy()->timezone('UTC'),
+                'pickup_date' => $pickupSchedule['pickup_date'],
+                'pickup_time' => $pickupSchedule['pickup_time'],
                 'notes' => $this->normalizeNullableText($data['notes'] ?? null),
                 'items' => $lineItems,
                 'tags' => $tagIds,
@@ -643,14 +683,20 @@ class OrderService
                 'store_id' => (int) $data['store_id'],
                 'payment_status' => $data['payment_status'] ?? null,
                 'slot' => $slot,
-                'scheduled_at' => $scheduled->copy()->timezone('UTC'),
+                'scheduled_at' => $scheduled?->copy()->timezone('UTC'),
+                'pickup_date' => $pickupSchedule['pickup_date'],
+                'pickup_time' => $pickupSchedule['pickup_time'],
                 'notes' => $this->normalizeNullableText($data['notes'] ?? null),
             ], $lineItems, $tagIds, $this->makeHistoryPayload(
                 'updated',
                 $this->calculateChanges($before, $after)
             ));
 
-            $this->preparationCapacities->allocateOrder($updatedOrder, $allowPreparationOverflow);
+            if ($scheduled !== null) {
+                $this->preparationCapacities->allocateOrder($updatedOrder, $allowPreparationOverflow);
+            } else {
+                $this->preparationCapacities->releaseOrder($updatedOrder);
+            }
 
             return $updatedOrder->fresh(['items.variant', 'store', 'user', 'history.user', 'tags', 'preparationAllocations.preparationSlot']);
         });
@@ -715,7 +761,7 @@ class OrderService
             $allowScheduleException
         );
 
-        return \Illuminate\Support\Facades\DB::transaction(function () use ($data, $order, $requestedUnits, $scheduled, $slot, $allocationPlan, $allowPreparationOverflow) {
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($data, $order, $requestedUnits, $scheduled, $slot, $allocationPlan, $allowPreparationOverflow, $orderSettings) {
             $withdrawals = [];
 
             foreach ($allocationPlan as $allocation) {
@@ -741,6 +787,8 @@ class OrderService
                     $order->payment_status,
                     $slot,
                     $scheduled->copy()->timezone('UTC'),
+                    $scheduled->copy()->timezone($orderSettings['timezone'])->format('Y-m-d'),
+                    $scheduled->copy()->timezone($orderSettings['timezone'])->format('H:i'),
                     $this->buildDerivedOrderNotes($order, $withdrawals),
                     collect($allocationPlan)
                         ->flatMap(fn (array $allocation): array => $this->buildDerivedWithdrawalLineItems(
@@ -862,6 +910,60 @@ class OrderService
     protected function parseScheduledAt(string $value, string $timezone): Carbon
     {
         return Carbon::parse($value, $timezone);
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array{pickup_date: ?string, pickup_time: ?string, scheduled_at: ?Carbon}
+     */
+    protected function resolvePickupSchedule(array $data, string $timezone): array
+    {
+        $hasExplicitParts = array_key_exists('pickup_date', $data) || array_key_exists('pickup_time', $data);
+
+        if (! $hasExplicitParts && ! empty($data['scheduled_at'])) {
+            $scheduled = $this->parseScheduledAt((string) $data['scheduled_at'], $timezone);
+
+            return [
+                'pickup_date' => $scheduled->copy()->timezone($timezone)->format('Y-m-d'),
+                'pickup_time' => $scheduled->copy()->timezone($timezone)->format('H:i'),
+                'scheduled_at' => $scheduled,
+            ];
+        }
+
+        $pickupDate = $this->normalizePickupDate($data['pickup_date'] ?? null);
+        $pickupTime = $this->normalizePickupTime($data['pickup_time'] ?? null);
+
+        if ($pickupDate === null || $pickupTime === null) {
+            return [
+                'pickup_date' => $pickupDate,
+                'pickup_time' => $pickupTime,
+                'scheduled_at' => null,
+            ];
+        }
+
+        return [
+            'pickup_date' => $pickupDate,
+            'pickup_time' => $pickupTime,
+            'scheduled_at' => Carbon::createFromFormat('Y-m-d H:i', "{$pickupDate} {$pickupTime}", $timezone),
+        ];
+    }
+
+    protected function normalizePickupDate(mixed $value): ?string
+    {
+        $value = is_string($value) ? trim($value) : null;
+
+        return $value === '' ? null : $value;
+    }
+
+    protected function normalizePickupTime(mixed $value): ?string
+    {
+        $value = is_string($value) ? trim($value) : null;
+
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        return substr((string) $value, 0, 5);
     }
 
     protected function assertSlotAvailableForSchedule(
@@ -1006,6 +1108,18 @@ class OrderService
             $filters[$key] = Carbon::parse((string) $filters[$key], $timezone)->timezone('UTC');
         }
 
+        if (! empty($filters['scheduled_from']) && empty($filters['pickup_date_from'])) {
+            $filters['pickup_date_from'] = Carbon::parse($filters['scheduled_from'], 'UTC')
+                ->timezone($timezone)
+                ->format('Y-m-d');
+        }
+
+        if (! empty($filters['scheduled_to']) && empty($filters['pickup_date_to'])) {
+            $filters['pickup_date_to'] = Carbon::parse($filters['scheduled_to'], 'UTC')
+                ->timezone($timezone)
+                ->format('Y-m-d');
+        }
+
         if (! empty($filters['tag_ids']) && is_array($filters['tag_ids'])) {
             $filters['tag_ids'] = $this->normalizeOrderTagIds($filters['tag_ids']);
         }
@@ -1028,6 +1142,8 @@ class OrderService
         $dayEnd = $dayStart->copy()->endOfDay();
 
         $filters['day'] = $day;
+        $filters['pickup_date_from'] = $day;
+        $filters['pickup_date_to'] = $day;
         $filters['scheduled_from'] = $dayStart->format('Y-m-d H:i:s');
         $filters['scheduled_to'] = $dayEnd->format('Y-m-d H:i:s');
 
@@ -1048,6 +1164,8 @@ class OrderService
 
         $filters['week_start'] = $weekStart->format('Y-m-d');
         $filters['week_end'] = $weekEnd->format('Y-m-d');
+        $filters['pickup_date_from'] = $filters['week_start'];
+        $filters['pickup_date_to'] = $filters['week_end'];
         $filters['scheduled_from'] = $weekStart->format('Y-m-d H:i:s');
         $filters['scheduled_to'] = $weekEnd->format('Y-m-d H:i:s');
 
@@ -1070,6 +1188,8 @@ class OrderService
 
         $filters['start_date'] = $startDate->format('Y-m-d');
         $filters['end_date'] = $endDate->format('Y-m-d');
+        $filters['pickup_date_from'] = $filters['start_date'];
+        $filters['pickup_date_to'] = $filters['end_date'];
         $filters['scheduled_from'] = $startDate->format('Y-m-d H:i:s');
         $filters['scheduled_to'] = $endDate->format('Y-m-d H:i:s');
 
@@ -1096,9 +1216,13 @@ class OrderService
         $itemQuantity = 0;
 
         foreach ($orders as $order) {
-            $slot = $order->slot ?: 'sem_slot';
-            $slotCounts[$slot] = ($slotCounts[$slot] ?? 0) + 1;
-            $itemQuantity += (int) $order->items->sum('quantity');
+            if ($order->scheduled_at !== null) {
+                $slot = $order->slot ?: 'sem_slot';
+                $slotCounts[$slot] = ($slotCounts[$slot] ?? 0) + 1;
+            }
+            if ($order->scheduled_at !== null) {
+                $itemQuantity += (int) $order->items->sum('quantity');
+            }
         }
 
         return [
@@ -1139,13 +1263,12 @@ class OrderService
         }
 
         foreach ($orders as $order) {
-            $scheduledAt = $order->scheduledAtForDisplay($timezone);
+            $dayKey = $order->pickupDateForDisplay($timezone)
+                ?? $order->scheduledAtForDisplay($timezone)?->format('Y-m-d');
 
-            if ($scheduledAt === null) {
+            if ($dayKey === null) {
                 continue;
             }
-
-            $dayKey = $scheduledAt->format('Y-m-d');
 
             if (! isset($daySummaries[$dayKey])) {
                 continue;
@@ -1154,10 +1277,15 @@ class OrderService
             $ordersByDay[$dayKey] ??= collect();
             $ordersByDay[$dayKey]->push($order);
 
-            $slot = $order->slot ?: 'sem_slot';
             $daySummaries[$dayKey]['orderCount']++;
-            $daySummaries[$dayKey]['itemQuantity'] += (int) $order->items->sum('quantity');
-            $daySummaries[$dayKey]['slotCounts'][$slot] = ($daySummaries[$dayKey]['slotCounts'][$slot] ?? 0) + 1;
+            if ($order->scheduled_at !== null) {
+                $daySummaries[$dayKey]['itemQuantity'] += (int) $order->items->sum('quantity');
+            }
+
+            if ($order->scheduled_at !== null) {
+                $slot = $order->slot ?: 'sem_slot';
+                $daySummaries[$dayKey]['slotCounts'][$slot] = ($daySummaries[$dayKey]['slotCounts'][$slot] ?? 0) + 1;
+            }
 
             if ($order->payment_status === 'paid') {
                 $daySummaries[$dayKey]['paidCount']++;
@@ -1436,6 +1564,12 @@ class OrderService
             'scheduled_at' => array_key_exists('scheduled_at', $overrides)
                 ? $this->normalizeDateTimeValue($overrides['scheduled_at'])
                 : $this->normalizeStoredOrderDateTime($order, 'scheduled_at'),
+            'pickup_date' => array_key_exists('pickup_date', $overrides)
+                ? $overrides['pickup_date']
+                : $order->pickupDateForDisplay(),
+            'pickup_time' => array_key_exists('pickup_time', $overrides)
+                ? $overrides['pickup_time']
+                : $order->pickupTimeForDisplay(),
             'notes' => $overrides['notes'] ?? $order->notes,
             'total' => $total,
             'items' => $items,

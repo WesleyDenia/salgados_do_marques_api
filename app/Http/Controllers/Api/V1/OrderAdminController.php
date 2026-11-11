@@ -64,6 +64,7 @@ class OrderAdminController extends Controller
             'selected_day_label' => $planning['selectedDayLabel'],
             'summary' => $planning['summary'],
             'slot_occupancy' => $planning['slotOccupancy'],
+            'operational_attention' => $planning['operationalAttention'],
         ]);
     }
 
@@ -79,6 +80,7 @@ class OrderAdminController extends Controller
             'summary' => $planning['summary'],
             'slot_occupancy' => $planning['slotOccupancy'],
             'day_summaries' => $planning['daySummaries'],
+            'operational_attention' => $planning['operationalAttention'],
         ]);
     }
 
@@ -94,6 +96,7 @@ class OrderAdminController extends Controller
             'summary' => $planning['summary'],
             'slot_occupancy' => $planning['slotOccupancy'],
             'day_summaries' => $planning['daySummaries'],
+            'operational_attention' => $planning['operationalAttention'],
         ]);
     }
 

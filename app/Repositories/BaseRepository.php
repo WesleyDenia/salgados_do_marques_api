@@ -13,11 +13,15 @@ abstract class BaseRepository
 
     public function query() { return $this->model->newQuery(); }
 
-    public function paginate(array $with = [], ?callable $filter = null): LengthAwarePaginator
+    public function paginate(
+        array $with = [],
+        ?callable $filter = null,
+        int $defaultPerPage = 15,
+    ): LengthAwarePaginator
     {
         $q = $this->query()->with($with);
         if ($filter) { $filter($q); }
-        return $q->paginate(request('per_page', 15));
+        return $q->paginate(request('per_page', $defaultPerPage));
     }
 
     public function find($id, array $with = []) { return $this->query()->with($with)->findOrFail($id); }

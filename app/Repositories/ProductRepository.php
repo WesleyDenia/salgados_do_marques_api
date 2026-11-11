@@ -25,7 +25,7 @@ class ProductRepository extends BaseRepository
                     $qq->where('name', 'like', "%$s%")->orWhere('description', 'like', "%$s%");
                 });
             }
-        });
+        }, 100);
     }
 
     public function findActiveForOrder(array $productIds): Collection

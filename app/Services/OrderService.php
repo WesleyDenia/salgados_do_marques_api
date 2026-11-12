@@ -54,6 +54,7 @@ class OrderService
         protected StoreService $stores,
         protected WhatsAppMessageFormatter $messages,
         protected WhatsAppQueueService $whatsAppQueue,
+        protected ?CatalogPriceService $catalogPrices = null,
     ) {}
 
     public function orderSettings(): array
@@ -159,7 +160,7 @@ class OrderService
                 ]);
             }
 
-            $lineItems = $this->buildOrderLineItems($items, $products, $variants, true);
+            $lineItems = $this->buildOrderLineItems($items, $products, $variants, true, $tagIds, Carbon::now());
             $resolvedCustomer = $this->resolveCustomerContext($actor, $data);
 
             $order = $this->repository->createWithItems(
@@ -660,8 +661,8 @@ class OrderService
                 ]);
             }
 
-            $lineItems = $this->buildOrderLineItems($items, $products, $variants, true);
             $tagIds = $this->normalizeOrderTagIds($data['tag_ids'] ?? []);
+            $lineItems = $this->buildOrderLineItems($items, $products, $variants, true, $tagIds, Carbon::now());
             $before = $this->snapshotOrderForHistory($order);
             $after = $this->snapshotOrderForHistory($order, [
                 'customer_name' => $this->normalizeNullableText($data['customer_name'] ?? null),
@@ -2393,9 +2394,13 @@ class OrderService
         SupportCollection $items,
         Collection $products,
         Collection $variants,
-        bool $expandMultiplier = false
+        bool $expandMultiplier = false,
+        array $tagIds = [],
+        ?CarbonInterface $createdAt = null,
     ): array {
-        return $items->flatMap(function (array $item) use ($products, $variants, $expandMultiplier): array {
+        $createdAt ??= Carbon::now();
+
+        return $items->flatMap(function (array $item) use ($products, $variants, $expandMultiplier, $tagIds, $createdAt): array {
             /** @var Product $product */
             $product = $products->get($item['product_id']);
             /** @var ProductVariant|null $variant */
@@ -2449,7 +2454,9 @@ class OrderService
                 }
             }
 
-            $price = $variant ? (float) $variant->price : (float) $product->price;
+            $price = $this->catalogPrices !== null
+                ? (float) $this->catalogPrices->resolve($product, $variant, $tagIds, $createdAt)->amount
+                : ($variant ? (float) $variant->price : (float) $product->price);
             $baseLineItem = [
                 'parent_order_item_id' => isset($item['parent_order_item_id'])
                     ? (int) $item['parent_order_item_id']

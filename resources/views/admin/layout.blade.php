@@ -837,6 +837,7 @@
             <a class="nav-link {{ request()->routeIs('admin.orders.*') ? 'active' : '' }}" href="{{ route('admin.orders.index') }}">Encomendas</a>
             <a class="nav-link {{ request()->routeIs('admin.customers.*') ? 'active' : '' }}" href="{{ route('admin.customers.index') }}">Clientes</a>            
             <a class="nav-link {{ request()->routeIs('admin.products.*') ? 'active' : '' }}" href="{{ route('admin.products.index') }}">Produtos</a>
+            <a class="nav-link {{ request()->routeIs('admin.price-lists.*') ? 'active' : '' }}" href="{{ route('admin.price-lists.index') }}">Listas de preços</a>
             <a class="nav-link {{ request()->routeIs('admin.categories.*') ? 'active' : '' }}" href="{{ route('admin.categories.index') }}">Categorias</a>
             <a class="nav-link {{ request()->routeIs('admin.flavors.*') ? 'active' : '' }}" href="{{ route('admin.flavors.index') }}">Sabores</a>
             <a class="nav-link {{ request()->routeIs('admin.stores.*') ? 'active' : '' }}" href="{{ route('admin.stores.index') }}">Lojas</a>

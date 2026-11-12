@@ -12,6 +12,7 @@ use App\Http\Controllers\Admin\LoyaltyRewardController;
 use App\Http\Controllers\Admin\OrderController as AdminOrderController;
 use App\Http\Controllers\Admin\PartnerCampaignController;
 use App\Http\Controllers\Admin\PartnerController;
+use App\Http\Controllers\Admin\PriceListController;
 use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\Admin\QueueMonitorController;
 use App\Http\Controllers\Admin\SettingController as AdminSettingController;
@@ -48,6 +49,7 @@ Route::middleware(['auth', 'can:manage'])
         Route::post('categories/reorder', [CategoryController::class, 'reorder'])->name('categories.reorder');
         Route::resource('categories', CategoryController::class)->except('show');
         Route::resource('products', ProductController::class)->except('show');
+        Route::resource('price-lists', PriceListController::class)->except('show');
         Route::resource('flavors', FlavorController::class)->except('show');
         Route::get('orders/daily', [AdminOrderController::class, 'daily'])->name('orders.daily');
         Route::get('orders', [AdminOrderController::class, 'index'])->name('orders.index');

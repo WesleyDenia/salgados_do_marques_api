@@ -15,6 +15,7 @@ class ProductAdminService
         protected AdminImageService $images,
         protected AdminCategoryService $categories,
         protected AdminFlavorService $flavors,
+        protected CatalogPriceService $catalogPrices,
     ) {}
 
     public function list(): LengthAwarePaginator
@@ -52,6 +53,7 @@ class ProductAdminService
             $product = Product::create($payload);
             $this->syncVariants($product, $variants);
             $this->syncFlavors($product, $flavorIds, true);
+            $this->catalogPrices->syncNormalPrices($product);
 
             return $product;
         });
@@ -70,6 +72,7 @@ class ProductAdminService
             $product->update($payload);
             $this->syncVariants($product, $variants);
             $this->syncFlavors($product, $flavorIds, $shouldSyncFlavors);
+            $this->catalogPrices->syncNormalPrices($product);
 
             return $product;
         });
@@ -106,7 +109,7 @@ class ProductAdminService
 
     protected function assertVariantsBelongToProduct(?Product $product, array $variants): void
     {
-        if (!$product) {
+        if (! $product) {
             return;
         }
 
@@ -133,7 +136,7 @@ class ProductAdminService
 
     protected function resolveImageUrl(?UploadedFile $image, ?Product $product, bool $removeImage): ?string
     {
-        if (!$product) {
+        if (! $product) {
             return $image instanceof UploadedFile
                 ? $this->images->store($image, 'products')
                 : null;
@@ -157,7 +160,7 @@ class ProductAdminService
                 ->filter(fn ($value) => $value !== null && $value !== '')
                 ->isNotEmpty();
 
-            if (!$hasData) {
+            if (! $hasData) {
                 continue;
             }
 
@@ -213,7 +216,7 @@ class ProductAdminService
         }
 
         foreach ($variants as $index => $variant) {
-            if ($variant['remove'] || !$variant['active']) {
+            if ($variant['remove'] || ! $variant['active']) {
                 continue;
             }
 
@@ -233,6 +236,7 @@ class ProductAdminService
 
             if ($variantId && $remove) {
                 $product->variants()->where('id', $variantId)->delete();
+
                 continue;
             }
 
@@ -259,7 +263,7 @@ class ProductAdminService
 
     protected function syncFlavors(Product $product, array $flavorIds, bool $shouldSync): void
     {
-        if (!$shouldSync) {
+        if (! $shouldSync) {
             return;
         }
 

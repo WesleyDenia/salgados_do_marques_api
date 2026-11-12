@@ -25,4 +25,10 @@ class OrderTag extends Model
         return $this->belongsToMany(Order::class, 'order_tag_order')
             ->withTimestamps();
     }
+
+    public function priceLists(): BelongsToMany
+    {
+        return $this->belongsToMany(PriceList::class, 'price_list_order_tag')
+            ->withTimestamps();
+    }
 }

@@ -4,13 +4,30 @@ namespace App\Repositories;
 
 use App\Models\Product;
 use App\Models\ProductVariant;
+use App\Services\CatalogPriceService;
 use Illuminate\Database\Eloquent\Collection;
 
 class ProductRepository extends BaseRepository
 {
-    public function __construct(Product $model)
+    public function __construct(Product $model, protected CatalogPriceService $catalogPrices)
     {
         parent::__construct($model);
+    }
+
+    public function create(array $data)
+    {
+        $product = parent::create($data);
+        $this->catalogPrices->syncNormalPrices($product);
+
+        return $product;
+    }
+
+    public function update(\Illuminate\Database\Eloquent\Model $instance, array $data)
+    {
+        $product = parent::update($instance, $data);
+        $this->catalogPrices->syncNormalPrices($product);
+
+        return $product;
     }
 
     public function publicList()

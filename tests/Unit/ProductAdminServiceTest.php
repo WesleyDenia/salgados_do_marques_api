@@ -53,6 +53,14 @@ class ProductAdminServiceTest extends TestCase
             'name' => 'Pack 25',
             'max_flavors' => 2,
         ]);
+        $this->assertDatabaseHas('price_entries', [
+            'product_id' => $product->id,
+            'amount' => 12.5,
+        ]);
+        $this->assertDatabaseHas('price_entries', [
+            'product_variant_id' => $product->variants()->value('id'),
+            'amount' => 12.5,
+        ]);
         $this->assertEqualsCanonicalizing(
             [$flavorA->id, $flavorB->id],
             $product->flavors()->pluck('flavors.id')->all()

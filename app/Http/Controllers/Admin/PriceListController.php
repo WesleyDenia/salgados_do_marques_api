@@ -55,6 +55,7 @@ class PriceListController extends Controller
             'priceList' => $priceList,
             'products' => $this->prices->catalogTargets(),
             'tags' => $this->prices->activeTags(),
+            'cloneSources' => $this->prices->cloneSources(),
         ];
     }
 }

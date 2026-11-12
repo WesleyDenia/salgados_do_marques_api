@@ -44,6 +44,22 @@ class PriceListAdminTest extends TestCase
         $this->assertDatabaseHas('price_lists', ['id' => $normal->id]);
     }
 
+    public function test_create_form_exposes_cloneable_prices_from_existing_lists(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $category = Category::create(['name' => 'Salgados', 'active' => true]);
+        $product = Product::create(['category_id' => $category->id, 'name' => 'Coxinha', 'price' => 1.2, 'active' => true]);
+        $source = PriceList::create(['name' => 'Tabela Parceiro', 'priority' => 5, 'active' => true]);
+        $source->entries()->create(['product_id' => $product->id, 'amount' => 0.9]);
+
+        $response = $this->actingAs($admin)->get(route('admin.price-lists.create'));
+
+        $response->assertOk();
+        $response->assertSee('Clonar preços');
+        $response->assertSee('Tabela Parceiro');
+        $response->assertSee('data-price-target="p-'.$product->id.'"', false);
+    }
+
     public function test_admin_cannot_create_overlapping_campaigns_with_same_priority_for_the_same_item(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);

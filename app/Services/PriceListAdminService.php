@@ -22,6 +22,11 @@ class PriceListAdminService
         return $this->prices->catalogTargets();
     }
 
+    public function cloneSources(): Collection
+    {
+        return $this->prices->cloneSources();
+    }
+
     public function activeTags(): Collection
     {
         return $this->prices->activeOrderTags();

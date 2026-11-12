@@ -66,6 +66,16 @@ class PriceListRepository extends BaseRepository
             ->get();
     }
 
+    public function cloneSources(): Collection
+    {
+        return PriceList::query()
+            ->with('entries')
+            ->orderByDesc('is_default')
+            ->orderByDesc('priority')
+            ->orderBy('name')
+            ->get();
+    }
+
     public function catalogTargets(): Collection
     {
         return Product::query()->with('variants')->orderBy('name')->get();

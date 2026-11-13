@@ -113,6 +113,7 @@ class OrderIndefinitePickupTest extends TestCase
         $this->assertStringContainsString('Data/Hora: indefinido', (string) $queueItem->message);
         $this->assertStringContainsString('RETIRADA NA LOJA "Loja Centro"', (string) $queueItem->message);
         $this->assertStringContainsString('Valor total: €5,00', (string) $queueItem->message);
+        $this->assertStringContainsString('Estado de pagamento: Pendente', (string) $queueItem->message);
         Queue::assertPushed(
             SendOrderPlacedWhatsAppJob::class,
             fn (SendOrderPlacedWhatsAppJob $job) => $job->queueItemId === $queueItem->id,

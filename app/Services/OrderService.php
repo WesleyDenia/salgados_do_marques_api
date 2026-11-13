@@ -202,6 +202,7 @@ class OrderService
                         $flavorNamesById,
                         (float) $order->total,
                         $store->name,
+                        $order->payment_status,
                     );
 
                     $queueItem = $this->whatsAppQueue->enqueue([

@@ -22,6 +22,7 @@ class WhatsAppMessageFormatter
             [],
             $order->total !== null ? (float) $order->total : null,
             $order->store?->name,
+            $order->payment_status,
         );
     }
 
@@ -33,6 +34,7 @@ class WhatsAppMessageFormatter
         array $flavorNamesById = [],
         ?float $total = null,
         ?string $pickupStoreName = null,
+        ?string $paymentStatus = null,
     ): string {
         $lines = collect($items)->flatMap(function ($item) use ($flavorNamesById): array {
             $quantity = (int) data_get($item, 'quantity', 0);
@@ -63,6 +65,7 @@ class WhatsAppMessageFormatter
             'Pedido:',
             $lines !== '' ? $lines : '-',
             'Valor total: '.($total !== null ? $this->formatCurrency($total) : '-'),
+            'Estado de pagamento: '.$this->formatPaymentStatus($paymentStatus),
             'RETIRADA NA LOJA "'.(trim((string) $pickupStoreName) ?: 'Loja não definida').'"',
         ]);
     }
@@ -70,6 +73,15 @@ class WhatsAppMessageFormatter
     protected function formatCurrency(float $amount): string
     {
         return '€'.number_format($amount, 2, ',', '.');
+    }
+
+    protected function formatPaymentStatus(?string $status): string
+    {
+        return match ($status) {
+            'paid' => 'Pago',
+            'partial' => 'Pagamento parcial',
+            default => 'Pendente',
+        };
     }
 
     public function otp(string $token): string

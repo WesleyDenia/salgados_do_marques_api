@@ -82,13 +82,14 @@ class WhatsAppMessageFormatterTest extends TestCase
             "Nome: Joao Silva\n"
                 ."Tel: 351911928481\n"
                 ."Data/Hora: 15/01/2026 12:30\n"
-                ."RETIRADA NA LOJA \"Loja Centro\"\n"
                 ."Pedido:\n"
                 ."3x Coxinha\n"
                 ." - Pack Mix\n"
                 ." - Pack Doce\n"
                 ."1x Pastel\n"
-                .'Valor total: €16,50',
+                ."Valor total: €16,50\n"
+                ."Estado de pagamento: Pago\n"
+                .'RETIRADA NA LOJA "Loja Centro"',
             $formatter->orderPlacedSnapshot(
                 'Joao Silva',
                 '351911928481',
@@ -100,6 +101,7 @@ class WhatsAppMessageFormatterTest extends TestCase
                 ],
                 16.50,
                 'Loja Centro',
+                'paid',
             )
         );
     }
@@ -114,13 +116,14 @@ class WhatsAppMessageFormatterTest extends TestCase
             "Nome: Joao Silva\n"
                 ."Tel: 351911928481\n"
                 ."Data/Hora: 15/01/2026 12:30\n"
-                ."RETIRADA NA LOJA \"Loja Centro\"\n"
                 ."Pedido:\n"
                 ."3x Coxinha\n"
                 ." - Pack Mix\n"
                 ." - Pack Doce\n"
                 ."1x Pastel\n"
-                .'Valor total: €16,50',
+                ."Valor total: €16,50\n"
+                ."Estado de pagamento: Pagamento parcial\n"
+                .'RETIRADA NA LOJA "Loja Centro"',
             $formatter->orderPlacedSnapshot(
                 'Joao Silva',
                 '351911928481',
@@ -143,6 +146,7 @@ class WhatsAppMessageFormatterTest extends TestCase
                 ],
                 16.50,
                 'Loja Centro',
+                'partial',
             )
         );
     }
@@ -155,10 +159,11 @@ class WhatsAppMessageFormatterTest extends TestCase
             "Nome: Joana Silva\n"
                 ."Tel: 351911928482\n"
                 ."Data/Hora: indefinido\n"
-                ."RETIRADA NA LOJA \"Loja Norte\"\n"
                 ."Pedido:\n"
                 ."2x Rissol\n"
-                .'Valor total: €5,00',
+                ."Valor total: €5,00\n"
+                ."Estado de pagamento: Pendente\n"
+                .'RETIRADA NA LOJA "Loja Norte"',
             $formatter->orderPlacedSnapshot(
                 'Joana Silva',
                 '351911928482',

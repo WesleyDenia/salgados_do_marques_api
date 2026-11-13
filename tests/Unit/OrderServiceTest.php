@@ -175,6 +175,7 @@ class OrderServiceTest extends TestCase
         $createdOrder = Mockery::mock(Order::class)->makePartial();
         $createdOrder->id = 99;
         $createdOrder->total = 5;
+        $createdOrder->shouldReceive('update')->once()->with(['paid_amount' => 0.0])->andReturnTrue();
         $createdOrder->shouldReceive('fresh')->once()->andReturnSelf();
 
         $repository->shouldReceive('createWithItems')
@@ -197,7 +198,7 @@ class OrderServiceTest extends TestCase
                     && $storeId === 20
                     && $customerName === null
                     && $customerContact === null
-                    && $paymentStatus === null
+                    && $paymentStatus === 'pending'
                     && $slot === null
                     && count($lineItems) === 1
                     && $tagIds === [];
@@ -299,6 +300,7 @@ class OrderServiceTest extends TestCase
 
         $createdOrder = Mockery::mock(Order::class)->makePartial();
         $createdOrder->id = 100;
+        $createdOrder->shouldReceive('update')->once()->with(['paid_amount' => 0.0])->andReturnTrue();
         $createdOrder->shouldReceive('fresh')->once()->andReturnSelf();
 
         $repository->shouldReceive('createWithItems')
@@ -321,7 +323,7 @@ class OrderServiceTest extends TestCase
                     && $storeId === 20
                     && $customerName === null
                     && $customerContact === null
-                    && $paymentStatus === null
+                    && $paymentStatus === 'pending'
                     && $slot === null
                     && count($lineItems) === 1
                     && $tagIds === [3, 7];

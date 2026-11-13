@@ -80,6 +80,52 @@ class OrderIndefinitePickupTest extends TestCase
             ->assertJsonPath('data.scheduled_at', null);
     }
 
+    public function test_staff_can_register_a_paid_amount_for_a_pending_order(): void
+    {
+        $staff = User::factory()->create(['role' => 'atendimento']);
+        $store = $this->createStore();
+        $product = $this->createProduct();
+        Sanctum::actingAs($staff);
+
+        $response = $this->postJson('/api/v1/orders', [
+            'store_id' => $store->id,
+            'payment_status' => 'pending',
+            'paid_amount' => 2,
+            'pickup_date' => null,
+            'pickup_time' => null,
+            'items' => [['product_id' => $product->id, 'quantity' => 2]],
+        ]);
+
+        $response->assertOk()
+            ->assertJsonPath('data.payment_status', 'pending')
+            ->assertJsonPath('data.total', 5)
+            ->assertJsonPath('data.paid_amount', 2);
+
+        $this->assertDatabaseHas('orders', [
+            'payment_status' => 'pending',
+            'paid_amount' => 2,
+            'total' => 5,
+        ]);
+    }
+
+    public function test_staff_cannot_register_a_paid_amount_above_the_order_total(): void
+    {
+        $staff = User::factory()->create(['role' => 'atendimento']);
+        $store = $this->createStore();
+        $product = $this->createProduct();
+        Sanctum::actingAs($staff);
+
+        $this->postJson('/api/v1/orders', [
+            'store_id' => $store->id,
+            'payment_status' => 'pending',
+            'paid_amount' => 5.01,
+            'pickup_date' => null,
+            'pickup_time' => null,
+            'items' => [['product_id' => $product->id, 'quantity' => 2]],
+        ])->assertUnprocessable()
+            ->assertJsonValidationErrors('paid_amount');
+    }
+
     public function test_it_queues_a_whatsapp_message_for_an_order_without_a_pickup_schedule(): void
     {
         Queue::fake();

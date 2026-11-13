@@ -18,6 +18,7 @@ class OrderResource extends JsonResource
             'parent_order_id' => $this->parent_order_id,
             'status' => $this->status,
             'payment_status' => $this->payment_status,
+            'paid_amount' => (float) $this->paid_amount,
             'slot' => $this->slot,
             'customer_name' => $this->customer_name,
             'customer_contact' => $this->customer_contact,

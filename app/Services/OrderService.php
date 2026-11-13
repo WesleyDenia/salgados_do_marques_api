@@ -161,6 +161,7 @@ class OrderService
             }
 
             $lineItems = $this->buildOrderLineItems($items, $products, $variants, true, $tagIds, Carbon::now());
+            $payment = $this->resolveOrderPayment($data, $lineItems);
             $resolvedCustomer = $this->resolveCustomerContext($actor, $data);
 
             $order = $this->repository->createWithItems(
@@ -168,7 +169,7 @@ class OrderService
                 (int) $data['store_id'],
                 $resolvedCustomer['customer_name'],
                 $resolvedCustomer['customer_contact'],
-                $data['payment_status'] ?? null,
+                $payment['status'],
                 $slot,
                 $scheduled?->copy()->timezone('UTC'),
                 $pickupSchedule['pickup_date'],
@@ -177,6 +178,7 @@ class OrderService
                 $lineItems,
                 $tagIds
             );
+            $order->update(['paid_amount' => $payment['paid_amount']]);
 
             if ($scheduled !== null) {
                 $this->preparationCapacities->allocateOrder($order, $allowPreparationOverflow);
@@ -666,12 +668,14 @@ class OrderService
 
             $tagIds = $this->normalizeOrderTagIds($data['tag_ids'] ?? []);
             $lineItems = $this->buildOrderLineItems($items, $products, $variants, true, $tagIds, Carbon::now());
+            $payment = $this->resolveOrderPayment($data, $lineItems, (float) $order->paid_amount);
             $before = $this->snapshotOrderForHistory($order);
             $after = $this->snapshotOrderForHistory($order, [
                 'customer_name' => $this->normalizeNullableText($data['customer_name'] ?? null),
                 'customer_contact' => $this->normalizeNullableText($data['customer_contact'] ?? null),
                 'store_id' => $this->storeSnapshotForHistory((int) $data['store_id'], $store->name),
-                'payment_status' => $data['payment_status'] ?? null,
+                'payment_status' => $payment['status'],
+                'paid_amount' => $payment['paid_amount'],
                 'slot' => $slot,
                 'scheduled_at' => $scheduled?->copy()->timezone('UTC'),
                 'pickup_date' => $pickupSchedule['pickup_date'],
@@ -685,7 +689,8 @@ class OrderService
                 'customer_name' => $this->normalizeNullableText($data['customer_name'] ?? null),
                 'customer_contact' => $this->normalizeNullableText($data['customer_contact'] ?? null),
                 'store_id' => (int) $data['store_id'],
-                'payment_status' => $data['payment_status'] ?? null,
+                'payment_status' => $payment['status'],
+                'paid_amount' => $payment['paid_amount'],
                 'slot' => $slot,
                 'scheduled_at' => $scheduled?->copy()->timezone('UTC'),
                 'pickup_date' => $pickupSchedule['pickup_date'],
@@ -1529,6 +1534,39 @@ class OrderService
         ]);
     }
 
+    /**
+     * @param  array<string, mixed>  $data
+     * @param  array<int, array<string, mixed>>  $lineItems
+     * @return array{status: string, paid_amount: float}
+     */
+    protected function resolveOrderPayment(array $data, array $lineItems, float $existingPaidAmount = 0): array
+    {
+        $total = round(
+            (float) collect($lineItems)->sum(fn (array $item): float => (float) ($item['total'] ?? 0)),
+            2,
+        );
+        $status = (string) ($data['payment_status'] ?? 'pending');
+        $hasPaidAmount = array_key_exists('paid_amount', $data) && $data['paid_amount'] !== null;
+        $paidAmount = $hasPaidAmount
+            ? round((float) $data['paid_amount'], 2)
+            : ($status === 'partial' ? $existingPaidAmount : 0.0);
+
+        if ($status === 'paid') {
+            return ['status' => 'paid', 'paid_amount' => $total];
+        }
+
+        if ($paidAmount > $total) {
+            throw ValidationException::withMessages([
+                'paid_amount' => 'O valor pago não pode ultrapassar o total da encomenda.',
+            ]);
+        }
+
+        return [
+            'status' => in_array($status, ['pending', 'partial'], true) ? $status : 'pending',
+            'paid_amount' => max(0, $paidAmount),
+        ];
+    }
+
     protected function normalizeNullableText(mixed $value): ?string
     {
         if (! is_string($value)) {
@@ -1564,6 +1602,9 @@ class OrderService
                 ? $this->normalizeStoreSnapshotForHistory($overrides['store_id'])
                 : $this->storeSnapshotForHistory((int) $order->store_id, $order->store?->name),
             'payment_status' => $overrides['payment_status'] ?? $order->payment_status,
+            'paid_amount' => array_key_exists('paid_amount', $overrides)
+                ? round((float) $overrides['paid_amount'], 2)
+                : round((float) $order->paid_amount, 2),
             'slot' => $overrides['slot'] ?? $order->slot,
             'scheduled_at' => array_key_exists('scheduled_at', $overrides)
                 ? $this->normalizeDateTimeValue($overrides['scheduled_at'])

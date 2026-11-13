@@ -20,6 +20,7 @@ class Order extends Model
         'store_id',
         'status',
         'payment_status',
+        'paid_amount',
         'slot',
         'scheduled_at',
         'pickup_date',
@@ -34,6 +35,7 @@ class Order extends Model
         'pickup_date' => 'date',
         'cancelled_at' => 'datetime',
         'total' => 'decimal:2',
+        'paid_amount' => 'decimal:2',
     ];
 
     public function items()

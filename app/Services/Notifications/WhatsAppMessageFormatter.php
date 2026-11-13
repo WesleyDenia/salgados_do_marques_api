@@ -23,6 +23,7 @@ class WhatsAppMessageFormatter
             $order->total !== null ? (float) $order->total : null,
             $order->store?->name,
             $order->payment_status,
+            $order->paid_amount !== null ? (float) $order->paid_amount : null,
         );
     }
 
@@ -35,6 +36,7 @@ class WhatsAppMessageFormatter
         ?float $total = null,
         ?string $pickupStoreName = null,
         ?string $paymentStatus = null,
+        ?float $paidAmount = null,
     ): string {
         $lines = collect($items)->flatMap(function ($item) use ($flavorNamesById): array {
             $quantity = (int) data_get($item, 'quantity', 0);
@@ -58,16 +60,27 @@ class WhatsAppMessageFormatter
             return $lines;
         })->implode("\n");
 
-        return implode("\n", [
+        $totalLabel = $total !== null ? $this->formatCurrency($total) : '-';
+        $paymentLines = $paymentStatus === 'partial'
+            ? [
+                'Valor: '.$totalLabel,
+                'Valor Pago: '.($paidAmount !== null ? $this->formatCurrency($paidAmount) : '-'),
+                'Falta Pagar: '.($total !== null
+                    ? $this->formatCurrency(max(0, $total - ($paidAmount ?? 0)))
+                    : '-'),
+            ]
+            : ['Valor total: '.$totalLabel];
+
+        return implode("\n", array_merge([
             'Nome: '.$name,
             'Tel: '.$phone,
             'Data/Hora: '.($scheduledAt?->format('d/m/Y H:i') ?? 'indefinido'),
             'Pedido:',
             $lines !== '' ? $lines : '-',
-            'Valor total: '.($total !== null ? $this->formatCurrency($total) : '-'),
+        ], $paymentLines, [
             'Estado de pagamento: '.$this->formatPaymentStatus($paymentStatus),
             'RETIRADA NA LOJA "'.(trim((string) $pickupStoreName) ?: 'Loja não definida').'"',
-        ]);
+        ]));
     }
 
     protected function formatCurrency(float $amount): string

@@ -121,7 +121,9 @@ class WhatsAppMessageFormatterTest extends TestCase
                 ." - Pack Mix\n"
                 ." - Pack Doce\n"
                 ."1x Pastel\n"
-                ."Valor total: €16,50\n"
+                ."Valor: €16,50\n"
+                ."Valor Pago: €6,50\n"
+                ."Falta Pagar: €10,00\n"
                 ."Estado de pagamento: Pagamento parcial\n"
                 .'RETIRADA NA LOJA "Loja Centro"',
             $formatter->orderPlacedSnapshot(
@@ -147,6 +149,7 @@ class WhatsAppMessageFormatterTest extends TestCase
                 16.50,
                 'Loja Centro',
                 'partial',
+                6.50,
             )
         );
     }

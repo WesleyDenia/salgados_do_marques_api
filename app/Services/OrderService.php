@@ -205,6 +205,7 @@ class OrderService
                         (float) $order->total,
                         $store->name,
                         $order->payment_status,
+                        $payment['paid_amount'],
                     );
 
                     $queueItem = $this->whatsAppQueue->enqueue([

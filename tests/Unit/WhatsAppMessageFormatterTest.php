@@ -82,11 +82,13 @@ class WhatsAppMessageFormatterTest extends TestCase
             "Nome: Joao Silva\n"
                 ."Tel: 351911928481\n"
                 ."Data/Hora: 15/01/2026 12:30\n"
+                ."RETIRADA NA LOJA \"Loja Centro\"\n"
                 ."Pedido:\n"
                 ."3x Coxinha\n"
                 ." - Pack Mix\n"
                 ." - Pack Doce\n"
-                .'1x Pastel',
+                ."1x Pastel\n"
+                .'Valor total: €16,50',
             $formatter->orderPlacedSnapshot(
                 'Joao Silva',
                 '351911928481',
@@ -95,7 +97,9 @@ class WhatsAppMessageFormatterTest extends TestCase
                 [
                     1 => 'Pack Mix',
                     2 => 'Pack Doce',
-                ]
+                ],
+                16.50,
+                'Loja Centro',
             )
         );
     }
@@ -110,11 +114,13 @@ class WhatsAppMessageFormatterTest extends TestCase
             "Nome: Joao Silva\n"
                 ."Tel: 351911928481\n"
                 ."Data/Hora: 15/01/2026 12:30\n"
+                ."RETIRADA NA LOJA \"Loja Centro\"\n"
                 ."Pedido:\n"
                 ."3x Coxinha\n"
                 ." - Pack Mix\n"
                 ." - Pack Doce\n"
-                .'1x Pastel',
+                ."1x Pastel\n"
+                .'Valor total: €16,50',
             $formatter->orderPlacedSnapshot(
                 'Joao Silva',
                 '351911928481',
@@ -134,7 +140,37 @@ class WhatsAppMessageFormatterTest extends TestCase
                 [
                     1 => 'Pack Mix',
                     2 => 'Pack Doce',
-                ]
+                ],
+                16.50,
+                'Loja Centro',
+            )
+        );
+    }
+
+    public function test_it_formats_an_indefinite_pickup_order_message(): void
+    {
+        $formatter = new WhatsAppMessageFormatter;
+
+        $this->assertSame(
+            "Nome: Joana Silva\n"
+                ."Tel: 351911928482\n"
+                ."Data/Hora: indefinido\n"
+                ."RETIRADA NA LOJA \"Loja Norte\"\n"
+                ."Pedido:\n"
+                ."2x Rissol\n"
+                .'Valor total: €5,00',
+            $formatter->orderPlacedSnapshot(
+                'Joana Silva',
+                '351911928482',
+                null,
+                [[
+                    'quantity' => 2,
+                    'name_snapshot' => 'Rissol',
+                    'options' => [],
+                ]],
+                [],
+                5,
+                'Loja Norte',
             )
         );
     }

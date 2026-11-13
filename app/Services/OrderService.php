@@ -183,7 +183,7 @@ class OrderService
             }
             $order = $order->fresh(['items.variant', 'store', 'user', 'tags', 'preparationAllocations.preparationSlot']);
 
-            if ($scheduled !== null && $resolvedCustomer['notification_contact']) {
+            if ($resolvedCustomer['notification_contact']) {
                 try {
                     $recipient = $this->whatsappOrderRecipient();
                     $flavorIds = $items
@@ -197,9 +197,11 @@ class OrderService
                     $message = $this->messages->orderPlacedSnapshot(
                         (string) $resolvedCustomer['notification_name'],
                         (string) $resolvedCustomer['notification_contact'],
-                        $scheduled->copy()->timezone($orderSettings['timezone']),
+                        $scheduled?->copy()->timezone($orderSettings['timezone']),
                         $lineItems,
-                        $flavorNamesById
+                        $flavorNamesById,
+                        (float) $order->total,
+                        $store->name,
                     );
 
                     $queueItem = $this->whatsAppQueue->enqueue([

@@ -10,22 +10,29 @@ class WhatsAppMessageFormatter
 {
     public function orderPlaced(Order $order, string $timezone): string
     {
-        $scheduledAt = Carbon::parse($order->scheduled_at, 'UTC')->timezone($timezone);
+        $scheduledAt = $order->scheduled_at
+            ? Carbon::parse($order->scheduled_at, 'UTC')->timezone($timezone)
+            : null;
 
         return $this->orderPlacedSnapshot(
             (string) ($order->user?->name ?? '-'),
             (string) ($order->user?->phone ?? '-'),
             $scheduledAt,
-            $order->items
+            $order->items,
+            [],
+            $order->total !== null ? (float) $order->total : null,
+            $order->store?->name,
         );
     }
 
     public function orderPlacedSnapshot(
         string $name,
         string $phone,
-        Carbon $scheduledAt,
+        ?Carbon $scheduledAt,
         iterable $items,
-        array $flavorNamesById = []
+        array $flavorNamesById = [],
+        ?float $total = null,
+        ?string $pickupStoreName = null,
     ): string {
         $lines = collect($items)->flatMap(function ($item) use ($flavorNamesById): array {
             $quantity = (int) data_get($item, 'quantity', 0);
@@ -52,10 +59,17 @@ class WhatsAppMessageFormatter
         return implode("\n", [
             'Nome: '.$name,
             'Tel: '.$phone,
-            'Data/Hora: '.$scheduledAt->format('d/m/Y H:i'),
+            'Data/Hora: '.($scheduledAt?->format('d/m/Y H:i') ?? 'indefinido'),
             'Pedido:',
             $lines !== '' ? $lines : '-',
+            'Valor total: '.($total !== null ? $this->formatCurrency($total) : '-'),
+            'RETIRADA NA LOJA "'.(trim((string) $pickupStoreName) ?: 'Loja não definida').'"',
         ]);
+    }
+
+    protected function formatCurrency(float $amount): string
+    {
+        return '€'.number_format($amount, 2, ',', '.');
     }
 
     public function otp(string $token): string

@@ -11,6 +11,7 @@ use App\Services\AdminFlavorService;
 use App\Services\OrderService;
 use App\Services\Notifications\WhatsAppMessageFormatter;
 use App\Services\PlanningSlotCapacityService;
+use App\Services\PreparationCapacityService;
 use App\Services\SettingService;
 use App\Services\StoreService;
 use App\Services\WhatsAppQueueService;
@@ -28,6 +29,7 @@ class OrderServiceTest extends TestCase
             Mockery::mock(ProductRepository::class),
             Mockery::mock(AdminFlavorService::class),
             Mockery::mock(PlanningSlotCapacityService::class),
+            Mockery::mock(PreparationCapacityService::class),
             Mockery::mock(SettingService::class),
             Mockery::mock(StoreService::class),
             Mockery::mock(WhatsAppMessageFormatter::class),
@@ -97,6 +99,7 @@ class OrderServiceTest extends TestCase
             $products,
             Mockery::mock(AdminFlavorService::class),
             Mockery::mock(PlanningSlotCapacityService::class),
+            Mockery::mock(PreparationCapacityService::class),
             $settings,
             $stores,
             Mockery::mock(WhatsAppMessageFormatter::class),
@@ -131,6 +134,7 @@ class OrderServiceTest extends TestCase
             $products,
             $flavors,
             Mockery::mock(PlanningSlotCapacityService::class),
+            Mockery::mock(PreparationCapacityService::class),
             $settings,
             $stores,
             $messages,
@@ -160,9 +164,7 @@ class OrderServiceTest extends TestCase
         $product = new \App\Models\Product(['id' => 30, 'name' => 'Coxinha', 'price' => 2.50]);
         $product->setRelation('allowedFlavors', new \Illuminate\Database\Eloquent\Collection());
         $stores->shouldReceive('findById')->once()->with(20)->andReturn($store);
-        $stores->shouldReceive('validateScheduledPickup')
-            ->once()
-            ->with($store, Mockery::type(\Carbon\Carbon::class), Mockery::type('array'));
+        $stores->shouldNotReceive('validateScheduledPickup');
         $products->shouldReceive('findActiveForOrder')
             ->once()
             ->andReturn(new \Illuminate\Database\Eloquent\Collection([30 => $product]));
@@ -170,8 +172,10 @@ class OrderServiceTest extends TestCase
             ->once()
             ->andReturn(new \Illuminate\Database\Eloquent\Collection());
 
-        $createdOrder = new Order();
+        $createdOrder = Mockery::mock(Order::class)->makePartial();
         $createdOrder->id = 99;
+        $createdOrder->total = 5;
+        $createdOrder->shouldReceive('fresh')->once()->andReturnSelf();
 
         $repository->shouldReceive('createWithItems')
             ->once()
@@ -182,7 +186,9 @@ class OrderServiceTest extends TestCase
                 ?string $customerContact,
                 ?string $paymentStatus,
                 ?string $slot,
-                \Carbon\CarbonInterface $scheduledAtUtc,
+                ?\Carbon\CarbonInterface $scheduledAtUtc,
+                ?string $pickupDate,
+                ?string $pickupTime,
                 ?string $notes,
                 array $lineItems,
                 array $tagIds
@@ -203,9 +209,11 @@ class OrderServiceTest extends TestCase
             ->with(
                 'Joao',
                 '351911928481',
-                Mockery::type(\Carbon\Carbon::class),
+                null,
                 Mockery::type('array'),
-                Mockery::type('array')
+                Mockery::type('array'),
+                Mockery::type('float'),
+                'Loja',
             )
             ->andReturn("Nome: Joao\nTel: 351911928481\nData/Hora: 15/01/2026 12:30\nPedido:\n2x Coxinha");
 
@@ -222,7 +230,8 @@ class OrderServiceTest extends TestCase
 
         $service->createForUser($user, [
             'store_id' => 20,
-            'scheduled_at' => '2026-01-15 12:30:00',
+            'pickup_date' => null,
+            'pickup_time' => null,
             'items' => [
                 [
                     'product_id' => 30,
@@ -252,6 +261,7 @@ class OrderServiceTest extends TestCase
             $products,
             $flavors,
             $slotCapacities,
+            Mockery::mock(PreparationCapacityService::class),
             $settings,
             $stores,
             $messages,
@@ -272,15 +282,13 @@ class OrderServiceTest extends TestCase
         $user->role = 'atendimento';
         $user->name = 'Joao';
         $user->email = 'joao@example.com';
-        $user->phone = '351911928481';
+        $user->phone = null;
         $store = new \App\Models\Store(['id' => 20, 'name' => 'Loja', 'accepts_orders' => true]);
         $product = new \App\Models\Product(['id' => 30, 'name' => 'Coxinha', 'price' => 2.50]);
         $product->setRelation('allowedFlavors', new \Illuminate\Database\Eloquent\Collection());
 
         $stores->shouldReceive('findById')->once()->with(20)->andReturn($store);
-        $stores->shouldReceive('validateScheduledPickup')
-            ->once()
-            ->with($store, Mockery::type(\Carbon\Carbon::class), Mockery::type('array'));
+        $stores->shouldNotReceive('validateScheduledPickup');
         $products->shouldReceive('findActiveForOrder')
             ->once()
             ->andReturn(new \Illuminate\Database\Eloquent\Collection([30 => $product]));
@@ -288,8 +296,9 @@ class OrderServiceTest extends TestCase
             ->once()
             ->andReturn(new \Illuminate\Database\Eloquent\Collection());
 
-        $createdOrder = new Order();
+        $createdOrder = Mockery::mock(Order::class)->makePartial();
         $createdOrder->id = 100;
+        $createdOrder->shouldReceive('fresh')->once()->andReturnSelf();
 
         $repository->shouldReceive('createWithItems')
             ->once()
@@ -300,7 +309,9 @@ class OrderServiceTest extends TestCase
                 ?string $customerContact,
                 ?string $paymentStatus,
                 ?string $slot,
-                \Carbon\CarbonInterface $scheduledAtUtc,
+                ?\Carbon\CarbonInterface $scheduledAtUtc,
+                ?string $pickupDate,
+                ?string $pickupTime,
                 ?string $notes,
                 array $lineItems,
                 array $tagIds
@@ -318,7 +329,8 @@ class OrderServiceTest extends TestCase
 
         $service->createForUser($user, [
             'store_id' => 20,
-            'scheduled_at' => '2026-01-15 12:30:00',
+            'pickup_date' => null,
+            'pickup_time' => null,
             'tag_ids' => [3, '7', 7],
             'items' => [
                 [

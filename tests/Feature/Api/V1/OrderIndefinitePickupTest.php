@@ -126,6 +126,107 @@ class OrderIndefinitePickupTest extends TestCase
             ->assertJsonValidationErrors('paid_amount');
     }
 
+    public function test_admin_order_list_sorts_by_pickup_date_and_time_with_undefined_values_last(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $store = $this->createStore();
+
+        $earlyOrder = Order::create([
+            'store_id' => $store->id,
+            'status' => 'placed',
+            'customer_name' => 'Retirada cedo',
+            'pickup_date' => '2026-12-20',
+            'pickup_time' => '09:00',
+            'scheduled_at' => Carbon::create(2026, 12, 20, 9, 0, 0, 'UTC'),
+            'total' => 10,
+        ]);
+        $lateOrder = Order::create([
+            'store_id' => $store->id,
+            'status' => 'placed',
+            'customer_name' => 'Retirada tarde',
+            'pickup_date' => '2026-12-20',
+            'pickup_time' => '15:00',
+            'scheduled_at' => Carbon::create(2026, 12, 20, 15, 0, 0, 'UTC'),
+            'total' => 10,
+        ]);
+        $withoutTime = Order::create([
+            'store_id' => $store->id,
+            'status' => 'placed',
+            'customer_name' => 'Sem hora',
+            'pickup_date' => '2026-12-20',
+            'pickup_time' => null,
+            'scheduled_at' => null,
+            'total' => 10,
+        ]);
+        $nextDayOrder = Order::create([
+            'store_id' => $store->id,
+            'status' => 'placed',
+            'customer_name' => 'Dia seguinte',
+            'pickup_date' => '2026-12-21',
+            'pickup_time' => '09:00',
+            'scheduled_at' => Carbon::create(2026, 12, 21, 9, 0, 0, 'UTC'),
+            'total' => 10,
+        ]);
+        $undefinedPickup = Order::create([
+            'store_id' => $store->id,
+            'status' => 'placed',
+            'customer_name' => 'Sem data nem hora',
+            'pickup_date' => null,
+            'pickup_time' => null,
+            'scheduled_at' => null,
+            'total' => 10,
+        ]);
+
+        $this->actingAs($admin, 'sanctum')
+            ->getJson('/api/v1/admin/orders?status=placed')
+            ->assertOk()
+            ->assertJsonPath('data.0.id', $earlyOrder->id)
+            ->assertJsonPath('data.1.id', $lateOrder->id)
+            ->assertJsonPath('data.2.id', $withoutTime->id)
+            ->assertJsonPath('data.3.id', $nextDayOrder->id)
+            ->assertJsonPath('data.4.id', $undefinedPickup->id);
+    }
+
+    public function test_admin_can_filter_orders_with_an_undefined_pickup_date(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $store = $this->createStore();
+
+        $undefinedPickup = Order::create([
+            'store_id' => $store->id,
+            'status' => 'placed',
+            'customer_name' => 'Sem data',
+            'pickup_date' => null,
+            'pickup_time' => null,
+            'scheduled_at' => null,
+            'total' => 10,
+        ]);
+        Order::create([
+            'store_id' => $store->id,
+            'status' => 'placed',
+            'customer_name' => 'Com data',
+            'pickup_date' => '2026-12-20',
+            'pickup_time' => '10:00',
+            'scheduled_at' => Carbon::create(2026, 12, 20, 10, 0, 0, 'UTC'),
+            'total' => 10,
+        ]);
+        Order::create([
+            'store_id' => $store->id,
+            'status' => 'placed',
+            'customer_name' => 'Legado com data',
+            'pickup_date' => null,
+            'pickup_time' => null,
+            'scheduled_at' => Carbon::create(2026, 12, 21, 10, 0, 0, 'UTC'),
+            'total' => 10,
+        ]);
+
+        $this->actingAs($admin, 'sanctum')
+            ->getJson('/api/v1/admin/orders?status=placed&pickup_date_undefined=1')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.id', $undefinedPickup->id);
+    }
+
     public function test_it_queues_a_whatsapp_message_for_an_order_without_a_pickup_schedule(): void
     {
         Queue::fake();

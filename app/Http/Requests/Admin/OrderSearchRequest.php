@@ -36,6 +36,7 @@ class OrderSearchRequest extends FormRequest
             'end_date' => ['nullable', 'date_format:Y-m-d', 'required_with:start_date'],
             'scheduled_from' => ['nullable', 'date'],
             'scheduled_to' => ['nullable', 'date'],
+            'pickup_date_undefined' => ['nullable', 'boolean'],
         ];
     }
 

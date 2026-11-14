@@ -97,7 +97,12 @@ class OrderRepository
             });
         }
 
-        if ($applyScheduleFilters && (! empty($filters['scheduled_from']) || ! empty($filters['scheduled_to']))) {
+        if (! empty($filters['pickup_date_undefined'])) {
+            // A legacy order can have no explicit pickup_date but still retain a
+            // scheduled_at value. Only records with neither value are truly
+            // without a defined pickup date.
+            $query->whereNull('pickup_date')->whereNull('scheduled_at');
+        } elseif ($applyScheduleFilters && (! empty($filters['scheduled_from']) || ! empty($filters['scheduled_to']))) {
             $query->where(function ($scheduleQuery) use ($filters) {
                 // New records use their explicit local pickup date. Records created
                 // before that field existed retain the legacy UTC timestamp path.
@@ -125,7 +130,18 @@ class OrderRepository
             });
         }
 
-        return $query->orderByRaw('pickup_date is null')->orderBy('pickup_date')->orderBy('scheduled_at')->orderBy('id');
+        // New orders keep the pickup date and time independently, while legacy
+        // orders only have scheduled_at. Sort both formats chronologically and
+        // leave genuinely undefined pickup data at the end of the queue.
+        $pickupSortDate = 'coalesce(pickup_date, date(scheduled_at))';
+        $pickupSortTime = 'coalesce(pickup_time, time(scheduled_at))';
+
+        return $query
+            ->orderByRaw("case when {$pickupSortDate} is null then 1 else 0 end")
+            ->orderByRaw($pickupSortDate)
+            ->orderByRaw("case when {$pickupSortTime} is null then 1 else 0 end")
+            ->orderByRaw($pickupSortTime)
+            ->orderBy('id');
     }
 
     protected function onlyDigits(string $value): string

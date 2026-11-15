@@ -71,16 +71,21 @@ class WhatsAppMessageFormatter
             ]
             : ['Valor total: '.$totalLabel];
 
-        return implode("\n", array_merge([
-            'Nome: '.$name,
-            'Tel: '.$phone,
-            'Data/Hora: '.($scheduledAt?->format('d/m/Y H:i') ?? 'indefinido'),
-            'Pedido:',
-            $lines !== '' ? $lines : '-',
-        ], $paymentLines, [
-            'Estado de pagamento: '.$this->formatPaymentStatus($paymentStatus),
+        return implode("\n\n", [
+            implode("\n", [
+                'Nome: '.$name,
+                'Tel: '.$phone,
+                'Data/Hora: '.($scheduledAt?->format('d/m/Y H:i') ?? 'indefinido'),
+            ]),
+            implode("\n", [
+                'Pedido:',
+                $lines !== '' ? $lines : '-',
+            ]),
+            implode("\n", array_merge($paymentLines, [
+                'Pagamento: '.$this->formatPaymentStatus($paymentStatus),
+            ])),
             'RETIRADA NA LOJA "'.(trim((string) $pickupStoreName) ?: 'Loja não definida').'"',
-        ]));
+        ]);
     }
 
     protected function formatCurrency(float $amount): string
@@ -92,8 +97,8 @@ class WhatsAppMessageFormatter
     {
         return match ($status) {
             'paid' => 'Pago',
-            'partial' => 'Pagamento parcial',
-            default => 'Pendente',
+            'partial' => 'Pagamento Parcial',
+            default => 'À Pagar',
         };
     }
 

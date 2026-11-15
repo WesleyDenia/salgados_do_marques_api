@@ -81,14 +81,14 @@ class WhatsAppMessageFormatterTest extends TestCase
         $this->assertSame(
             "Nome: Joao Silva\n"
                 ."Tel: 351911928481\n"
-                ."Data/Hora: 15/01/2026 12:30\n"
+                ."Data/Hora: 15/01/2026 12:30\n\n"
                 ."Pedido:\n"
                 ."3x Coxinha\n"
                 ." - Pack Mix\n"
                 ." - Pack Doce\n"
-                ."1x Pastel\n"
+                ."1x Pastel\n\n"
                 ."Valor total: €16,50\n"
-                ."Estado de pagamento: Pago\n"
+                ."Pagamento: Pago\n\n"
                 .'RETIRADA NA LOJA "Loja Centro"',
             $formatter->orderPlacedSnapshot(
                 'Joao Silva',
@@ -115,16 +115,16 @@ class WhatsAppMessageFormatterTest extends TestCase
         $this->assertSame(
             "Nome: Joao Silva\n"
                 ."Tel: 351911928481\n"
-                ."Data/Hora: 15/01/2026 12:30\n"
+                ."Data/Hora: 15/01/2026 12:30\n\n"
                 ."Pedido:\n"
                 ."3x Coxinha\n"
                 ." - Pack Mix\n"
                 ." - Pack Doce\n"
-                ."1x Pastel\n"
+                ."1x Pastel\n\n"
                 ."Valor: €16,50\n"
                 ."Valor Pago: €6,50\n"
                 ."Falta Pagar: €10,00\n"
-                ."Estado de pagamento: Pagamento parcial\n"
+                ."Pagamento: Pagamento Parcial\n\n"
                 .'RETIRADA NA LOJA "Loja Centro"',
             $formatter->orderPlacedSnapshot(
                 'Joao Silva',
@@ -161,11 +161,11 @@ class WhatsAppMessageFormatterTest extends TestCase
         $this->assertSame(
             "Nome: Joana Silva\n"
                 ."Tel: 351911928482\n"
-                ."Data/Hora: indefinido\n"
+                ."Data/Hora: indefinido\n\n"
                 ."Pedido:\n"
-                ."2x Rissol\n"
+                ."2x Rissol\n\n"
                 ."Valor total: €5,00\n"
-                ."Estado de pagamento: Pendente\n"
+                ."Pagamento: À Pagar\n\n"
                 .'RETIRADA NA LOJA "Loja Norte"',
             $formatter->orderPlacedSnapshot(
                 'Joana Silva',

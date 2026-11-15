@@ -267,6 +267,65 @@ class OrderIndefinitePickupTest extends TestCase
         );
     }
 
+    public function test_admin_can_resend_a_whatsapp_message_using_the_current_order_data(): void
+    {
+        Queue::fake();
+
+        $admin = User::factory()->create(['role' => 'admin']);
+        $store = $this->createStore();
+        $product = $this->createProduct();
+        Setting::updateOrCreate(
+            ['key' => 'WHATSAPP_ORDER_TO'],
+            ['value' => '+351912345678', 'type' => 'string', 'editable' => true],
+        );
+        $order = Order::create([
+            'store_id' => $store->id,
+            'status' => 'placed',
+            'customer_name' => 'Cliente atualizado',
+            'customer_contact' => '919999999',
+            'payment_status' => 'partial',
+            'paid_amount' => 20,
+            'pickup_date' => '2026-12-20',
+            'pickup_time' => '10:30',
+            'scheduled_at' => Carbon::create(2026, 12, 20, 10, 30, 0, 'UTC'),
+            'total' => 50,
+        ]);
+        $order->items()->create([
+            'product_id' => $product->id,
+            'name_snapshot' => 'Pack atualizado',
+            'price_snapshot' => 50,
+            'quantity' => 1,
+            'total' => 50,
+        ]);
+
+        Sanctum::actingAs($admin);
+
+        $response = $this->postJson("/api/v1/admin/orders/{$order->id}/whatsapp-message");
+
+        $response->assertStatus(202)
+            ->assertJsonPath('data.status', WhatsAppQueueItem::STATUS_QUEUED);
+
+        $queueItem = WhatsAppQueueItem::query()
+            ->where('entity_type', 'order')
+            ->where('entity_id', $order->id)
+            ->latest('id')
+            ->firstOrFail();
+
+        $this->assertSame('+351912345678', $queueItem->phone);
+        $this->assertStringContainsString('Nome: Cliente atualizado', (string) $queueItem->message);
+        $this->assertStringContainsString('Data/Hora: 20/12/2026 10:30', (string) $queueItem->message);
+        $this->assertStringContainsString('DOMINGO', (string) $queueItem->message);
+        $this->assertStringContainsString('1x Pack atualizado', (string) $queueItem->message);
+        $this->assertStringContainsString('Valor: €50,00', (string) $queueItem->message);
+        $this->assertStringContainsString('Valor Pago: €20,00', (string) $queueItem->message);
+        $this->assertStringContainsString('Falta Pagar: €30,00', (string) $queueItem->message);
+        $this->assertStringContainsString('RETIRADA NA LOJA "Loja Centro"', (string) $queueItem->message);
+        Queue::assertPushed(
+            SendOrderPlacedWhatsAppJob::class,
+            fn (SendOrderPlacedWhatsAppJob $job) => $job->queueItemId === $queueItem->id,
+        );
+    }
+
     public function test_daily_planning_reports_global_date_and_day_scoped_time_attention_without_slot_load(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);

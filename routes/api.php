@@ -106,6 +106,7 @@ Route::prefix('v1')->group(function () {
             Route::get('admin/orders/{order}', [OrderAdminController::class, 'show']);
             Route::patch('admin/orders/{order}', [OrderAdminController::class, 'update']);
             Route::patch('admin/orders/{order}/status', [OrderAdminController::class, 'updateStatus']);
+            Route::post('admin/orders/{order}/whatsapp-message', [OrderAdminController::class, 'resendWhatsAppMessage']);
             Route::post('admin/orders/{order}/partial-withdrawals', [OrderAdminController::class, 'storePartialWithdrawal']);
 
             Route::get('admin/users', [UserAdminController::class, 'index']);

@@ -544,6 +544,60 @@ class OrderService
         return $this->repository->findForAdmin($order);
     }
 
+    public function resendWhatsAppMessageForAdmin(Order $order): WhatsAppQueueItem
+    {
+        $order = $this->repository->findForAdmin($order);
+        $recipient = $this->whatsappOrderRecipient();
+
+        if ($recipient === '') {
+            throw ValidationException::withMessages([
+                'whatsapp' => 'O destino de WhatsApp das encomendas não está configurado.',
+            ]);
+        }
+
+        $flavorIds = $order->items
+            ->flatMap(fn (OrderItem $item) => is_array($item->options['flavors'] ?? null)
+                ? $item->options['flavors']
+                : [])
+            ->map(fn ($flavorId) => (int) $flavorId)
+            ->filter(fn (int $flavorId) => $flavorId > 0)
+            ->unique()
+            ->values()
+            ->all();
+        $orderSettings = $this->orderSettings();
+        $customerName = $this->normalizeNullableText($order->customer_name)
+            ?? $this->normalizeNullableText($order->user?->name)
+            ?? '-';
+        $customerContact = $this->normalizeNullableText($order->customer_contact)
+            ?? $this->normalizeNullableText($order->user?->phone)
+            ?? '-';
+        $message = $this->messages->orderPlacedSnapshot(
+            $customerName,
+            $customerContact,
+            $order->scheduled_at?->copy()->timezone($orderSettings['timezone']),
+            $order->items,
+            $this->flavors->namesByIds($flavorIds),
+            (float) $order->total,
+            $order->store?->name,
+            $order->payment_status,
+            (float) $order->paid_amount,
+        );
+
+        $queueItem = $this->whatsAppQueue->enqueue([
+            'type' => WhatsAppQueueItem::TYPE_ORDER_PLACED,
+            'entity_type' => 'order',
+            'entity_id' => $order->id,
+            'recipient_name' => $customerName,
+            'phone' => $recipient,
+            'message' => $message,
+        ]);
+
+        SendOrderPlacedWhatsAppJob::dispatch($queueItem->id)
+            ->onQueue('notifications');
+
+        return $queueItem;
+    }
+
     public function listStoresForFilter(): Collection
     {
         return $this->repository->listStoresForFilter();

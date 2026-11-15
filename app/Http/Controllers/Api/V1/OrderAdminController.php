@@ -121,6 +121,18 @@ class OrderAdminController extends Controller
         return new OrderResource($order);
     }
 
+    public function resendWhatsAppMessage(Order $order)
+    {
+        $queueItem = $this->service->resendWhatsAppMessageForAdmin($order);
+
+        return response()->json([
+            'data' => [
+                'queue_item_id' => $queueItem->id,
+                'status' => $queueItem->status,
+            ],
+        ], 202);
+    }
+
     public function storePartialWithdrawal(OrderPartialWithdrawalStoreRequest $request, Order $order)
     {
         $result = $this->service->createPartialWithdrawalForAdmin($order, $request->validated());

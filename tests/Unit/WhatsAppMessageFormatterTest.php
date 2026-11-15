@@ -81,7 +81,8 @@ class WhatsAppMessageFormatterTest extends TestCase
         $this->assertSame(
             "Nome: Joao Silva\n"
                 ."Tel: 351911928481\n"
-                ."Data/Hora: 15/01/2026 12:30\n\n"
+                ."Data/Hora: 15/01/2026 12:30\n"
+                ."QUINTA-FEIRA\n\n"
                 ."Pedido:\n"
                 ."3x Coxinha\n"
                 ." - Pack Mix\n"
@@ -115,7 +116,8 @@ class WhatsAppMessageFormatterTest extends TestCase
         $this->assertSame(
             "Nome: Joao Silva\n"
                 ."Tel: 351911928481\n"
-                ."Data/Hora: 15/01/2026 12:30\n\n"
+                ."Data/Hora: 15/01/2026 12:30\n"
+                ."QUINTA-FEIRA\n\n"
                 ."Pedido:\n"
                 ."3x Coxinha\n"
                 ." - Pack Mix\n"
@@ -180,6 +182,33 @@ class WhatsAppMessageFormatterTest extends TestCase
                 5,
                 'Loja Norte',
             )
+        );
+    }
+
+    public function test_it_calculates_partial_payment_balances_in_cents(): void
+    {
+        $formatter = new WhatsAppMessageFormatter;
+
+        $message = $formatter->orderPlacedSnapshot(
+            'Wesley Teste',
+            '911928481',
+            Carbon::create(2026, 11, 18, 15, 0, 0, 'UTC'),
+            [[
+                'quantity' => 1,
+                'name_snapshot' => 'Pack 100 Unidades',
+                'options' => [],
+            ]],
+            [],
+            60,
+            'Loja Principal',
+            'partial',
+            30,
+        );
+
+        $this->assertStringContainsString("Data/Hora: 18/11/2026 15:00\nQUARTA-FEIRA", $message);
+        $this->assertStringContainsString(
+            "Valor: €60,00\nValor Pago: €30,00\nFalta Pagar: €30,00",
+            $message,
         );
     }
 }

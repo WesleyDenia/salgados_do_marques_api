@@ -5,6 +5,7 @@ namespace App\Services\Notifications;
 use App\Models\Order;
 use App\Models\UrbanCampaignCouponClaim;
 use Carbon\Carbon;
+use Illuminate\Support\Str;
 
 class WhatsAppMessageFormatter
 {
@@ -60,23 +61,35 @@ class WhatsAppMessageFormatter
             return $lines;
         })->implode("\n");
 
-        $totalLabel = $total !== null ? $this->formatCurrency($total) : '-';
+        $totalInCents = $total !== null ? $this->toCents($total) : null;
+        $paidAmountInCents = $paidAmount !== null ? $this->toCents($paidAmount) : null;
+        $totalLabel = $totalInCents !== null ? $this->formatCurrencyFromCents($totalInCents) : '-';
         $paymentLines = $paymentStatus === 'partial'
             ? [
                 'Valor: '.$totalLabel,
-                'Valor Pago: '.($paidAmount !== null ? $this->formatCurrency($paidAmount) : '-'),
-                'Falta Pagar: '.($total !== null
-                    ? $this->formatCurrency(max(0, $total - ($paidAmount ?? 0)))
+                'Valor Pago: '.($paidAmountInCents !== null
+                    ? $this->formatCurrencyFromCents($paidAmountInCents)
+                    : '-'),
+                'Falta Pagar: '.($totalInCents !== null
+                    ? $this->formatCurrencyFromCents(max(0, $totalInCents - ($paidAmountInCents ?? 0)))
                     : '-'),
             ]
             : ['Valor total: '.$totalLabel];
 
+        $customerLines = [
+            'Nome: '.$name,
+            'Tel: '.$phone,
+            'Data/Hora: '.($scheduledAt?->format('d/m/Y H:i') ?? 'indefinido'),
+        ];
+
+        if ($scheduledAt !== null) {
+            $customerLines[] = Str::upper(
+                $scheduledAt->copy()->locale('pt')->translatedFormat('l')
+            );
+        }
+
         return implode("\n\n", [
-            implode("\n", [
-                'Nome: '.$name,
-                'Tel: '.$phone,
-                'Data/Hora: '.($scheduledAt?->format('d/m/Y H:i') ?? 'indefinido'),
-            ]),
+            implode("\n", $customerLines),
             implode("\n", [
                 'Pedido:',
                 $lines !== '' ? $lines : '-',
@@ -90,7 +103,17 @@ class WhatsAppMessageFormatter
 
     protected function formatCurrency(float $amount): string
     {
-        return '€'.number_format($amount, 2, ',', '.');
+        return $this->formatCurrencyFromCents($this->toCents($amount));
+    }
+
+    protected function toCents(float $amount): int
+    {
+        return (int) round($amount * 100, 0, PHP_ROUND_HALF_UP);
+    }
+
+    protected function formatCurrencyFromCents(int $amountInCents): string
+    {
+        return '€'.number_format($amountInCents / 100, 2, ',', '.');
     }
 
     protected function formatPaymentStatus(?string $status): string

@@ -59,7 +59,10 @@ class OrderAdminShowTest extends TestCase
             'name_snapshot' => 'Pack Festa',
             'price_snapshot' => 14.90,
             'quantity' => 1,
-            'options' => ['flavors' => [$frango->id, $carne->id]],
+            'options' => [
+                'category_name_snapshot' => 'Minis salgados Fritos',
+                'flavors' => [$frango->id, $carne->id],
+            ],
             'total' => 14.90,
         ]);
 
@@ -80,6 +83,8 @@ class OrderAdminShowTest extends TestCase
         $response->assertOk();
         $response->assertSeeText('15/07/2026 12:30');
         $response->assertSeeText('Sabores:');
+        $response->assertSeeText('Categoria:');
+        $response->assertSeeText('Minis salgados Fritos');
         $response->assertSeeText('Frango');
         $response->assertSeeText('Carne');
         $response->assertDontSeeText("Sabores: {$frango->id}, {$carne->id}");

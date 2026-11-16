@@ -52,7 +52,7 @@ class ProductRepository extends BaseRepository
         }
 
         return Product::query()
-            ->with('allowedFlavors')
+            ->with(['category', 'allowedFlavors'])
             ->whereIn('id', $productIds)
             ->where('active', true)
             ->get()

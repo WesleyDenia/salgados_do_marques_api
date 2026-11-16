@@ -49,13 +49,24 @@ class WhatsAppMessageFormatter
             $quantity = (int) data_get($item, 'quantity', 0);
             $nameSnapshot = (string) data_get($item, 'name_snapshot', '-');
             $options = data_get($item, 'options', []);
+            $categoryNameSnapshot = trim((string) data_get($options, 'category_name_snapshot', ''));
+
+            // Orders created before category snapshots were introduced can still
+            // use the current category when the item relation is available.
+            if ($categoryNameSnapshot === '') {
+                $categoryNameSnapshot = trim((string) data_get($item, 'product.category.name', ''));
+            }
+
+            $itemLabel = $categoryNameSnapshot !== ''
+                ? $categoryNameSnapshot.' — '.$nameSnapshot
+                : $nameSnapshot;
             $flavors = collect(data_get($options, 'flavors', []))
                 ->map(fn ($flavorId) => (int) $flavorId)
                 ->filter(fn (int $flavorId) => $flavorId > 0)
                 ->values();
 
             $lines = [
-                sprintf('%dx %s', $quantity, $nameSnapshot),
+                sprintf('%dx %s', $quantity, $itemLabel),
             ];
 
             if ($flavors->isNotEmpty()) {

@@ -335,6 +335,20 @@
                 <td>
                   <span class="stack-table-label">Item</span>
                   <strong>{{ $item->name_snapshot }}</strong>
+                  @php
+                    $categoryName = trim((string) ($item->options['category_name_snapshot'] ?? ''));
+
+                    // Keep old orders legible too, while new orders retain the
+                    // immutable category snapshot used at checkout.
+                    if ($categoryName === '') {
+                      $categoryName = trim((string) ($item->product?->category?->name ?? ''));
+                    }
+                  @endphp
+                  @if ($categoryName !== '')
+                    <div style="color:#40444c; font-size:0.95rem; margin-top:4px; overflow-wrap:anywhere;">
+                      Categoria: {{ $categoryName }}
+                    </div>
+                  @endif
                   @if (!empty($item->options['flavors']) && is_array($item->options['flavors']))
                     @php
                       $resolvedFlavors = collect($item->options['flavors'])

@@ -156,6 +156,33 @@ class WhatsAppMessageFormatterTest extends TestCase
         );
     }
 
+    public function test_it_includes_the_category_snapshot_in_the_order_item_label(): void
+    {
+        $formatter = new WhatsAppMessageFormatter;
+
+        $message = $formatter->orderPlacedSnapshot(
+            'Joana Silva',
+            '351911928482',
+            null,
+            [[
+                'quantity' => 1,
+                'name_snapshot' => 'Pack 50 unidades',
+                'options' => [
+                    'category_name_snapshot' => 'Minis salgados Congelados',
+                    'flavors' => [1],
+                ],
+            ]],
+            [1 => 'Frango'],
+            20,
+            'Loja Norte',
+        );
+
+        $this->assertStringContainsString(
+            "1x Minis salgados Congelados — Pack 50 unidades\n - Frango",
+            $message,
+        );
+    }
+
     public function test_it_formats_an_indefinite_pickup_order_message(): void
     {
         $formatter = new WhatsAppMessageFormatter;

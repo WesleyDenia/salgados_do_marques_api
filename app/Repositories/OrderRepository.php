@@ -284,7 +284,7 @@ class OrderRepository
     public function findForAdmin(Order $order): Order
     {
         return $order->load([
-            'items.product',
+            'items.product.category',
             'items.variant',
             'items.partialWithdrawals',
             'store',

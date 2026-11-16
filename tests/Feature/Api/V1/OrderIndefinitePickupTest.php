@@ -320,7 +320,7 @@ class OrderIndefinitePickupTest extends TestCase
         $this->assertStringContainsString('Nome: Cliente atualizado', (string) $queueItem->message);
         $this->assertStringContainsString('Data/Hora: 20/12/2026 10:30', (string) $queueItem->message);
         $this->assertStringContainsString('DOMINGO', (string) $queueItem->message);
-        $this->assertStringContainsString('1x Pack atualizado', (string) $queueItem->message);
+        $this->assertStringContainsString('1x Salgados — Pack atualizado', (string) $queueItem->message);
         $this->assertStringContainsString('Valor: €50,00', (string) $queueItem->message);
         $this->assertStringContainsString('Valor Pago: €20,00', (string) $queueItem->message);
         $this->assertStringContainsString('Falta Pagar: €30,00', (string) $queueItem->message);

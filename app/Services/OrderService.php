@@ -2071,6 +2071,16 @@ class OrderService
         $nameSnapshot = $derivedVariant?->name ?? ($parentItem->product?->name ?? $parentItem->name_snapshot);
         $quantity = $derivedVariant !== null ? 1 : $requestedUnits;
         $priceSnapshot = $derivedVariant !== null ? $lineTotal : round($lineTotal / max(1, $requestedUnits), 2);
+        $options = $selectedFlavorIds !== [] ? ['flavors' => $selectedFlavorIds] : [];
+        $categoryNameSnapshot = trim((string) ($parentItem->options['category_name_snapshot'] ?? ''));
+
+        if ($categoryNameSnapshot === '') {
+            $categoryNameSnapshot = trim((string) ($parentItem->product?->category?->name ?? ''));
+        }
+
+        if ($categoryNameSnapshot !== '') {
+            $options['category_name_snapshot'] = $categoryNameSnapshot;
+        }
 
         return [
             'parent_order_item_id' => $parentItem->id,
@@ -2080,7 +2090,7 @@ class OrderService
             'name_snapshot' => $nameSnapshot,
             'price_snapshot' => $priceSnapshot,
             'quantity' => $quantity,
-            'options' => $selectedFlavorIds !== [] ? ['flavors' => $selectedFlavorIds] : null,
+            'options' => $options !== [] ? $options : null,
             'total' => $lineTotal,
         ];
     }
@@ -2589,6 +2599,13 @@ class OrderService
             $price = $this->catalogPrices !== null
                 ? (float) $this->catalogPrices->resolve($product, $variant, $tagIds, $createdAt)->amount
                 : ($variant ? (float) $variant->price : (float) $product->price);
+            $categoryNameSnapshot = trim((string) ($product->category?->name ?? ''));
+            $options = $flavors !== [] ? ['flavors' => $flavors] : [];
+
+            if ($categoryNameSnapshot !== '') {
+                $options['category_name_snapshot'] = $categoryNameSnapshot;
+            }
+
             $baseLineItem = [
                 'parent_order_item_id' => isset($item['parent_order_item_id'])
                     ? (int) $item['parent_order_item_id']
@@ -2599,7 +2616,7 @@ class OrderService
                 'name_snapshot' => $variant ? $variant->name : $product->name,
                 'price_snapshot' => $price,
                 'quantity' => $quantity,
-                'options' => $flavors !== [] ? ['flavors' => $flavors] : null,
+                'options' => $options !== [] ? $options : null,
                 'total' => $price * $quantity,
             ];
 

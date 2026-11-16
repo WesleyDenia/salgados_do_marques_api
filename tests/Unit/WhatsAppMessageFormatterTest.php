@@ -211,4 +211,33 @@ class WhatsAppMessageFormatterTest extends TestCase
             $message,
         );
     }
+
+    public function test_it_includes_the_pickup_store_address_and_google_maps_link(): void
+    {
+        $formatter = new WhatsAppMessageFormatter;
+
+        $message = $formatter->orderPlacedSnapshot(
+            'Wesley Teste',
+            '911928481',
+            null,
+            [],
+            [],
+            60,
+            'Loja Principal',
+            'pending',
+            0,
+            'Rua Filarmónica Artística Pombalense, 17',
+            39.9167,
+            -8.6282,
+        );
+
+        $this->assertStringContainsString(
+            "RETIRADA NA LOJA \"Loja Principal\"\nRua Filarmónica Artística Pombalense, 17",
+            $message,
+        );
+        $this->assertStringContainsString(
+            'Localização: https://www.google.com/maps/search/?api=1&query=39.9167000%2C-8.6282000',
+            $message,
+        );
+    }
 }

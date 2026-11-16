@@ -206,6 +206,9 @@ class OrderService
                         $store->name,
                         $order->payment_status,
                         $payment['paid_amount'],
+                        $store->address,
+                        $store->latitude,
+                        $store->longitude,
                     );
 
                     $queueItem = $this->whatsAppQueue->enqueue([
@@ -581,6 +584,9 @@ class OrderService
             $order->store?->name,
             $order->payment_status,
             (float) $order->paid_amount,
+            $order->store?->address,
+            $order->store?->latitude,
+            $order->store?->longitude,
         );
 
         $queueItem = $this->whatsAppQueue->enqueue([

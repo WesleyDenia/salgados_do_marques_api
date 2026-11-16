@@ -259,6 +259,11 @@ class OrderIndefinitePickupTest extends TestCase
         $this->assertSame('outbound', $queueItem->direction);
         $this->assertStringContainsString('Data/Hora: indefinido', (string) $queueItem->message);
         $this->assertStringContainsString('RETIRADA NA LOJA "Loja Centro"', (string) $queueItem->message);
+        $this->assertStringContainsString('Rua 1', (string) $queueItem->message);
+        $this->assertStringContainsString(
+            'https://www.google.com/maps/search/?api=1&query=38.7169000%2C-9.1399000',
+            (string) $queueItem->message,
+        );
         $this->assertStringContainsString('Valor total: €5,00', (string) $queueItem->message);
         $this->assertStringContainsString('Pagamento: À Pagar', (string) $queueItem->message);
         Queue::assertPushed(
@@ -320,6 +325,11 @@ class OrderIndefinitePickupTest extends TestCase
         $this->assertStringContainsString('Valor Pago: €20,00', (string) $queueItem->message);
         $this->assertStringContainsString('Falta Pagar: €30,00', (string) $queueItem->message);
         $this->assertStringContainsString('RETIRADA NA LOJA "Loja Centro"', (string) $queueItem->message);
+        $this->assertStringContainsString('Rua 1', (string) $queueItem->message);
+        $this->assertStringContainsString(
+            'https://www.google.com/maps/search/?api=1&query=38.7169000%2C-9.1399000',
+            (string) $queueItem->message,
+        );
         Queue::assertPushed(
             SendOrderPlacedWhatsAppJob::class,
             fn (SendOrderPlacedWhatsAppJob $job) => $job->queueItemId === $queueItem->id,

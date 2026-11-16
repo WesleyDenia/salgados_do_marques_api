@@ -25,6 +25,9 @@ class WhatsAppMessageFormatter
             $order->store?->name,
             $order->payment_status,
             $order->paid_amount !== null ? (float) $order->paid_amount : null,
+            $order->store?->address,
+            $order->store?->latitude,
+            $order->store?->longitude,
         );
     }
 
@@ -38,6 +41,9 @@ class WhatsAppMessageFormatter
         ?string $pickupStoreName = null,
         ?string $paymentStatus = null,
         ?float $paidAmount = null,
+        ?string $pickupStoreAddress = null,
+        ?float $pickupStoreLatitude = null,
+        ?float $pickupStoreLongitude = null,
     ): string {
         $lines = collect($items)->flatMap(function ($item) use ($flavorNamesById): array {
             $quantity = (int) data_get($item, 'quantity', 0);
@@ -97,8 +103,28 @@ class WhatsAppMessageFormatter
             implode("\n", array_merge($paymentLines, [
                 'Pagamento: '.$this->formatPaymentStatus($paymentStatus),
             ])),
-            'RETIRADA NA LOJA "'.(trim((string) $pickupStoreName) ?: 'Loja não definida').'"',
+            implode("\n", array_filter([
+                'RETIRADA NA LOJA "'.(trim((string) $pickupStoreName) ?: 'Loja não definida').'"',
+                trim((string) $pickupStoreAddress) ?: null,
+                $this->pickupStoreMapsUrl($pickupStoreAddress, $pickupStoreLatitude, $pickupStoreLongitude),
+            ])),
         ]);
+    }
+
+    protected function pickupStoreMapsUrl(
+        ?string $address,
+        ?float $latitude,
+        ?float $longitude,
+    ): ?string {
+        if ($latitude !== null && $longitude !== null && is_finite($latitude) && is_finite($longitude)) {
+            $query = sprintf('%.7F,%.7F', $latitude, $longitude);
+        } else {
+            $query = trim((string) $address);
+        }
+
+        return $query === ''
+            ? null
+            : 'Localização: https://www.google.com/maps/search/?api=1&query='.rawurlencode($query);
     }
 
     protected function formatCurrency(float $amount): string

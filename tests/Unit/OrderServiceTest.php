@@ -217,6 +217,9 @@ class OrderServiceTest extends TestCase
                 'Loja',
                 null,
                 0.0,
+                null,
+                null,
+                null,
             )
             ->andReturn("Nome: Joao\nTel: 351911928481\nData/Hora: 15/01/2026 12:30\nPedido:\n2x Coxinha");
 

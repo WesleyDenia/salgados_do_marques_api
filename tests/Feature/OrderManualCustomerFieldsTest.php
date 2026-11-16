@@ -6,8 +6,11 @@ use App\Models\Category;
 use App\Models\Product;
 use App\Models\Store;
 use App\Models\User;
+use App\Models\WhatsAppQueueItem;
+use App\Jobs\SendOrderPlacedWhatsAppJob;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Queue;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -37,7 +40,7 @@ class OrderManualCustomerFieldsTest extends TestCase
 
         $response = $this->postJson('/api/v1/orders', [
             'store_id' => $store->id,
-            'scheduled_at' => now()->addHour()->format('Y-m-d H:i'),
+            'scheduled_at' => now()->addHours(3)->format('Y-m-d H:i'),
             'items' => [
                 [
                     'product_id' => $product->id,
@@ -50,7 +53,7 @@ class OrderManualCustomerFieldsTest extends TestCase
         $response->assertJsonPath('data.user.id', $user->id);
         $response->assertJsonPath('data.customer_name', null);
         $response->assertJsonPath('data.customer_contact', null);
-        $response->assertJsonPath('data.slot', null);
+        $response->assertJsonPath('data.slot', 'tarde');
     }
 
     public function test_it_creates_manual_order_with_nullable_user_and_explicit_customer_fields(): void
@@ -61,11 +64,11 @@ class OrderManualCustomerFieldsTest extends TestCase
 
         $response = $this->postJson('/api/v1/orders', [
             'store_id' => $store->id,
-            'scheduled_at' => now()->addHour()->format('Y-m-d H:i'),
+            'scheduled_at' => now()->addHours(3)->format('Y-m-d H:i'),
             'customer_name' => 'Maria Silva',
             'customer_contact' => '912345678',
             'payment_status' => 'pending',
-            'slot' => 'manha',
+            'slot' => 'tarde',
             'notes' => 'Sem picante',
             'items' => [
                 [
@@ -80,15 +83,49 @@ class OrderManualCustomerFieldsTest extends TestCase
         $response->assertJsonPath('data.customer_name', 'Maria Silva');
         $response->assertJsonPath('data.customer_contact', '912345678');
         $response->assertJsonPath('data.payment_status', 'pending');
-        $response->assertJsonPath('data.slot', 'manha');
+        $response->assertJsonPath('data.slot', 'tarde');
 
         $this->assertDatabaseHas('orders', [
             'customer_name' => 'Maria Silva',
             'customer_contact' => '912345678',
             'payment_status' => 'pending',
-            'slot' => 'manha',
+            'slot' => 'tarde',
             'user_id' => null,
         ]);
+    }
+
+    public function test_it_enqueues_a_customer_message_with_the_portuguese_prefix_when_requested(): void
+    {
+        [$product, $store, $staff] = $this->makeOrderContext();
+
+        Queue::fake();
+        Sanctum::actingAs($staff);
+
+        $response = $this->postJson('/api/v1/orders', [
+            'store_id' => $store->id,
+            'scheduled_at' => now()->addHours(3)->format('Y-m-d H:i'),
+            'customer_name' => 'Maria Silva',
+            'customer_contact' => '912 345 678',
+            'send_customer_message' => true,
+            'items' => [
+                [
+                    'product_id' => $product->id,
+                    'quantity' => 1,
+                ],
+            ],
+        ]);
+
+        $response->assertOk();
+        $orderId = (int) $response->json('data.id');
+
+        $this->assertDatabaseHas('whatsapp_queue_items', [
+            'type' => WhatsAppQueueItem::TYPE_ORDER_PLACED,
+            'entity_type' => 'order',
+            'entity_id' => $orderId,
+            'recipient_name' => 'Maria Silva',
+            'phone' => '+351912345678',
+        ]);
+        Queue::assertPushed(SendOrderPlacedWhatsAppJob::class);
     }
 
     /**

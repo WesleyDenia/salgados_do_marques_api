@@ -111,6 +111,7 @@ class OrderService
         $tagIds = $this->normalizeOrderTagIdsForActor($actor, $data['tag_ids'] ?? []);
         $allowScheduleException = $this->shouldAllowScheduleExceptionForActor($actor, $data);
         $allowPreparationOverflow = $this->shouldAllowPreparationCapacityOverflowForActor($actor, $data);
+        $sendCustomerMessage = filter_var($data['send_customer_message'] ?? false, FILTER_VALIDATE_BOOLEAN);
 
         if (! $store) {
             throw ValidationException::withMessages([
@@ -118,7 +119,7 @@ class OrderService
             ]);
         }
 
-        return \Illuminate\Support\Facades\DB::transaction(function () use ($actor, $data, $orderSettings, $pickupSchedule, $scheduled, $store, $tagIds, $allowScheduleException, $allowPreparationOverflow) {
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($actor, $data, $orderSettings, $pickupSchedule, $scheduled, $store, $tagIds, $allowScheduleException, $allowPreparationOverflow, $sendCustomerMessage) {
             $slot = null;
 
             if ($scheduled !== null) {
@@ -211,18 +212,33 @@ class OrderService
                         $store->longitude,
                     );
 
-                    $queueItem = $this->whatsAppQueue->enqueue([
-                        'type' => WhatsAppQueueItem::TYPE_ORDER_PLACED,
-                        'entity_type' => 'order',
-                        'entity_id' => $order->id,
-                        'recipient_name' => $resolvedCustomer['notification_name'],
-                        'phone' => $recipient,
-                        'message' => $message,
-                    ]);
+                    $recipients = [$recipient];
 
-                    if ($recipient === '') {
-                        $this->whatsAppQueue->markFailed($queueItem, 'WHATSAPP_ORDER_TO não configurado.');
-                    } else {
+                    if ($sendCustomerMessage) {
+                        $customerRecipient = $this->normalizeCustomerWhatsAppRecipient(
+                            (string) $resolvedCustomer['notification_contact']
+                        );
+
+                        if ($customerRecipient !== null) {
+                            $recipients[] = $customerRecipient;
+                        }
+                    }
+
+                    foreach ($recipients as $recipient) {
+                        $queueItem = $this->whatsAppQueue->enqueue([
+                            'type' => WhatsAppQueueItem::TYPE_ORDER_PLACED,
+                            'entity_type' => 'order',
+                            'entity_id' => $order->id,
+                            'recipient_name' => $resolvedCustomer['notification_name'],
+                            'phone' => $recipient,
+                            'message' => $message,
+                        ]);
+
+                        if ($recipient === '') {
+                            $this->whatsAppQueue->markFailed($queueItem, 'WHATSAPP_ORDER_TO não configurado.');
+                            continue;
+                        }
+
                         SendOrderPlacedWhatsAppJob::dispatch($queueItem->id)
                             ->onQueue('notifications')
                             ->afterCommit();
@@ -1160,6 +1176,17 @@ class OrderService
             'notification_name' => $actor->name,
             'notification_contact' => $actor->phone,
         ];
+    }
+
+    protected function normalizeCustomerWhatsAppRecipient(string $contact): ?string
+    {
+        $digits = preg_replace('/\D+/', '', $contact) ?? '';
+
+        if ($digits === '') {
+            return null;
+        }
+
+        return str_starts_with($digits, '351') ? '+'.$digits : '+351'.$digits;
     }
 
     /**

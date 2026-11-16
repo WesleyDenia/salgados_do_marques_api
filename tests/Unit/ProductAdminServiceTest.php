@@ -39,6 +39,7 @@ class ProductAdminServiceTest extends TestCase
                     'name' => 'Pack 25',
                     'unit_count' => 25,
                     'max_flavors' => 2,
+                    'is_frozen' => true,
                     'price' => 12.5,
                     'active' => true,
                     'display_order' => 0,
@@ -52,6 +53,7 @@ class ProductAdminServiceTest extends TestCase
             'product_id' => $product->id,
             'name' => 'Pack 25',
             'max_flavors' => 2,
+            'is_frozen' => true,
         ]);
         $this->assertDatabaseHas('price_entries', [
             'product_id' => $product->id,

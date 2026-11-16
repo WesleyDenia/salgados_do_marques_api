@@ -33,6 +33,7 @@ class ProductRequest extends FormRequest
             'variants.*.name' => ['nullable', 'string', 'max:255'],
             'variants.*.unit_count' => ['nullable', 'integer', 'min:0'],
             'variants.*.max_flavors' => ['nullable', 'integer', 'min:0'],
+            'variants.*.is_frozen' => ['nullable', 'boolean'],
             'variants.*.price' => ['nullable', 'numeric', 'min:0'],
             'variants.*.active' => ['nullable', 'boolean'],
             'variants.*.display_order' => ['nullable', 'integer', 'min:0'],

@@ -183,6 +183,28 @@ class WhatsAppMessageFormatterTest extends TestCase
         );
     }
 
+    public function test_it_marks_flavors_from_a_frozen_pack(): void
+    {
+        $formatter = new WhatsAppMessageFormatter;
+
+        $message = $formatter->orderPlacedSnapshot(
+            'Joana Silva',
+            '351911928482',
+            null,
+            [[
+                'quantity' => 1,
+                'name_snapshot' => 'Pack 50 unidades',
+                'options' => ['is_frozen' => true, 'flavors' => [1, 2]],
+            ]],
+            [1 => 'Coxinha de Frango', 2 => 'Bolinha de Queijo'],
+            20,
+            'Loja Norte',
+        );
+
+        $this->assertStringContainsString(' - Coxinha de Frango - CONGELADO', $message);
+        $this->assertStringContainsString(' - Bolinha de Queijo - CONGELADO', $message);
+    }
+
     public function test_it_formats_an_indefinite_pickup_order_message(): void
     {
         $formatter = new WhatsAppMessageFormatter;

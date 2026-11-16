@@ -2077,6 +2077,8 @@ class OrderService
         $priceSnapshot = $derivedVariant !== null ? $lineTotal : round($lineTotal / max(1, $requestedUnits), 2);
         $options = $selectedFlavorIds !== [] ? ['flavors' => $selectedFlavorIds] : [];
         $categoryNameSnapshot = trim((string) ($parentItem->options['category_name_snapshot'] ?? ''));
+        $isFrozen = $derivedVariant?->is_frozen
+            ?? (bool) ($parentItem->options['is_frozen'] ?? false);
 
         if ($categoryNameSnapshot === '') {
             $categoryNameSnapshot = trim((string) ($parentItem->product?->category?->name ?? ''));
@@ -2085,6 +2087,8 @@ class OrderService
         if ($categoryNameSnapshot !== '') {
             $options['category_name_snapshot'] = $categoryNameSnapshot;
         }
+
+        $options['is_frozen'] = $isFrozen;
 
         return [
             'parent_order_item_id' => $parentItem->id,
@@ -2608,6 +2612,10 @@ class OrderService
 
             if ($categoryNameSnapshot !== '') {
                 $options['category_name_snapshot'] = $categoryNameSnapshot;
+            }
+
+            if ($variant) {
+                $options['is_frozen'] = (bool) $variant->is_frozen;
             }
 
             $baseLineItem = [

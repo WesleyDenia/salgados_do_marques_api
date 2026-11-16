@@ -64,6 +64,10 @@ class WhatsAppMessageFormatter
             $itemLabel = $categoryNameSnapshot !== ''
                 ? $categoryNameSnapshot.' — '.$nameSnapshot
                 : $nameSnapshot;
+            $isFrozen = filter_var(
+                data_get($options, 'is_frozen', data_get($item, 'variant.is_frozen', false)),
+                FILTER_VALIDATE_BOOLEAN
+            );
             $flavors = collect(data_get($options, 'flavors', []))
                 ->map(fn ($flavorId) => (int) $flavorId)
                 ->filter(fn (int $flavorId) => $flavorId > 0)
@@ -75,7 +79,8 @@ class WhatsAppMessageFormatter
 
             if ($flavors->isNotEmpty()) {
                 foreach ($flavors as $flavorId) {
-                    $lines[] = ' - '.($flavorNamesById[$flavorId] ?? ('Sabor #'.$flavorId));
+                    $lines[] = ' - '.($flavorNamesById[$flavorId] ?? ('Sabor #'.$flavorId))
+                        .($isFrozen ? ' - CONGELADO' : '');
                 }
             }
 

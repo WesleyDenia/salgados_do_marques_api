@@ -13,6 +13,7 @@ class ProductVariantResource extends JsonResource
             'name' => $this->name,
             'unit_count' => $this->unit_count,
             'max_flavors' => $this->max_flavors,
+            'is_frozen' => $this->is_frozen,
             'price' => (float) $this->price,
             'active' => $this->active,
             'display_order' => $this->display_order,

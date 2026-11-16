@@ -349,6 +349,11 @@
                       Categoria: {{ $categoryName }}
                     </div>
                   @endif
+                  @if (!empty($item->options['is_frozen']))
+                    <div style="color:#1d4ed8; font-size:0.95rem; margin-top:4px; overflow-wrap:anywhere;">
+                      Modalidade: Congelado
+                    </div>
+                  @endif
                   @if (!empty($item->options['flavors']) && is_array($item->options['flavors']))
                     @php
                       $resolvedFlavors = collect($item->options['flavors'])

@@ -11,6 +11,7 @@ class ProductVariant extends Model
         'name',
         'unit_count',
         'max_flavors',
+        'is_frozen',
         'price',
         'active',
         'display_order',
@@ -19,6 +20,7 @@ class ProductVariant extends Model
     protected $casts = [
         'unit_count' => 'integer',
         'max_flavors' => 'integer',
+        'is_frozen' => 'boolean',
         'price' => 'decimal:2',
         'active' => 'boolean',
         'display_order' => 'integer',

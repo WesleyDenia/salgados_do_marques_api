@@ -156,7 +156,7 @@ class ProductAdminService
 
         foreach ($variants as $index => $variant) {
             $hasData = collect($variant)
-                ->except(['id', 'active', 'display_order', 'remove'])
+                ->except(['id', 'active', 'is_frozen', 'display_order', 'remove'])
                 ->filter(fn ($value) => $value !== null && $value !== '')
                 ->isNotEmpty();
 
@@ -176,6 +176,7 @@ class ProductAdminService
                 'name' => $variant['name'],
                 'unit_count' => (int) ($variant['unit_count'] ?? 0),
                 'max_flavors' => (int) ($variant['max_flavors'] ?? 0),
+                'is_frozen' => (bool) ($variant['is_frozen'] ?? false),
                 'price' => (float) $variant['price'],
                 'active' => (bool) ($variant['active'] ?? false),
                 'display_order' => (int) ($variant['display_order'] ?? 0),
@@ -248,6 +249,7 @@ class ProductAdminService
                 'name' => $variant['name'],
                 'unit_count' => $variant['unit_count'],
                 'max_flavors' => $variant['max_flavors'],
+                'is_frozen' => $variant['is_frozen'],
                 'price' => $variant['price'],
                 'active' => $variant['active'],
                 'display_order' => $variant['display_order'],

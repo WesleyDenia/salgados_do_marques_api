@@ -7,6 +7,7 @@
       'name' => $variant->name,
       'unit_count' => $variant->unit_count,
       'max_flavors' => $variant->max_flavors,
+      'is_frozen' => $variant->is_frozen,
       'price' => $variant->price,
       'display_order' => $variant->display_order,
       'active' => $variant->active,
@@ -145,6 +146,7 @@
               <th style="text-align:left; padding:12px;">Nome</th>
               <th style="text-align:left; padding:12px;">Unidades</th>
               <th style="text-align:left; padding:12px;">Sabores</th>
+              <th style="text-align:left; padding:12px;">Congelado</th>
               <th style="text-align:left; padding:12px;">Preço</th>
               <th style="text-align:left; padding:12px;">Ordem</th>
               <th style="text-align:left; padding:12px;">Ativo</th>
@@ -187,6 +189,18 @@
                     value="{{ $variant['max_flavors'] ?? 0 }}"
                     style="max-width:120px;"
                   />
+                </td>
+                <td style="padding:12px;">
+                  <span class="stack-table-label">Congelado</span>
+                  <label class="checkbox-row">
+                    <input
+                      type="checkbox"
+                      name="variants[{{ $index }}][is_frozen]"
+                      value="1"
+                      {{ ($variant['is_frozen'] ?? false) ? 'checked' : '' }}
+                    />
+                    Sim
+                  </label>
                 </td>
                 <td style="padding:12px;">
                   <span class="stack-table-label">Preço</span>
@@ -365,6 +379,13 @@
         <td style="padding:12px;">
           <span class="stack-table-label">Sabores</span>
           <input type="number" min="0" name="variants[${index}][max_flavors]" value="0" style="max-width:120px;" />
+        </td>
+        <td style="padding:12px;">
+          <span class="stack-table-label">Congelado</span>
+          <label class="checkbox-row">
+            <input type="checkbox" name="variants[${index}][is_frozen]" value="1" />
+            Sim
+          </label>
         </td>
         <td style="padding:12px;">
           <span class="stack-table-label">Preço</span>

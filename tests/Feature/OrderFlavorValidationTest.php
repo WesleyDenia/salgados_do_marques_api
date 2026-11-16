@@ -34,6 +34,7 @@ class OrderFlavorValidationTest extends TestCase
     public function test_order_with_variant_accepts_only_allowed_flavors_within_limit(): void
     {
         [$product, $variant, $store, $user, $flavors] = $this->makeOrderContext();
+        $variant->update(['is_frozen' => true]);
 
         Sanctum::actingAs($user);
 
@@ -56,6 +57,7 @@ class OrderFlavorValidationTest extends TestCase
         $response->assertJsonPath('data.items.0.options.flavor_names.0', 'Frango');
         $response->assertJsonPath('data.items.0.options.flavor_names.1', 'Carne');
         $response->assertJsonPath('data.items.0.options.category_name_snapshot', 'Salgados');
+        $response->assertJsonPath('data.items.0.options.is_frozen', true);
     }
 
     public function test_order_resource_preserves_duplicate_flavor_names_in_original_selection_order(): void

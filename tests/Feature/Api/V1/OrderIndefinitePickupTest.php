@@ -272,6 +272,39 @@ class OrderIndefinitePickupTest extends TestCase
         );
     }
 
+    public function test_it_keeps_pickup_date_in_whatsapp_message_when_pickup_time_is_undefined(): void
+    {
+        Queue::fake();
+
+        $staff = User::factory()->create(['role' => 'atendimento']);
+        $store = $this->createStore();
+        $product = $this->createProduct();
+        Setting::updateOrCreate(
+            ['key' => 'WHATSAPP_ORDER_TO'],
+            ['value' => '+351912345678', 'type' => 'string', 'editable' => true],
+        );
+        Sanctum::actingAs($staff);
+
+        $response = $this->postJson('/api/v1/orders', [
+            'store_id' => $store->id,
+            'customer_name' => 'Cliente sem hora',
+            'customer_contact' => '912345678',
+            'pickup_date' => '2026-12-20',
+            'pickup_time' => null,
+            'items' => [['product_id' => $product->id, 'quantity' => 1]],
+        ]);
+
+        $response->assertOk()->assertJsonPath('data.scheduled_at', null);
+
+        $message = (string) WhatsAppQueueItem::query()
+            ->where('type', WhatsAppQueueItem::TYPE_ORDER_PLACED)
+            ->firstOrFail()
+            ->message;
+
+        $this->assertStringContainsString("Data: 20/12/2026\nHora: indefinido", $message);
+        $this->assertStringNotContainsString('Data/Hora: indefinido', $message);
+    }
+
     public function test_admin_can_resend_a_whatsapp_message_using_the_current_order_data(): void
     {
         Queue::fake();

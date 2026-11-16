@@ -28,6 +28,8 @@ class WhatsAppMessageFormatter
             $order->store?->address,
             $order->store?->latitude,
             $order->store?->longitude,
+            $order->pickupDateForDisplay($timezone),
+            $order->pickupTimeForDisplay($timezone),
         );
     }
 
@@ -44,6 +46,8 @@ class WhatsAppMessageFormatter
         ?string $pickupStoreAddress = null,
         ?float $pickupStoreLatitude = null,
         ?float $pickupStoreLongitude = null,
+        ?string $pickupDate = null,
+        ?string $pickupTime = null,
     ): string {
         $lines = collect($items)->flatMap(function ($item) use ($flavorNamesById): array {
             $quantity = (int) data_get($item, 'quantity', 0);
@@ -93,16 +97,27 @@ class WhatsAppMessageFormatter
             ]
             : ['Valor total: '.$totalLabel];
 
-        $customerLines = [
-            'Nome: '.$name,
-            'Tel: '.$phone,
-            'Data/Hora: '.($scheduledAt?->format('d/m/Y H:i') ?? 'indefinido'),
-        ];
+        $customerLines = ['Nome: '.$name, 'Tel: '.$phone];
+        $pickupDateForDisplay = $pickupDate !== null && trim($pickupDate) !== ''
+            ? Carbon::parse($pickupDate)
+            : null;
 
         if ($scheduledAt !== null) {
+            $customerLines[] = 'Data/Hora: '.$scheduledAt->format('d/m/Y H:i');
             $customerLines[] = Str::upper(
                 $scheduledAt->copy()->locale('pt')->translatedFormat('l')
             );
+        } elseif ($pickupDateForDisplay !== null) {
+            $customerLines[] = 'Data: '.$pickupDateForDisplay->format('d/m/Y');
+            $customerLines[] = 'Hora: '.(trim((string) $pickupTime) ?: 'indefinido');
+            $customerLines[] = Str::upper(
+                $pickupDateForDisplay->copy()->locale('pt')->translatedFormat('l')
+            );
+        } elseif (trim((string) $pickupTime) !== '') {
+            $customerLines[] = 'Data: indefinido';
+            $customerLines[] = 'Hora: '.trim((string) $pickupTime);
+        } else {
+            $customerLines[] = 'Data/Hora: indefinido';
         }
 
         return implode("\n\n", [

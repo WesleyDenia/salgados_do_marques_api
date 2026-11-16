@@ -212,6 +212,28 @@ class WhatsAppMessageFormatterTest extends TestCase
         );
     }
 
+    public function test_it_keeps_the_pickup_date_when_only_the_pickup_time_is_indefinite(): void
+    {
+        $formatter = new WhatsAppMessageFormatter;
+
+        $message = $formatter->orderPlacedSnapshot(
+            'Joana Silva',
+            '351911928482',
+            null,
+            [],
+            [],
+            5,
+            'Loja Norte',
+            pickupDate: '2026-12-20',
+            pickupTime: null,
+        );
+
+        $this->assertStringContainsString(
+            "Data: 20/12/2026\nHora: indefinido\nDOMINGO",
+            $message,
+        );
+    }
+
     public function test_it_calculates_partial_payment_balances_in_cents(): void
     {
         $formatter = new WhatsAppMessageFormatter;

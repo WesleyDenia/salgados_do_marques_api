@@ -210,6 +210,8 @@ class OrderService
                         $store->address,
                         $store->latitude,
                         $store->longitude,
+                        $pickupSchedule['pickup_date'],
+                        $pickupSchedule['pickup_time'],
                     );
 
                     $recipients = [$recipient];
@@ -603,6 +605,8 @@ class OrderService
             $order->store?->address,
             $order->store?->latitude,
             $order->store?->longitude,
+            $order->pickupDateForDisplay($orderSettings['timezone']),
+            $order->pickupTimeForDisplay($orderSettings['timezone']),
         );
 
         $queueItem = $this->whatsAppQueue->enqueue([

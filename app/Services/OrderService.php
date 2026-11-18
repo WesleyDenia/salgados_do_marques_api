@@ -54,6 +54,7 @@ class OrderService
         protected StoreService $stores,
         protected WhatsAppMessageFormatter $messages,
         protected WhatsAppQueueService $whatsAppQueue,
+        protected CustomerDirectoryService $customerDirectory,
         protected ?CatalogPriceService $catalogPrices = null,
     ) {}
 
@@ -238,6 +239,7 @@ class OrderService
 
                         if ($recipient === '') {
                             $this->whatsAppQueue->markFailed($queueItem, 'WHATSAPP_ORDER_TO não configurado.');
+
                             continue;
                         }
 
@@ -1151,6 +1153,12 @@ class OrderService
         $requestedCustomer = $requestedUserId ? User::query()->find($requestedUserId) : null;
 
         if ($requestedCustomer) {
+            if ($requestedCustomer->role !== User::ROLE_CLIENTE) {
+                throw ValidationException::withMessages([
+                    'user_id' => 'O utilizador selecionado não é um cliente.',
+                ]);
+            }
+
             return [
                 'user_id' => $requestedCustomer->id,
                 'customer_name' => $data['customer_name'] ?? null,
@@ -1162,6 +1170,28 @@ class OrderService
 
         $customerName = $this->normalizeNullableText($data['customer_name'] ?? null);
         $customerContact = $this->normalizeNullableText($data['customer_contact'] ?? null);
+
+        if (filter_var($data['save_customer'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
+            if ($customerName === null || $customerContact === null) {
+                throw ValidationException::withMessages([
+                    'customer_name' => 'Indique nome e telemóvel para guardar o cliente.',
+                ]);
+            }
+
+            $customer = $this->customerDirectory->findOrCreateOperationalCustomer(
+                $customerName,
+                $customerContact,
+            );
+            $customerContact = $this->customerDirectory->normalizePhone($customerContact);
+
+            return [
+                'user_id' => $customer->id,
+                'customer_name' => $customerName,
+                'customer_contact' => $customerContact,
+                'notification_name' => $customerName,
+                'notification_contact' => $customerContact,
+            ];
+        }
 
         if ($customerName !== null || $customerContact !== null) {
             return [

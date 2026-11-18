@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\V1\AppTesterController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\CategoryController;
 use App\Http\Controllers\Api\V1\ContentHomeController;
+use App\Http\Controllers\Api\V1\CustomerSearchController;
 use App\Http\Controllers\Api\V1\CouponController;
 use App\Http\Controllers\Api\V1\FlavorController;
 use App\Http\Controllers\Api\V1\GoogleReviewsController;
@@ -64,6 +65,8 @@ Route::prefix('v1')->group(function () {
         Route::get('orders/availability/hours', [OrderController::class, 'availabilityHours']);
         Route::get('orders/availability/minutes', [OrderController::class, 'availabilityMinutes']);
         Route::get('orders/availability/slots', [OrderController::class, 'availabilitySlots']);
+        Route::get('orders/customers/search', CustomerSearchController::class)
+            ->middleware('can:orders.create');
         Route::post('logout', [AuthController::class, 'logout']);
         Route::get('me', [AuthController::class, 'me']);
         Route::post('auth/refresh', [AuthController::class, 'refresh']);

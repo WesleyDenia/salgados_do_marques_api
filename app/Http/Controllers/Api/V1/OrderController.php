@@ -14,6 +14,7 @@ use App\Models\Order;
 use App\Services\AdminOrderTagService;
 use App\Services\OrderService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 
 class OrderController extends Controller
 {
@@ -89,6 +90,8 @@ class OrderController extends Controller
 
     public function store(OrderStoreRequest $request)
     {
+        Gate::authorize('orders.create');
+
         $order = $this->orders->createForUser($request->user(), $request->validated());
 
         return new OrderResource($order);

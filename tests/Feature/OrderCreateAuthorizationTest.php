@@ -60,7 +60,7 @@ class OrderCreateAuthorizationTest extends TestCase
     {
         return [
             'store_id' => $storeId,
-            'scheduled_at' => now()->addHour()->format('Y-m-d H:i'),
+            'scheduled_at' => now()->addHours(3)->format('Y-m-d H:i'),
             'customer_name' => 'Maria Silva',
             'customer_contact' => '912345678',
             'payment_status' => 'pending',

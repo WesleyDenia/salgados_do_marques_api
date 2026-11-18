@@ -2,12 +2,12 @@
 
 namespace Tests\Feature;
 
+use App\Jobs\SendOrderPlacedWhatsAppJob;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\Store;
 use App\Models\User;
 use App\Models\WhatsAppQueueItem;
-use App\Jobs\SendOrderPlacedWhatsAppJob;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
@@ -126,6 +126,40 @@ class OrderManualCustomerFieldsTest extends TestCase
             'phone' => '+351912345678',
         ]);
         Queue::assertPushed(SendOrderPlacedWhatsAppJob::class);
+    }
+
+    public function test_it_creates_and_associates_an_operational_customer_when_requested(): void
+    {
+        [$product, $store, $staff] = $this->makeOrderContext();
+        Sanctum::actingAs($staff);
+
+        $response = $this->postJson('/api/v1/orders', [
+            'store_id' => $store->id,
+            'scheduled_at' => now()->addHours(3)->format('Y-m-d H:i'),
+            'customer_name' => 'Maria Guardada',
+            'customer_contact' => '+351 912 345 678',
+            'save_customer' => true,
+            'items' => [[
+                'product_id' => $product->id,
+                'quantity' => 1,
+            ]],
+        ]);
+
+        $response->assertOk();
+        $customerId = (int) $response->json('data.user.id');
+
+        $this->assertDatabaseHas('users', [
+            'id' => $customerId,
+            'name' => 'Maria Guardada',
+            'phone' => '912345678',
+            'phone_normalized' => '912345678',
+            'role' => 'cliente',
+        ]);
+        $this->assertDatabaseHas('orders', [
+            'id' => $response->json('data.id'),
+            'user_id' => $customerId,
+            'customer_contact' => '912345678',
+        ]);
     }
 
     /**

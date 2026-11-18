@@ -2,21 +2,25 @@
 
 namespace App\Models;
 
-use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Notifications\Notifiable;
-use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
     use HasApiTokens, HasFactory, Notifiable;
 
     public const ROLE_ADMIN = 'admin';
+
     public const ROLE_CLIENTE = 'cliente';
+
     public const ROLE_REVENDEDOR = 'revendedor';
+
     public const ROLE_OPERACIONAL = 'operacional';
+
     public const ROLE_ATENDIMENTO = 'atendimento';
 
     public const STAFF_ROLES = [
@@ -39,6 +43,7 @@ class User extends Authenticatable
         'nif',
         'password',
         'phone',
+        'phone_normalized',
         'birth_date',
         'role',
         'active',
@@ -61,7 +66,7 @@ class User extends Authenticatable
         'lgpd_consent_channel',
     ];
 
-    protected $hidden = ['password','remember_token'];
+    protected $hidden = ['password', 'remember_token'];
 
     protected $casts = [
         'email_verified_at' => 'datetime',

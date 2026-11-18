@@ -23,6 +23,9 @@ class SyncPendingCustomersJob implements ShouldQueue
     public function handle(): void
     {
         User::whereNull('external_id')
+            // Historical customer records are deliberately held after the
+            // atomic backfill; they can be reviewed before any ERP export.
+            ->where('erp_sync_status', '!=', 'backfill_pending')
             ->orderBy('id')
             ->chunkById(100, function ($users) {
                 foreach ($users as $user) {

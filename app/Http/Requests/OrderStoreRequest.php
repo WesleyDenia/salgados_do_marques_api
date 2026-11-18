@@ -16,6 +16,7 @@ class OrderStoreRequest extends FormRequest
     {
         return [
             'user_id' => ['nullable', 'integer', Rule::exists('users', 'id')],
+            'save_customer' => ['nullable', 'boolean'],
             // Keeping these nullable for backward compatibility with the mobile app.
             // The panel enforces these via frontend validation (zod).
             'customer_name' => ['nullable', 'string', 'max:255'],
@@ -68,6 +69,7 @@ class OrderStoreRequest extends FormRequest
             'allow_schedule_exception.boolean' => 'A exceção de horário deve ser verdadeira ou falsa.',
             'allow_preparation_capacity_overflow.boolean' => 'A exceção de capacidade de preparo deve ser verdadeira ou falsa.',
             'send_customer_message.boolean' => 'A opção de envio ao cliente deve ser verdadeira ou falsa.',
+            'save_customer.boolean' => 'A opção de guardar o cliente deve ser verdadeira ou falsa.',
             'payment_status.in' => 'O estado de pagamento informado não é válido.',
             'paid_amount.numeric' => 'O valor pago deve ser numérico.',
             'paid_amount.min' => 'O valor pago não pode ser negativo.',

@@ -42,6 +42,10 @@ class AppServiceProvider extends ServiceProvider
             return in_array($user->role, ['admin', 'operacional', 'atendimento'], true);
         });
 
+        Gate::define('customers.view', function (User $user): bool {
+            return in_array($user->role, ['admin', 'operacional', 'atendimento'], true);
+        });
+
         RateLimiter::for('password-reset-forgot', function (Request $request) {
             $method = (string) $request->input('method', 'email');
             $identifier = PasswordResetService::normalizeIdentifier($method, (string) $request->input('identifier', ''));

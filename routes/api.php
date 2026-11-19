@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\V1\AppTesterController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\CategoryController;
 use App\Http\Controllers\Api\V1\ContentHomeController;
+use App\Http\Controllers\Api\V1\CustomerAdminController;
 use App\Http\Controllers\Api\V1\CustomerSearchController;
 use App\Http\Controllers\Api\V1\CouponController;
 use App\Http\Controllers\Api\V1\FlavorController;
@@ -67,6 +68,8 @@ Route::prefix('v1')->group(function () {
         Route::get('orders/availability/slots', [OrderController::class, 'availabilitySlots']);
         Route::get('orders/customers/search', CustomerSearchController::class)
             ->middleware('can:orders.create');
+        Route::get('admin/customers', [CustomerAdminController::class, 'index'])
+            ->middleware('can:customers.view');
         Route::post('logout', [AuthController::class, 'logout']);
         Route::get('me', [AuthController::class, 'me']);
         Route::post('auth/refresh', [AuthController::class, 'refresh']);

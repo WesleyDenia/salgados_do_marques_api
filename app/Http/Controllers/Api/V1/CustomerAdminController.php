@@ -9,8 +9,9 @@ use App\Http\Resources\CustomerResource;
 use App\Jobs\SyncCustomerToErpJob;
 use App\Models\User;
 use App\Services\CustomerDirectoryService;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class CustomerAdminController extends Controller
 {
@@ -18,8 +19,12 @@ class CustomerAdminController extends Controller
     {
         $validated = $request->validate([
             'search' => ['nullable', 'string', 'max:100'],
+            'sort' => ['nullable', Rule::in(['name', 'phone', 'orders_count', 'orders_total'])],
+            'direction' => ['nullable', Rule::in(['asc', 'desc'])],
         ]);
         $search = trim((string) ($validated['search'] ?? ''));
+        $sort = $validated['sort'] ?? 'name';
+        $direction = $validated['direction'] ?? 'asc';
         $phoneDigits = preg_replace('/\D+/', '', $search) ?? '';
 
         if (str_starts_with($phoneDigits, '351') && strlen($phoneDigits) > 9) {
@@ -29,6 +34,9 @@ class CustomerAdminController extends Controller
         $customers = User::query()
             ->where('role', User::ROLE_CLIENTE)
             ->withCount('orders')
+            ->withSum([
+                'orders as orders_total' => fn ($query) => $query->where('status', '!=', 'canceled'),
+            ], 'total')
             ->when($search !== '', function ($query) use ($search, $phoneDigits) {
                 $query->where(function ($customerQuery) use ($search, $phoneDigits) {
                     $customerQuery->where('name', 'like', "%{$search}%");
@@ -40,7 +48,8 @@ class CustomerAdminController extends Controller
                     }
                 });
             })
-            ->orderBy('name')
+            ->when($sort === 'phone', fn ($query) => $query->orderByRaw("COALESCE(phone_normalized, phone) {$direction}"))
+            ->when($sort !== 'phone', fn ($query) => $query->orderBy($sort, $direction))
             ->orderBy('id')
             ->paginate(20)
             ->withQueryString();

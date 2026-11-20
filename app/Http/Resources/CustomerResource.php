@@ -13,6 +13,7 @@ class CustomerResource extends JsonResource
             'name' => $this->name,
             'phone' => $this->phone_normalized ?? $this->phone,
             'orders_count' => (int) $this->orders_count,
+            'orders_total' => (float) ($this->orders_total ?? 0),
         ];
     }
 }

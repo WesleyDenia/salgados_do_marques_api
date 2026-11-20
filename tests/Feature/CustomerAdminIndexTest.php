@@ -52,13 +52,21 @@ class CustomerAdminIndexTest extends TestCase
                 'total' => 10,
             ]);
         }
+        Order::create([
+            'user_id' => $ana->id,
+            'store_id' => $store->id,
+            'status' => 'canceled',
+            'scheduled_at' => Carbon::now(),
+            'total' => 99,
+        ]);
 
         Sanctum::actingAs($staff);
 
         $this->getJson('/api/v1/admin/customers')
             ->assertOk()
             ->assertJsonPath('data.0.id', $ana->id)
-            ->assertJsonPath('data.0.orders_count', 2)
+            ->assertJsonPath('data.0.orders_count', 3)
+            ->assertJsonPath('data.0.orders_total', 20)
             ->assertJsonPath('data.1.id', $maria->id)
             ->assertJsonPath('data.1.orders_count', 1);
 
@@ -66,6 +74,16 @@ class CustomerAdminIndexTest extends TestCase
             ->assertOk()
             ->assertJsonCount(1, 'data')
             ->assertJsonPath('data.0.id', $ana->id);
+
+        $this->getJson('/api/v1/admin/customers?sort=orders_count&direction=desc')
+            ->assertOk()
+            ->assertJsonPath('data.0.id', $ana->id)
+            ->assertJsonPath('data.1.id', $maria->id);
+
+        $this->getJson('/api/v1/admin/customers?sort=orders_total&direction=desc')
+            ->assertOk()
+            ->assertJsonPath('data.0.id', $ana->id)
+            ->assertJsonPath('data.0.orders_total', 20);
     }
 
     public function test_staff_can_view_and_update_a_customer_with_orders_sorted_by_pickup_date_descending(): void

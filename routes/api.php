@@ -70,6 +70,10 @@ Route::prefix('v1')->group(function () {
             ->middleware('can:orders.create');
         Route::get('admin/customers', [CustomerAdminController::class, 'index'])
             ->middleware('can:customers.view');
+        Route::get('admin/customers/{user}', [CustomerAdminController::class, 'show'])
+            ->middleware('can:customers.view');
+        Route::put('admin/customers/{user}', [CustomerAdminController::class, 'update'])
+            ->middleware('can:customers.view');
         Route::post('logout', [AuthController::class, 'logout']);
         Route::get('me', [AuthController::class, 'me']);
         Route::post('auth/refresh', [AuthController::class, 'refresh']);

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\V1\AdminOperationalSettingsController;
+use App\Http\Controllers\Api\V1\AdminFryingPlanningController;
 use App\Http\Controllers\Api\V1\AdminOrderTagController;
 use App\Http\Controllers\Api\V1\AdminPlanningSlotCapacityController;
 use App\Http\Controllers\Api\V1\AdminPreparationCapacityController;
@@ -95,6 +96,7 @@ Route::prefix('v1')->group(function () {
             Route::get('admin/orders/daily', [OrderAdminController::class, 'daily']);
             Route::get('admin/orders/weekly', [OrderAdminController::class, 'weekly']);
             Route::get('admin/orders/period', [OrderAdminController::class, 'period']);
+            Route::get('admin/frying-planning', [AdminFryingPlanningController::class, 'show']);
         });
 
         // Admin protected
@@ -108,6 +110,8 @@ Route::prefix('v1')->group(function () {
             Route::post('admin/settings/operational/reset', [AdminOperationalSettingsController::class, 'reset']);
             Route::get('admin/settings/operational/preparation-capacity', [AdminPreparationCapacityController::class, 'show']);
             Route::put('admin/settings/operational/preparation-capacity', [AdminPreparationCapacityController::class, 'update']);
+            Route::post('admin/settings/operational/preparation-capacity/slots', [AdminPreparationCapacityController::class, 'storeSlot']);
+            Route::post('admin/settings/operational/preparation-capacity/times', [AdminPreparationCapacityController::class, 'storeProductTime']);
             Route::post('admin/settings/test-whatsapp', [AdminOperationalSettingsController::class, 'testWhatsApp']);
             Route::get('admin/order-tags', [AdminOrderTagController::class, 'index']);
             Route::post('admin/order-tags', [AdminOrderTagController::class, 'store']);

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Store extends Model
 {
@@ -30,4 +31,9 @@ class Store extends Model
         'pickup_weekly_schedule' => 'array',
         'pickup_date_exceptions' => 'array',
     ];
+
+    public function preparationSlots(): HasMany
+    {
+        return $this->hasMany(OperationalPreparationSlot::class);
+    }
 }

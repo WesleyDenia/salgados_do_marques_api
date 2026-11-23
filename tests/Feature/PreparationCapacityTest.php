@@ -131,6 +131,60 @@ class PreparationCapacityTest extends TestCase
         ]);
     }
 
+    public function test_order_uses_only_the_cubas_configured_for_its_store(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-03-16 10:00', 'Europe/Lisbon'));
+        $this->useHourlySlots();
+        $user = User::factory()->create(['role' => 'atendimento']);
+        $northStore = $this->makeStore();
+        $southStore = $this->makeStore('Loja Sul');
+        $product = $this->makeProduct('Coxinha por loja');
+
+        $northSlot = OperationalPreparationSlot::create([
+            'store_id' => $northStore->id,
+            'name' => 'Cuba Norte',
+            'active' => true,
+            'display_order' => 0,
+        ]);
+        $southSlot = OperationalPreparationSlot::create([
+            'store_id' => $southStore->id,
+            'name' => 'Cuba Sul',
+            'active' => true,
+            'display_order' => 0,
+        ]);
+
+        ProductPreparationSetting::create([
+            'operational_preparation_slot_id' => $northSlot->id,
+            'product_id' => $product->id,
+            'batch_size' => 25,
+            'preparation_time_seconds' => 120,
+        ]);
+        ProductPreparationSetting::create([
+            'operational_preparation_slot_id' => $southSlot->id,
+            'product_id' => $product->id,
+            'batch_size' => 25,
+            'preparation_time_seconds' => 300,
+        ]);
+
+        Sanctum::actingAs($user);
+
+        $this->postJson('/api/v1/orders', [
+            'store_id' => $northStore->id,
+            'scheduled_at' => '2026-03-17 14:00',
+            'items' => [['product_id' => $product->id, 'quantity' => 25]],
+        ])->assertOk()
+            ->assertJsonPath('data.preparation_allocations.0.operational_preparation_slot_id', $northSlot->id)
+            ->assertJsonPath('data.preparation_allocations.0.preparation_time_seconds', 120);
+
+        $this->postJson('/api/v1/orders', [
+            'store_id' => $southStore->id,
+            'scheduled_at' => '2026-03-17 14:00',
+            'items' => [['product_id' => $product->id, 'quantity' => 25]],
+        ])->assertOk()
+            ->assertJsonPath('data.preparation_allocations.0.operational_preparation_slot_id', $southSlot->id)
+            ->assertJsonPath('data.preparation_allocations.0.preparation_time_seconds', 300);
+    }
+
     public function test_preparation_capacity_blocks_hour_overflow_unless_staff_allows_exception(): void
     {
         Carbon::setTestNow(Carbon::parse('2026-03-16 10:00', 'Europe/Lisbon'));
@@ -215,10 +269,10 @@ class PreparationCapacityTest extends TestCase
         return [$slotOne, $slotTwo];
     }
 
-    protected function makeStore(): Store
+    protected function makeStore(string $name = 'Loja Centro'): Store
     {
         return Store::create([
-            'name' => 'Loja Centro',
+            'name' => $name,
             'address' => 'Rua 1',
             'city' => 'Lisboa',
             'latitude' => 38.7169,

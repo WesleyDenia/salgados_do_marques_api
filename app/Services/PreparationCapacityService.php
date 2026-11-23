@@ -20,10 +20,11 @@ class PreparationCapacityService
     /**
      * @return array<string, mixed>
      */
-    public function getAdminPayload(): array
+    public function getAdminPayload(?int $storeId = null): array
     {
         $slots = OperationalPreparationSlot::query()
             ->with('productSettings')
+            ->when($storeId !== null, fn ($query) => $query->where('store_id', $storeId))
             ->orderBy('display_order')
             ->orderBy('id')
             ->get();
@@ -32,6 +33,7 @@ class PreparationCapacityService
             'slots' => $slots
                 ->map(fn (OperationalPreparationSlot $slot): array => [
                     'id' => $slot->id,
+                    'store_id' => $slot->store_id,
                     'name' => $slot->name,
                     'active' => (bool) $slot->active,
                     'display_order' => (int) $slot->display_order,
@@ -72,29 +74,44 @@ class PreparationCapacityService
         \Illuminate\Support\Facades\DB::transaction(function () use ($input): void {
             $slotIdByIndex = [];
             $submittedSlotIds = [];
+            $submittedSlotIdsByStore = [];
 
             foreach (array_values($input['slots'] ?? []) as $index => $slotInput) {
                 $slot = isset($slotInput['id'])
                     ? OperationalPreparationSlot::query()->findOrFail((int) $slotInput['id'])
                     : new OperationalPreparationSlot();
 
-                $slot->fill([
+                $attributes = [
                     'name' => trim((string) $slotInput['name']),
                     'active' => (bool) ($slotInput['active'] ?? true),
                     'display_order' => (int) ($slotInput['display_order'] ?? $index),
-                ]);
+                ];
+
+                if (array_key_exists('store_id', $slotInput)) {
+                    $attributes['store_id'] = $slotInput['store_id'] === null
+                        ? null
+                        : (int) $slotInput['store_id'];
+                }
+
+                $slot->fill($attributes);
                 $slot->save();
 
                 $slotIdByIndex[$index] = $slot->id;
                 $submittedSlotIds[] = $slot->id;
+                $storeKey = $slot->store_id === null ? 'legacy' : (string) $slot->store_id;
+                $submittedSlotIdsByStore[$storeKey][] = $slot->id;
             }
 
-            OperationalPreparationSlot::query()
-                ->when(
-                    $submittedSlotIds !== [],
-                    fn ($query) => $query->whereNotIn('id', $submittedSlotIds)
-                )
-                ->update(['active' => false]);
+            foreach ($submittedSlotIdsByStore as $storeKey => $slotIds) {
+                OperationalPreparationSlot::query()
+                    ->when(
+                        $storeKey === 'legacy',
+                        fn ($query) => $query->whereNull('store_id'),
+                        fn ($query) => $query->where('store_id', (int) $storeKey),
+                    )
+                    ->whereNotIn('id', $slotIds)
+                    ->update(['active' => false]);
+            }
 
             if ($submittedSlotIds !== []) {
                 ProductPreparationSetting::query()
@@ -127,6 +144,67 @@ class PreparationCapacityService
         return $this->getAdminPayload();
     }
 
+    public function createSlot(int $storeId, string $name, ?int $cloneFromSlotId = null): OperationalPreparationSlot
+    {
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($storeId, $name, $cloneFromSlotId): OperationalPreparationSlot {
+            $source = null;
+
+            if ($cloneFromSlotId !== null) {
+                $source = OperationalPreparationSlot::query()
+                    ->with('productSettings')
+                    ->whereKey($cloneFromSlotId)
+                    ->where('store_id', $storeId)
+                    ->first();
+
+                if (! $source) {
+                    throw ValidationException::withMessages([
+                        'clone_from_slot_id' => 'A cuba a clonar tem de pertencer à loja selecionada.',
+                    ]);
+                }
+            }
+
+            $slot = OperationalPreparationSlot::query()->create([
+                'store_id' => $storeId,
+                'name' => trim($name),
+                'active' => true,
+                'display_order' => ((int) (OperationalPreparationSlot::query()
+                    ->where('store_id', $storeId)
+                    ->max('display_order') ?? -1)) + 1,
+            ]);
+
+            if ($source) {
+                foreach ($source->productSettings as $setting) {
+                    ProductPreparationSetting::query()->create([
+                        'operational_preparation_slot_id' => $slot->id,
+                        'product_id' => $setting->product_id,
+                        'batch_size' => $setting->batch_size,
+                        'preparation_time_seconds' => $setting->preparation_time_seconds,
+                    ]);
+                }
+            }
+
+            return $slot;
+        });
+    }
+
+    public function saveProductTime(
+        OperationalPreparationSlot $slot,
+        int $productId,
+        int $batchSize,
+        int $preparationTimeSeconds,
+    ): ProductPreparationSetting {
+        return ProductPreparationSetting::query()->updateOrCreate(
+            [
+                'operational_preparation_slot_id' => $slot->id,
+                'product_id' => $productId,
+            ],
+            [
+                'batch_size' => max(1, $batchSize),
+                'preparation_time_seconds' => max(1, $preparationTimeSeconds),
+            ],
+        );
+    }
+
     public function allocateOrder(Order $order, bool $allowOverflow = false): void
     {
         $order->loadMissing(['items.variant', 'preparationAllocations']);
@@ -139,7 +217,7 @@ class PreparationCapacityService
             return;
         }
 
-        $activeSlots = $this->activeSlots();
+        $activeSlots = $this->activeSlotsForStore((int) $order->store_id);
 
         if ($activeSlots->isEmpty()) {
             return;
@@ -281,10 +359,16 @@ class PreparationCapacityService
     /**
      * @return Collection<int, OperationalPreparationSlot>
      */
-    protected function activeSlots(): Collection
+    protected function activeSlotsForStore(int $storeId): Collection
     {
         return OperationalPreparationSlot::query()
             ->where('active', true)
+            ->where(function ($query) use ($storeId): void {
+                $query->where('store_id', $storeId)
+                    // Slots without a loja are legacy data. Keep them as a
+                    // temporary fallback until the migration has copied them.
+                    ->orWhereNull('store_id');
+            })
             ->orderBy('display_order')
             ->orderBy('id')
             ->get();

@@ -21,6 +21,7 @@
         </p>
       </div>
       <div style="display:flex; gap:10px; flex-wrap:wrap;">
+        <a class="btn btn-secondary" href="{{ route('admin.preparation-capacity.index') }}">Configurar cubas</a>
         <a class="btn btn-secondary" href="{{ route('admin.orders.index') }}">Voltar à listagem</a>
       </div>
     </div>

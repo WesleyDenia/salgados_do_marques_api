@@ -17,6 +17,7 @@ class PreparationCapacityUpdateRequest extends FormRequest
         return [
             'slots' => ['required', 'array'],
             'slots.*.id' => ['nullable', 'integer', Rule::exists('operational_preparation_slots', 'id')],
+            'slots.*.store_id' => ['nullable', 'integer', Rule::exists('stores', 'id')],
             'slots.*.name' => ['required', 'string', 'max:80'],
             'slots.*.active' => ['required', 'boolean'],
             'slots.*.display_order' => ['nullable', 'integer', 'min:0'],

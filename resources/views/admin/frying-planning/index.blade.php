@@ -109,17 +109,12 @@
               <article class="frying-task">
                 <div class="frying-task-time">
                   {{ ($task['heating_start_at'] ?? $task['start_at'])->format('H:i') }}
-                  <small>
-                    @if ($task['heating_start_at'])
-                      aquecer até {{ $task['start_at']->format('H:i') }} ·
-                    @endif
-                    fritar até {{ $task['finish_at']->format('H:i') }}
-                  </small>
+                  <small>até {{ $task['finish_at']->format('H:i') }}</small>
                 </div>
                 <div>
                   <div class="frying-task-product">{{ $task['batch_units'] }}× {{ $task['product_name'] }}</div>
                   <div class="frying-task-details">
-                    Encomenda #{{ $task['order_id'] }}{{ $task['customer_name'] ? ' · ' . $task['customer_name'] : '' }} · {{ $formatDuration($task['preparation_time_seconds']) }}
+                    Encomenda #{{ $task['order_id'] }}{{ $task['customer_name'] ? ' · ' . $task['customer_name'] : '' }} · {{ $formatDuration($task['preparation_time_seconds'] + $task['heating_time_seconds']) }}
                   </div>
                   <div class="frying-task-ready">Pronto até {{ $task['ready_by']->format('H:i') }} · levantamento {{ $task['pickup_at']?->format('H:i') ?? '—' }}</div>
                 </div>

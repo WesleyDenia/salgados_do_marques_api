@@ -111,7 +111,11 @@ Route::prefix('v1')->group(function () {
             Route::get('admin/settings/operational/preparation-capacity', [AdminPreparationCapacityController::class, 'show']);
             Route::put('admin/settings/operational/preparation-capacity', [AdminPreparationCapacityController::class, 'update']);
             Route::post('admin/settings/operational/preparation-capacity/slots', [AdminPreparationCapacityController::class, 'storeSlot']);
+            Route::put('admin/settings/operational/preparation-capacity/slots/{slot}', [AdminPreparationCapacityController::class, 'updateSlot']);
+            Route::delete('admin/settings/operational/preparation-capacity/slots/{slot}', [AdminPreparationCapacityController::class, 'destroySlot']);
             Route::post('admin/settings/operational/preparation-capacity/times', [AdminPreparationCapacityController::class, 'storeProductTime']);
+            Route::put('admin/settings/operational/preparation-capacity/times/{setting}', [AdminPreparationCapacityController::class, 'updateProductTime']);
+            Route::delete('admin/settings/operational/preparation-capacity/times/{setting}', [AdminPreparationCapacityController::class, 'destroyProductTime']);
             Route::post('admin/settings/test-whatsapp', [AdminOperationalSettingsController::class, 'testWhatsApp']);
             Route::get('admin/order-tags', [AdminOrderTagController::class, 'index']);
             Route::post('admin/order-tags', [AdminOrderTagController::class, 'store']);

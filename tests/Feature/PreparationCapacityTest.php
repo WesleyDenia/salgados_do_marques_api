@@ -61,6 +61,89 @@ class PreparationCapacityTest extends TestCase
         $this->assertDatabaseCount('product_preparation_settings', 2);
     }
 
+    public function test_admin_can_edit_and_delete_a_store_preparation_slot_and_product_time(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $store = $this->makeStore();
+        $product = $this->makeProduct('Coxinha editável');
+        $slot = OperationalPreparationSlot::create([
+            'store_id' => $store->id,
+            'name' => 'Cuba antiga',
+            'active' => true,
+            'display_order' => 0,
+        ]);
+        $setting = ProductPreparationSetting::create([
+            'operational_preparation_slot_id' => $slot->id,
+            'product_id' => $product->id,
+            'batch_size' => 25,
+            'preparation_time_seconds' => 180,
+        ]);
+
+        $this->actingAs($admin, 'sanctum')
+            ->putJson("/api/v1/admin/settings/operational/preparation-capacity/slots/{$slot->id}", [
+                'store_id' => $store->id,
+                'name' => 'Cuba salgados',
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.name', 'Cuba salgados');
+
+        $this->actingAs($admin, 'sanctum')
+            ->putJson("/api/v1/admin/settings/operational/preparation-capacity/times/{$setting->id}", [
+                'store_id' => $store->id,
+                'operational_preparation_slot_id' => $slot->id,
+                'product_id' => $product->id,
+                'batch_size' => 40,
+                'preparation_minutes' => 4.5,
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.batch_size', 40)
+            ->assertJsonPath('data.preparation_time_seconds', 270);
+
+        $this->actingAs($admin, 'sanctum')
+            ->deleteJson("/api/v1/admin/settings/operational/preparation-capacity/times/{$setting->id}", [
+                'store_id' => $store->id,
+            ])
+            ->assertNoContent();
+        $this->assertDatabaseMissing('product_preparation_settings', ['id' => $setting->id]);
+
+        $this->actingAs($admin, 'sanctum')
+            ->deleteJson("/api/v1/admin/settings/operational/preparation-capacity/slots/{$slot->id}", [
+                'store_id' => $store->id,
+            ])
+            ->assertNoContent();
+        $this->assertDatabaseMissing('operational_preparation_slots', ['id' => $slot->id]);
+    }
+
+    public function test_admin_cannot_change_a_slot_or_time_from_another_store(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $north = $this->makeStore();
+        $south = $this->makeStore('Loja Sul');
+        $product = $this->makeProduct('Coxinha por loja editável');
+        $slot = OperationalPreparationSlot::create([
+            'store_id' => $north->id,
+            'name' => 'Cuba Norte',
+            'active' => true,
+            'display_order' => 0,
+        ]);
+        $setting = ProductPreparationSetting::create([
+            'operational_preparation_slot_id' => $slot->id,
+            'product_id' => $product->id,
+            'batch_size' => 25,
+            'preparation_time_seconds' => 180,
+        ]);
+
+        $this->actingAs($admin, 'sanctum')
+            ->deleteJson("/api/v1/admin/settings/operational/preparation-capacity/slots/{$slot->id}", ['store_id' => $south->id])
+            ->assertNotFound();
+        $this->actingAs($admin, 'sanctum')
+            ->deleteJson("/api/v1/admin/settings/operational/preparation-capacity/times/{$setting->id}", ['store_id' => $south->id])
+            ->assertNotFound();
+
+        $this->assertDatabaseHas('operational_preparation_slots', ['id' => $slot->id]);
+        $this->assertDatabaseHas('product_preparation_settings', ['id' => $setting->id]);
+    }
+
     public function test_order_preparation_batches_are_distributed_to_the_least_loaded_cuba(): void
     {
         Carbon::setTestNow(Carbon::parse('2026-03-16 10:00', 'Europe/Lisbon'));

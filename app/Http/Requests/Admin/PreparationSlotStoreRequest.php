@@ -18,6 +18,7 @@ class PreparationSlotStoreRequest extends FormRequest
         return [
             'store_id' => ['required', 'integer', Rule::exists('stores', 'id')],
             'name' => ['required', 'string', 'max:80'],
+            'heating_minutes' => ['nullable', 'numeric', 'min:0', 'max:1440'],
             'clone_from_slot_id' => ['nullable', 'integer', Rule::exists('operational_preparation_slots', 'id')],
         ];
     }

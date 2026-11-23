@@ -10,9 +10,7 @@ use Carbon\CarbonInterface;
 
 class AdminFryingPlanningController extends Controller
 {
-    public function __construct(protected FryingPlanningService $planning)
-    {
-    }
+    public function __construct(protected FryingPlanningService $planning) {}
 
     public function show(FryingPlanningApiRequest $request)
     {
@@ -45,8 +43,10 @@ class AdminFryingPlanningController extends Controller
                                 'product_name' => $task['product_name'],
                                 'batch_units' => $task['batch_units'],
                                 'preparation_time_seconds' => $task['preparation_time_seconds'],
+                                'heating_time_seconds' => $task['heating_time_seconds'],
                                 'pickup_at' => $this->dateTime($task['pickup_at']),
                                 'ready_by' => $this->dateTime($task['ready_by']),
+                                'heating_start_at' => $this->dateTime($task['heating_start_at']),
                                 'start_at' => $this->dateTime($task['start_at']),
                                 'finish_at' => $this->dateTime($task['finish_at']),
                             ])

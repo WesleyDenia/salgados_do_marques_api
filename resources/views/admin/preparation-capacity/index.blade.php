@@ -76,7 +76,7 @@
           <header class="slot-card-header">
             <div>
               <h3>{{ $slot->name }}</h3>
-              <p>{{ $slot->productSettings->count() }} {{ $slot->productSettings->count() === 1 ? 'artigo configurado' : 'artigos configurados' }}</p>
+              <p>{{ $slot->productSettings->count() }} {{ $slot->productSettings->count() === 1 ? 'artigo configurado' : 'artigos configurados' }} · aquecimento: {{ $formatDuration((int) $slot->heating_time_seconds) }}</p>
             </div>
             <div class="slot-card-actions">
               <button
@@ -92,6 +92,7 @@
                 data-open-slot-modal
                 data-clone-slot-id="{{ $slot->id }}"
                 data-clone-slot-name="{{ $slot->name }}"
+                data-clone-slot-heating-minutes="{{ ((int) $slot->heating_time_seconds) / 60 }}"
               >Clonar cuba</button>
             </div>
           </header>
@@ -130,6 +131,11 @@
       <div class="form-group">
         <label for="slot_name">Título da cuba</label>
         <input type="text" id="slot_name" name="name" maxlength="80" required autocomplete="off" />
+      </div>
+      <div class="form-group">
+        <label for="heating_minutes">Tempo de aquecimento (minutos)</label>
+        <input type="number" id="heating_minutes" name="heating_minutes" min="0" max="1440" step="0.1" value="0" required />
+        <small style="display:block;margin-top:5px;color:#6b7280;">É incluído na primeira fritura e após 15 minutos sem fritar.</small>
       </div>
       <div class="modal-actions">
         <button type="button" class="btn btn-secondary" data-close-modal="slot-modal">Cancelar</button>
@@ -177,6 +183,7 @@
       const timeModal = document.getElementById('time-modal');
       const cloneInput = document.getElementById('clone_from_slot_id');
       const slotNameInput = document.getElementById('slot_name');
+      const heatingMinutesInput = document.getElementById('heating_minutes');
       const slotTitle = document.getElementById('slot-modal-title');
       const slotDescription = document.getElementById('slot-modal-description');
       const slotSubmit = document.getElementById('slot-submit');
@@ -185,8 +192,10 @@
         button.addEventListener('click', function () {
           const cloneId = button.dataset.cloneSlotId || '';
           const cloneName = button.dataset.cloneSlotName || '';
+          const cloneHeatingMinutes = button.dataset.cloneSlotHeatingMinutes || '0';
           cloneInput.value = cloneId;
           slotNameInput.value = cloneName ? cloneName + ' (cópia)' : '';
+          heatingMinutesInput.value = cloneHeatingMinutes;
           slotTitle.textContent = cloneId ? 'Clonar cuba' : 'Adicionar cuba';
           slotDescription.textContent = cloneId
             ? 'Os tempos de fritura de “' + cloneName + '” serão copiados. Altere apenas o título da nova cuba.'

@@ -86,9 +86,9 @@
           <div class="frying-summary-label">Primeiro início</div>
           <div class="frying-summary-value">
             @php
-              $firstTask = collect($plan['slots'])->flatMap(fn ($slot) => $slot['tasks'])->sortBy(fn ($task) => $task['start_at']->getTimestamp())->first();
+              $firstTask = collect($plan['slots'])->flatMap(fn ($slot) => $slot['tasks'])->sortBy(fn ($task) => ($task['heating_start_at'] ?? $task['start_at'])->getTimestamp())->first();
             @endphp
-            {{ $firstTask ? $firstTask['start_at']->format('H:i') : '—' }}
+            {{ $firstTask ? ($firstTask['heating_start_at'] ?? $firstTask['start_at'])->format('H:i') : '—' }}
           </div>
           <div class="frying-summary-detail">{{ $firstTask ? 'hora de começar a fritura' : 'sem frituras planeadas' }}</div>
         </div>
@@ -108,8 +108,13 @@
             @foreach ($slot['tasks'] as $task)
               <article class="frying-task">
                 <div class="frying-task-time">
-                  {{ $task['start_at']->format('H:i') }}
-                  <small>até {{ $task['finish_at']->format('H:i') }}</small>
+                  {{ ($task['heating_start_at'] ?? $task['start_at'])->format('H:i') }}
+                  <small>
+                    @if ($task['heating_start_at'])
+                      aquecer até {{ $task['start_at']->format('H:i') }} ·
+                    @endif
+                    fritar até {{ $task['finish_at']->format('H:i') }}
+                  </small>
                 </div>
                 <div>
                   <div class="frying-task-product">{{ $task['batch_units'] }}× {{ $task['product_name'] }}</div>

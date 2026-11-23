@@ -55,6 +55,7 @@ class PreparationCapacityController extends Controller
             (int) $data['store_id'],
             (string) $data['name'],
             isset($data['clone_from_slot_id']) ? (int) $data['clone_from_slot_id'] : null,
+            array_key_exists('heating_minutes', $data) ? (int) ceil(((float) $data['heating_minutes']) * 60) : null,
         );
 
         return redirect()

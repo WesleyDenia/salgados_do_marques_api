@@ -84,6 +84,42 @@ class FryingPlanningServiceTest extends TestCase
         $this->assertSame('18:00', $task['ready_by']->format('H:i'));
     }
 
+    public function test_it_reserves_the_cuba_heating_time_before_the_first_frying(): void
+    {
+        $store = $this->makeStore('Loja Aquecimento');
+        $slot = $this->makeSlot($store, 'Cuba quente', 0, 10 * 60);
+        $product = $this->makeProductForSlot($slot, 10, 3 * 60);
+        $order = $this->makeOrder($store, User::factory()->create(), '2026-11-25 16:00', 'Cliente 16:00');
+        $this->addItem($order, $product, 10);
+
+        $plan = app(FryingPlanningService::class)->forDateAndStore('2026-11-25', $store);
+        $task = $plan['slots'][0]['tasks'][0];
+
+        $this->assertSame('15:47', $task['heating_start_at']->format('H:i'));
+        $this->assertSame('15:57', $task['start_at']->format('H:i'));
+        $this->assertSame('16:00', $task['finish_at']->format('H:i'));
+        $this->assertSame('15:47', $plan['earliest_start_at']->format('H:i'));
+    }
+
+    public function test_it_does_not_reheat_between_consecutive_batches(): void
+    {
+        $store = $this->makeStore('Loja Sem reaquecimento');
+        $slot = $this->makeSlot($store, 'Cuba quente', 0, 10 * 60);
+        $product = $this->makeProductForSlot($slot, 10, 3 * 60);
+        $order = $this->makeOrder($store, User::factory()->create(), '2026-11-25 16:00', 'Cliente 16:00');
+        $this->addItem($order, $product, 20);
+
+        $plan = app(FryingPlanningService::class)->forDateAndStore('2026-11-25', $store);
+        $tasks = $plan['slots'][0]['tasks'];
+
+        $this->assertCount(2, $tasks);
+        $this->assertSame(1, collect($tasks)->whereNotNull('heating_start_at')->count());
+        $this->assertSame('15:44', $tasks[0]['heating_start_at']->format('H:i'));
+        $this->assertSame('15:54', $tasks[0]['start_at']->format('H:i'));
+        $this->assertSame('15:57', $tasks[0]['finish_at']->format('H:i'));
+        $this->assertSame('15:57', $tasks[1]['start_at']->format('H:i'));
+    }
+
     public function test_it_never_uses_cubas_from_another_store(): void
     {
         $centre = $this->makeStore('Loja Centro');
@@ -123,9 +159,9 @@ class FryingPlanningServiceTest extends TestCase
         return Store::create(['name' => $name, 'address' => 'Rua 1', 'city' => 'Lisboa', 'latitude' => 38.7169, 'longitude' => -9.1399, 'phone' => '123456789', 'type' => 'principal', 'is_active' => true, 'accepts_orders' => true, 'default_store' => false, 'pickup_weekly_schedule' => [], 'pickup_date_exceptions' => []]);
     }
 
-    private function makeSlot(Store $store, string $name, int $displayOrder = 0): OperationalPreparationSlot
+    private function makeSlot(Store $store, string $name, int $displayOrder = 0, int $heatingTimeSeconds = 0): OperationalPreparationSlot
     {
-        return OperationalPreparationSlot::create(['store_id' => $store->id, 'name' => $name, 'active' => true, 'display_order' => $displayOrder]);
+        return OperationalPreparationSlot::create(['store_id' => $store->id, 'name' => $name, 'heating_time_seconds' => $heatingTimeSeconds, 'active' => true, 'display_order' => $displayOrder]);
     }
 
     private function makeProductForSlot(OperationalPreparationSlot $slot, int $batchSize, int $seconds): Product

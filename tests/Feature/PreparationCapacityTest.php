@@ -114,6 +114,27 @@ class PreparationCapacityTest extends TestCase
         $this->assertDatabaseMissing('operational_preparation_slots', ['id' => $slot->id]);
     }
 
+    public function test_admin_can_save_the_heating_time_for_a_cuba(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $store = $this->makeStore();
+
+        $this->actingAs($admin, 'sanctum')
+            ->postJson('/api/v1/admin/settings/operational/preparation-capacity/slots', [
+                'store_id' => $store->id,
+                'name' => 'Cuba com aquecimento',
+                'heating_minutes' => 10,
+            ])
+            ->assertCreated()
+            ->assertJsonPath('data.heating_time_seconds', 600);
+
+        $this->assertDatabaseHas('operational_preparation_slots', [
+            'store_id' => $store->id,
+            'name' => 'Cuba com aquecimento',
+            'heating_time_seconds' => 600,
+        ]);
+    }
+
     public function test_admin_cannot_change_a_slot_or_time_from_another_store(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);

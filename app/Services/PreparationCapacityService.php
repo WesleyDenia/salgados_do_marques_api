@@ -8,7 +8,6 @@ use App\Models\OrderItem;
 use App\Models\OrderPreparationAllocation;
 use App\Models\Product;
 use App\Models\ProductPreparationSetting;
-use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Collection as SupportCollection;
 use Illuminate\Validation\ValidationException;
@@ -35,6 +34,7 @@ class PreparationCapacityService
                     'id' => $slot->id,
                     'store_id' => $slot->store_id,
                     'name' => $slot->name,
+                    'heating_time_seconds' => (int) $slot->heating_time_seconds,
                     'active' => (bool) $slot->active,
                     'display_order' => (int) $slot->display_order,
                 ])
@@ -79,13 +79,17 @@ class PreparationCapacityService
             foreach (array_values($input['slots'] ?? []) as $index => $slotInput) {
                 $slot = isset($slotInput['id'])
                     ? OperationalPreparationSlot::query()->findOrFail((int) $slotInput['id'])
-                    : new OperationalPreparationSlot();
+                    : new OperationalPreparationSlot;
 
                 $attributes = [
                     'name' => trim((string) $slotInput['name']),
                     'active' => (bool) ($slotInput['active'] ?? true),
                     'display_order' => (int) ($slotInput['display_order'] ?? $index),
                 ];
+
+                if (array_key_exists('heating_time_seconds', $slotInput)) {
+                    $attributes['heating_time_seconds'] = max(0, (int) $slotInput['heating_time_seconds']);
+                }
 
                 if (array_key_exists('store_id', $slotInput)) {
                     $attributes['store_id'] = $slotInput['store_id'] === null
@@ -144,9 +148,9 @@ class PreparationCapacityService
         return $this->getAdminPayload();
     }
 
-    public function createSlot(int $storeId, string $name, ?int $cloneFromSlotId = null): OperationalPreparationSlot
+    public function createSlot(int $storeId, string $name, ?int $cloneFromSlotId = null, ?int $heatingTimeSeconds = null): OperationalPreparationSlot
     {
-        return \Illuminate\Support\Facades\DB::transaction(function () use ($storeId, $name, $cloneFromSlotId): OperationalPreparationSlot {
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($storeId, $name, $cloneFromSlotId, $heatingTimeSeconds): OperationalPreparationSlot {
             $source = null;
 
             if ($cloneFromSlotId !== null) {
@@ -166,6 +170,7 @@ class PreparationCapacityService
             $slot = OperationalPreparationSlot::query()->create([
                 'store_id' => $storeId,
                 'name' => trim($name),
+                'heating_time_seconds' => max(0, $heatingTimeSeconds ?? (int) ($source?->heating_time_seconds ?? 0)),
                 'active' => true,
                 'display_order' => ((int) (OperationalPreparationSlot::query()
                     ->where('store_id', $storeId)

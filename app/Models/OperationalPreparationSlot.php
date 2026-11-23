@@ -14,12 +14,14 @@ class OperationalPreparationSlot extends Model
     protected $fillable = [
         'store_id',
         'name',
+        'heating_time_seconds',
         'active',
         'display_order',
     ];
 
     protected $casts = [
         'store_id' => 'integer',
+        'heating_time_seconds' => 'integer',
         'active' => 'boolean',
         'display_order' => 'integer',
     ];

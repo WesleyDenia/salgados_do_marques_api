@@ -15,6 +15,8 @@ class FryingPlanningService
 {
     private const PLANNABLE_STATUSES = ['placed', 'accepted'];
 
+    private const REHEAT_AFTER_IDLE_SECONDS = 15 * 60;
+
     public function __construct(protected SettingService $settings) {}
 
     /**
@@ -146,6 +148,7 @@ class FryingPlanningService
                     'id' => $slotId,
                     'name' => $slot->name,
                     'display_order' => (int) $slot->display_order,
+                    'heating_time_seconds' => (int) $slot->heating_time_seconds,
                     'tasks' => [],
                 ];
                 $slots[$slotId]['tasks'][] = [
@@ -166,11 +169,7 @@ class FryingPlanningService
         }
 
         $slots = collect($slots)
-            ->map(function (array $slot): array {
-                $slot['tasks'] = collect($slot['tasks'])->sortBy(fn (array $task) => $task['start_at']->getTimestamp())->values()->all();
-
-                return $slot;
-            })
+            ->map(fn (array $slot): array => $this->applyHeatingSchedule($slot))
             ->sortBy([['display_order', 'asc'], ['id', 'asc']])
             ->values();
         $tasks = $slots->flatMap(fn (array $slot) => $slot['tasks']);
@@ -181,7 +180,11 @@ class FryingPlanningService
             'store' => $store,
             'orders_count' => $orders->count(),
             'tasks_count' => $tasks->count(),
-            'earliest_start_at' => $tasks->isEmpty() ? null : $tasks->sortBy(fn (array $task) => $task['start_at']->getTimestamp())->first()['start_at'],
+            'earliest_start_at' => $tasks->isEmpty()
+                ? null
+                : $this->planningStartAt(
+                    $tasks->sortBy(fn (array $task) => $this->planningStartAt($task)->getTimestamp())->first()
+                ),
             'slots' => $slots->all(),
             'warnings' => array_values(array_unique($warnings)),
         ];
@@ -222,6 +225,116 @@ class FryingPlanningService
         }
 
         return (int) $item->quantity;
+    }
+
+    /**
+     * Insert the heating blocks after all product batches are assigned to a
+     * cuba. Rebuilding backwards keeps those blocks from overlapping a prior
+     * batch and can consequently move earlier work further back in time.
+     *
+     * @param  array<string, mixed>  $slot
+     * @return array<string, mixed>
+     */
+    private function applyHeatingSchedule(array $slot): array
+    {
+        $tasks = $slot['tasks'];
+        $heatingSeconds = (int) ($slot['heating_time_seconds'] ?? 0);
+        $needsHeating = [];
+
+        // A first frying starts from a cold cuba. Further heating blocks are
+        // enabled only when two actual fryings are at least 15 minutes apart.
+        $chronological = collect($tasks)
+            ->sortBy(fn (array $task) => $task['start_at']->getTimestamp())
+            ->values();
+        if ($heatingSeconds > 0 && $chronological->isNotEmpty()) {
+            $needsHeating[(int) $chronological->first()['allocation_id']] = true;
+        }
+
+        do {
+            $scheduled = $this->scheduleSlotBackwards($tasks, $needsHeating, $heatingSeconds);
+            $updatedHeating = $this->heatingRequirements($scheduled, $heatingSeconds);
+            $changed = $updatedHeating !== $needsHeating;
+            $needsHeating = $updatedHeating;
+            $tasks = $scheduled;
+        } while ($changed);
+
+        $slot['tasks'] = collect($tasks)
+            ->sortBy(fn (array $task) => $task['start_at']->getTimestamp())
+            ->values()
+            ->all();
+
+        return $slot;
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $tasks
+     * @param  array<int, bool>  $needsHeating
+     * @return array<int, array<string, mixed>>
+     */
+    private function scheduleSlotBackwards(array $tasks, array $needsHeating, int $heatingSeconds): array
+    {
+        usort($tasks, function (array $left, array $right): int {
+            $dueComparison = $right['ready_by']->getTimestamp() <=> $left['ready_by']->getTimestamp();
+
+            return $dueComparison !== 0
+                ? $dueComparison
+                : $right['allocation_id'] <=> $left['allocation_id'];
+        });
+
+        $availableUntil = null;
+        foreach ($tasks as &$task) {
+            /** @var CarbonInterface $readyBy */
+            $readyBy = $task['ready_by'];
+            $finishAt = $availableUntil === null || $availableUntil->greaterThan($readyBy)
+                ? $readyBy->copy()
+                : $availableUntil->copy();
+            $startAt = $finishAt->copy()->subSeconds((int) $task['preparation_time_seconds']);
+            $taskId = (int) $task['allocation_id'];
+            $task['heating_time_seconds'] = isset($needsHeating[$taskId]) ? $heatingSeconds : 0;
+            $task['heating_start_at'] = isset($needsHeating[$taskId])
+                ? $startAt->copy()->subSeconds($heatingSeconds)
+                : null;
+            $task['start_at'] = $startAt;
+            $task['finish_at'] = $finishAt;
+            $availableUntil = $task['heating_start_at'] ?? $startAt;
+        }
+        unset($task);
+
+        return $tasks;
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $tasks
+     * @return array<int, bool>
+     */
+    private function heatingRequirements(array $tasks, int $heatingSeconds): array
+    {
+        if ($heatingSeconds === 0 || $tasks === []) {
+            return [];
+        }
+
+        $chronological = collect($tasks)
+            ->sortBy(fn (array $task) => $task['start_at']->getTimestamp())
+            ->values();
+        $requirements = [(int) $chronological->first()['allocation_id'] => true];
+
+        for ($index = 1; $index < $chronological->count(); $index++) {
+            $previous = $chronological[$index - 1];
+            $current = $chronological[$index];
+            $idleSeconds = $current['start_at']->getTimestamp() - $previous['finish_at']->getTimestamp();
+
+            if ($idleSeconds >= self::REHEAT_AFTER_IDLE_SECONDS) {
+                $requirements[(int) $current['allocation_id']] = true;
+            }
+        }
+
+        return $requirements;
+    }
+
+    /** @param array<string, mixed> $task */
+    private function planningStartAt(array $task): CarbonInterface
+    {
+        return $task['heating_start_at'] ?? $task['start_at'];
     }
 
     private function readyBy(Order $order, string $timezone): ?CarbonInterface

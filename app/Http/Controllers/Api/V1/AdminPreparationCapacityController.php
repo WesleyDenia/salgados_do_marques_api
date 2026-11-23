@@ -38,6 +38,7 @@ class AdminPreparationCapacityController extends Controller
             (int) $data['store_id'],
             (string) $data['name'],
             isset($data['clone_from_slot_id']) ? (int) $data['clone_from_slot_id'] : null,
+            array_key_exists('heating_minutes', $data) ? (int) ceil(((float) $data['heating_minutes']) * 60) : null,
         );
 
         return response()->json([
@@ -45,6 +46,7 @@ class AdminPreparationCapacityController extends Controller
                 'id' => $slot->id,
                 'store_id' => $slot->store_id,
                 'name' => $slot->name,
+                'heating_time_seconds' => $slot->heating_time_seconds,
             ],
         ], 201);
     }
@@ -79,13 +81,19 @@ class AdminPreparationCapacityController extends Controller
         $data = $request->validated();
         abort_unless($slot->store_id === (int) $data['store_id'], 404);
 
-        $slot->update(['name' => trim((string) $data['name'])]);
+        $slot->update([
+            'name' => trim((string) $data['name']),
+            'heating_time_seconds' => array_key_exists('heating_minutes', $data)
+                ? (int) ceil(((float) $data['heating_minutes']) * 60)
+                : (int) $slot->heating_time_seconds,
+        ]);
 
         return response()->json([
             'data' => [
                 'id' => $slot->id,
                 'store_id' => $slot->store_id,
                 'name' => $slot->name,
+                'heating_time_seconds' => $slot->heating_time_seconds,
             ],
         ]);
     }

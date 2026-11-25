@@ -15,7 +15,13 @@ class FryingPlanningService
 {
     private const PLANNABLE_STATUSES = ['placed', 'accepted'];
 
-    private const REHEAT_AFTER_IDLE_SECONDS = 15 * 60;
+    private const PACKAGING_TIME_SETTING_KEY = 'FRYING_PACKAGING_MINUTES';
+
+    private const COOLING_TIME_SETTING_KEY = 'FRYING_COOLING_MINUTES';
+
+    private const DEFAULT_PACKAGING_TIME_MINUTES = 15;
+
+    private const DEFAULT_COOLING_TIME_MINUTES = 15;
 
     public function __construct(protected SettingService $settings) {}
 
@@ -29,6 +35,8 @@ class FryingPlanningService
     public function forDateAndStore(string $date, Store $store): array
     {
         $timezone = (string) $this->settings->get('ORDER_TIMEZONE', $this->settings->get('order_timezone', 'Europe/Lisbon'));
+        $packagingTimeSeconds = $this->packagingTimeSeconds();
+        $coolingTimeSeconds = $this->coolingTimeSeconds();
         $dayStart = Carbon::createFromFormat('Y-m-d', $date, $timezone)->startOfDay();
         $dayEnd = $dayStart->copy()->endOfDay();
 
@@ -68,7 +76,7 @@ class FryingPlanningService
         }
 
         foreach ($orders as $order) {
-            $readyBy = $this->readyBy($order, $timezone);
+            $readyBy = $this->readyBy($order, $timezone, $packagingTimeSeconds);
             if ($readyBy === null) {
                 $warnings[] = sprintf('A encomenda #%d não tem hora de levantamento definida.', $order->id);
 
@@ -169,7 +177,7 @@ class FryingPlanningService
         }
 
         $slots = collect($slots)
-            ->map(fn (array $slot): array => $this->applyHeatingSchedule($slot))
+            ->map(fn (array $slot): array => $this->applyHeatingSchedule($slot, $coolingTimeSeconds))
             ->sortBy([['display_order', 'asc'], ['id', 'asc']])
             ->values();
         $tasks = $slots->flatMap(fn (array $slot) => $slot['tasks']);
@@ -180,6 +188,7 @@ class FryingPlanningService
             'store' => $store,
             'orders_count' => $orders->count(),
             'tasks_count' => $tasks->count(),
+            'packaging_time_seconds' => $packagingTimeSeconds,
             'earliest_start_at' => $tasks->isEmpty()
                 ? null
                 : $this->planningStartAt(
@@ -235,14 +244,14 @@ class FryingPlanningService
      * @param  array<string, mixed>  $slot
      * @return array<string, mixed>
      */
-    private function applyHeatingSchedule(array $slot): array
+    private function applyHeatingSchedule(array $slot, int $coolingTimeSeconds): array
     {
         $tasks = $slot['tasks'];
         $heatingSeconds = (int) ($slot['heating_time_seconds'] ?? 0);
         $needsHeating = [];
 
         // A first frying starts from a cold cuba. Further heating blocks are
-        // enabled only when two actual fryings are at least 15 minutes apart.
+        // enabled after the configured idle time has allowed the cuba to cool.
         $chronological = collect($tasks)
             ->sortBy(fn (array $task) => $task['start_at']->getTimestamp())
             ->values();
@@ -252,7 +261,7 @@ class FryingPlanningService
 
         do {
             $scheduled = $this->scheduleSlotBackwards($tasks, $needsHeating, $heatingSeconds);
-            $updatedHeating = $this->heatingRequirements($scheduled, $heatingSeconds);
+            $updatedHeating = $this->heatingRequirements($scheduled, $heatingSeconds, $coolingTimeSeconds);
             $changed = $updatedHeating !== $needsHeating;
             $needsHeating = $updatedHeating;
             $tasks = $scheduled;
@@ -307,7 +316,7 @@ class FryingPlanningService
      * @param  array<int, array<string, mixed>>  $tasks
      * @return array<int, bool>
      */
-    private function heatingRequirements(array $tasks, int $heatingSeconds): array
+    private function heatingRequirements(array $tasks, int $heatingSeconds, int $coolingTimeSeconds): array
     {
         if ($heatingSeconds === 0 || $tasks === []) {
             return [];
@@ -323,7 +332,7 @@ class FryingPlanningService
             $current = $chronological[$index];
             $idleSeconds = $current['start_at']->getTimestamp() - $previous['finish_at']->getTimestamp();
 
-            if ($idleSeconds >= self::REHEAT_AFTER_IDLE_SECONDS) {
+            if ($idleSeconds >= $coolingTimeSeconds) {
                 $requirements[(int) $current['allocation_id']] = true;
             }
         }
@@ -337,15 +346,34 @@ class FryingPlanningService
         return $task['heating_start_at'] ?? $task['start_at'];
     }
 
-    private function readyBy(Order $order, string $timezone): ?CarbonInterface
+    private function readyBy(Order $order, string $timezone, int $packagingTimeSeconds): ?CarbonInterface
     {
         $pickupAt = $order->scheduledAtForDisplay($timezone);
         if ($pickupAt === null) {
             return null;
         }
 
-        $minutes = ((int) $pickupAt->format('H') * 60) + (int) $pickupAt->format('i');
+        return $pickupAt->copy()->subSeconds($packagingTimeSeconds);
+    }
 
-        return $pickupAt->copy()->startOfDay()->addMinutes(intdiv($minutes, 30) * 30);
+    private function packagingTimeSeconds(): int
+    {
+        return $this->minutesToSeconds(
+            self::PACKAGING_TIME_SETTING_KEY,
+            self::DEFAULT_PACKAGING_TIME_MINUTES,
+        );
+    }
+
+    private function coolingTimeSeconds(): int
+    {
+        return $this->minutesToSeconds(
+            self::COOLING_TIME_SETTING_KEY,
+            self::DEFAULT_COOLING_TIME_MINUTES,
+        );
+    }
+
+    private function minutesToSeconds(string $key, int $defaultMinutes): int
+    {
+        return max(0, (int) $this->settings->get($key, $defaultMinutes)) * 60;
     }
 }

@@ -7,6 +7,7 @@ use App\Models\OperationalPreparationSlot;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\ProductPreparationSetting;
+use App\Models\Setting;
 use App\Models\Store;
 use App\Models\User;
 use App\Services\FryingPlanningService;
@@ -38,11 +39,11 @@ class FryingPlanningServiceTest extends TestCase
         $laterTasks = $tasks->where('order_id', $order1600->id)->values();
 
         $this->assertSame(3, $plan['tasks_count']);
-        $this->assertSame('15:00', $earlierTask['start_at']->format('H:i'));
-        $this->assertSame('15:20', $earlierTask['finish_at']->format('H:i'));
-        $this->assertSame('15:30', $earlierTask['ready_by']->format('H:i'));
-        $this->assertSame('15:20', $laterTasks[0]['start_at']->format('H:i'));
-        $this->assertSame('16:00', $laterTasks[1]['finish_at']->format('H:i'));
+        $this->assertSame('14:45', $earlierTask['start_at']->format('H:i'));
+        $this->assertSame('15:05', $earlierTask['finish_at']->format('H:i'));
+        $this->assertSame('15:15', $earlierTask['ready_by']->format('H:i'));
+        $this->assertSame('15:05', $laterTasks[0]['start_at']->format('H:i'));
+        $this->assertSame('15:45', $laterTasks[1]['finish_at']->format('H:i'));
     }
 
     public function test_it_recalculates_existing_orders_when_the_cuba_configuration_changes(): void
@@ -65,10 +66,10 @@ class FryingPlanningServiceTest extends TestCase
         $plan = app(FryingPlanningService::class)->forDateAndStore('2026-11-25', $store);
 
         $this->assertSame('Cuba registada agora', $plan['slots'][0]['name']);
-        $this->assertSame('15:55', $plan['slots'][0]['tasks'][0]['start_at']->format('H:i'));
+        $this->assertSame('15:40', $plan['slots'][0]['tasks'][0]['start_at']->format('H:i'));
     }
 
-    public function test_it_rounds_the_ready_time_down_to_the_previous_half_hour(): void
+    public function test_it_reserves_fifteen_minutes_for_packaging_before_collection(): void
     {
         $store = $this->makeStore('Loja Norte');
         $slot = $this->makeSlot($store, 'Cuba Norte');
@@ -82,6 +83,46 @@ class FryingPlanningServiceTest extends TestCase
         $this->assertSame('17:55', $task['start_at']->format('H:i'));
         $this->assertSame('18:00', $task['finish_at']->format('H:i'));
         $this->assertSame('18:00', $task['ready_by']->format('H:i'));
+        $this->assertSame(15 * 60, $plan['packaging_time_seconds']);
+    }
+
+    public function test_it_finishes_frying_fifteen_minutes_before_a_noon_collection(): void
+    {
+        $store = $this->makeStore('Loja Embalamento');
+        $slot = $this->makeSlot($store, 'Cuba Embalamento');
+        $product = $this->makeProductForSlot($slot, 50, 3 * 60);
+        $order = $this->makeOrder($store, User::factory()->create(), '2026-11-25 12:00', 'Cliente Embalamento');
+        $this->addItem($order, $product, 200);
+
+        $plan = app(FryingPlanningService::class)->forDateAndStore('2026-11-25', $store);
+        $tasks = $plan['slots'][0]['tasks'];
+
+        $this->assertCount(4, $tasks);
+        $this->assertSame('11:33', $tasks[0]['start_at']->format('H:i'));
+        $this->assertSame('11:45', $tasks[3]['finish_at']->format('H:i'));
+        $this->assertSame('11:45', $tasks[3]['ready_by']->format('H:i'));
+    }
+
+    public function test_it_uses_configured_packaging_and_cooling_times(): void
+    {
+        Setting::create(['key' => 'FRYING_PACKAGING_MINUTES', 'value' => 7, 'type' => 'integer']);
+        Setting::create(['key' => 'FRYING_COOLING_MINUTES', 'value' => 90, 'type' => 'integer']);
+        $store = $this->makeStore('Loja Tempos Configuráveis');
+        $slot = $this->makeSlot($store, 'Cuba Configurável', 0, 10 * 60);
+        $product = $this->makeProductForSlot($slot, 10, 3 * 60);
+        $customer = User::factory()->create();
+        $firstOrder = $this->makeOrder($store, $customer, '2026-11-25 12:00', 'Cliente 12:00');
+        $secondOrder = $this->makeOrder($store, $customer, '2026-11-25 13:00', 'Cliente 13:00');
+        $this->addItem($firstOrder, $product, 10);
+        $this->addItem($secondOrder, $product, 10);
+
+        $plan = app(FryingPlanningService::class)->forDateAndStore('2026-11-25', $store);
+        $tasks = $plan['slots'][0]['tasks'];
+
+        $this->assertSame(7 * 60, $plan['packaging_time_seconds']);
+        $this->assertSame('11:53', $tasks[0]['ready_by']->format('H:i'));
+        $this->assertSame('12:53', $tasks[1]['ready_by']->format('H:i'));
+        $this->assertCount(1, collect($tasks)->whereNotNull('heating_start_at'));
     }
 
     public function test_it_reserves_the_cuba_heating_time_before_the_first_frying(): void
@@ -95,10 +136,10 @@ class FryingPlanningServiceTest extends TestCase
         $plan = app(FryingPlanningService::class)->forDateAndStore('2026-11-25', $store);
         $task = $plan['slots'][0]['tasks'][0];
 
-        $this->assertSame('15:47', $task['heating_start_at']->format('H:i'));
-        $this->assertSame('15:57', $task['start_at']->format('H:i'));
-        $this->assertSame('16:00', $task['finish_at']->format('H:i'));
-        $this->assertSame('15:47', $plan['earliest_start_at']->format('H:i'));
+        $this->assertSame('15:32', $task['heating_start_at']->format('H:i'));
+        $this->assertSame('15:42', $task['start_at']->format('H:i'));
+        $this->assertSame('15:45', $task['finish_at']->format('H:i'));
+        $this->assertSame('15:32', $plan['earliest_start_at']->format('H:i'));
     }
 
     public function test_it_does_not_reheat_between_consecutive_batches(): void
@@ -114,10 +155,10 @@ class FryingPlanningServiceTest extends TestCase
 
         $this->assertCount(2, $tasks);
         $this->assertSame(1, collect($tasks)->whereNotNull('heating_start_at')->count());
-        $this->assertSame('15:44', $tasks[0]['heating_start_at']->format('H:i'));
-        $this->assertSame('15:54', $tasks[0]['start_at']->format('H:i'));
-        $this->assertSame('15:57', $tasks[0]['finish_at']->format('H:i'));
-        $this->assertSame('15:57', $tasks[1]['start_at']->format('H:i'));
+        $this->assertSame('15:29', $tasks[0]['heating_start_at']->format('H:i'));
+        $this->assertSame('15:39', $tasks[0]['start_at']->format('H:i'));
+        $this->assertSame('15:42', $tasks[0]['finish_at']->format('H:i'));
+        $this->assertSame('15:42', $tasks[1]['start_at']->format('H:i'));
     }
 
     public function test_it_never_uses_cubas_from_another_store(): void

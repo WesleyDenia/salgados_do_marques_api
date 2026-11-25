@@ -28,6 +28,7 @@ class AdminFryingPlanningController extends Controller
                 ],
                 'orders_count' => $plan['orders_count'],
                 'tasks_count' => $plan['tasks_count'],
+                'packaging_time_seconds' => $plan['packaging_time_seconds'],
                 'earliest_start_at' => $this->dateTime($plan['earliest_start_at']),
                 'warnings' => $plan['warnings'],
                 'slots' => collect($plan['slots'])

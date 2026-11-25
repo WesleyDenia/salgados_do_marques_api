@@ -38,6 +38,7 @@ class StoreRequest extends FormRequest
             'latitude' => ['required', 'numeric', 'between:-90,90'],
             'longitude' => ['required', 'numeric', 'between:-180,180'],
             'phone' => ['nullable', 'string', 'max:30'],
+            'webhook' => ['nullable', 'string', 'max:2048'],
             'type' => ['required', Rule::in(['principal', 'revenda'])],
             'is_active' => ['nullable', 'boolean'],
             'accepts_orders' => ['nullable', 'boolean'],

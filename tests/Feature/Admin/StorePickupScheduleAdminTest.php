@@ -27,6 +27,23 @@ class StorePickupScheduleAdminTest extends TestCase
         $this->assertSame('2026-12-31', $store->pickup_date_exceptions[1]['date']);
     }
 
+    public function test_admin_can_store_a_webhook_for_each_store(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $webhook = ' https://macrodroid.example/webhook/loja-agenda-admin ';
+
+        $response = $this->actingAs($admin)->post(route('admin.stores.store'), $this->storePayload([
+            'webhook' => $webhook,
+        ]));
+
+        $response->assertRedirect(route('admin.stores.index'));
+
+        $this->assertDatabaseHas('stores', [
+            'name' => 'Loja Agenda Admin',
+            'webhook' => trim($webhook),
+        ]);
+    }
+
     public function test_admin_cannot_submit_duplicate_exception_dates(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);

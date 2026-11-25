@@ -14,6 +14,7 @@ class Store extends Model
         'latitude',
         'longitude',
         'phone',
+        'webhook',
         'type',
         'is_active',
         'accepts_orders',

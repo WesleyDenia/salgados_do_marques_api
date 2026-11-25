@@ -69,6 +69,21 @@
     </div>
 
     <div class="form-group">
+      <label for="webhook">WebHook</label>
+      <input
+        type="url"
+        id="webhook"
+        name="webhook"
+        value="{{ old('webhook', $store->webhook) }}"
+        placeholder="https://..."
+      />
+      <small style="color:#6b7280;">URL gerada pelo MacroDroid para esta loja.</small>
+      @error('webhook')
+        <span class="alert alert-error">{{ $message }}</span>
+      @enderror
+    </div>
+
+    <div class="form-group">
       <label for="city">Cidade *</label>
       <input
         type="text"

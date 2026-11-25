@@ -83,6 +83,9 @@ class StoreService
         $data['default_store'] = (bool) ($data['default_store'] ?? false);
         $data['latitude'] = (float) $data['latitude'];
         $data['longitude'] = (float) $data['longitude'];
+        if (array_key_exists('webhook', $data)) {
+            $data['webhook'] = filled($data['webhook']) ? trim($data['webhook']) : null;
+        }
         $data['pickup_weekly_schedule'] = $this->normalizeWeeklySchedule($data['pickup_weekly_schedule'] ?? null);
         $data['pickup_date_exceptions'] = $this->normalizeDateExceptions($data['pickup_date_exceptions'] ?? null);
 

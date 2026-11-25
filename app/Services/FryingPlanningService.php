@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\OperationalPreparationSlot;
+use App\Models\Flavor;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\ProductPreparationSetting;
@@ -41,7 +42,7 @@ class FryingPlanningService
         $dayEnd = $dayStart->copy()->endOfDay();
 
         $orders = Order::query()
-            ->with(['items.variant'])
+            ->with(['items.variant', 'store', 'user'])
             ->where('store_id', $store->id)
             ->whereIn('status', self::PLANNABLE_STATUSES)
             ->where(function ($query) use ($date, $dayStart, $dayEnd): void {
@@ -53,6 +54,7 @@ class FryingPlanningService
             ->orderBy('scheduled_at')
             ->orderBy('id')
             ->get();
+        $flavorNamesById = $this->flavorNamesById($orders);
 
         $preparationSlots = OperationalPreparationSlot::query()
             ->with('productSettings.slot')
@@ -101,6 +103,7 @@ class FryingPlanningService
                 $work[] = [
                     'order' => $order,
                     'item' => $item,
+                    'flavor_names' => $this->flavorNamesFor($item, $flavorNamesById),
                     'ready_by' => $readyBy->copy(),
                     'remaining_units' => $units,
                     'settings' => $productSettings->values(),
@@ -134,6 +137,8 @@ class FryingPlanningService
             $readyBy = $entry['ready_by'];
             /** @var Collection<int, ProductPreparationSetting> $productSettings */
             $productSettings = $entry['settings'];
+            /** @var array<int, string> $flavorNames */
+            $flavorNames = $entry['flavor_names'];
             $remainingUnits = (int) $entry['remaining_units'];
 
             while ($remainingUnits > 0) {
@@ -164,8 +169,16 @@ class FryingPlanningService
                     // allocation created with an old cuba configuration.
                     'allocation_id' => $taskId++,
                     'order_id' => $order->id,
+                    'order_item_id' => $item->id,
                     'customer_name' => $order->customerNameForDisplay(),
+                    'customer_contact' => $order->customerContactForDisplay(),
+                    'store_name' => $order->store?->name,
+                    'payment_status' => $order->payment_status,
+                    'paid_amount' => (float) $order->paid_amount,
+                    'order_total' => (float) $order->total,
+                    'notes' => $order->notes,
                     'product_name' => $item->name_snapshot ?? 'Artigo não identificado',
+                    'flavor_names' => $flavorNames,
                     'batch_units' => $batchUnits,
                     'preparation_time_seconds' => (int) $setting->preparation_time_seconds,
                     'pickup_at' => $order->scheduledAtForDisplay($timezone),
@@ -234,6 +247,44 @@ class FryingPlanningService
         }
 
         return (int) $item->quantity;
+    }
+
+    /**
+     * @param Collection<int, Order> $orders
+     * @return array<int, string>
+     */
+    private function flavorNamesById(Collection $orders): array
+    {
+        $flavorIds = $orders
+            ->flatMap(fn (Order $order) => $order->items)
+            ->flatMap(fn (OrderItem $item) => $item->options['flavors'] ?? [])
+            ->map(fn ($flavorId) => (int) $flavorId)
+            ->filter(fn (int $flavorId) => $flavorId > 0)
+            ->unique()
+            ->values();
+
+        if ($flavorIds->isEmpty()) {
+            return [];
+        }
+
+        return Flavor::query()
+            ->whereIn('id', $flavorIds->all())
+            ->pluck('name', 'id')
+            ->mapWithKeys(fn (string $name, $id): array => [(int) $id => $name])
+            ->all();
+    }
+
+    /**
+     * @param array<int, string> $flavorNamesById
+     * @return array<int, string>
+     */
+    private function flavorNamesFor(OrderItem $item, array $flavorNamesById): array
+    {
+        return collect($item->options['flavors'] ?? [])
+            ->map(fn ($flavorId) => $flavorNamesById[(int) $flavorId] ?? null)
+            ->filter()
+            ->values()
+            ->all();
     }
 
     /**

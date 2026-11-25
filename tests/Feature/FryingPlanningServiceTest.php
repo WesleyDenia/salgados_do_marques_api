@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Category;
+use App\Models\Flavor;
 use App\Models\OperationalPreparationSlot;
 use App\Models\Order;
 use App\Models\Product;
@@ -125,6 +126,35 @@ class FryingPlanningServiceTest extends TestCase
         $this->assertCount(1, collect($tasks)->whereNotNull('heating_start_at'));
     }
 
+    public function test_it_includes_operational_order_details_for_each_planned_task(): void
+    {
+        $store = $this->makeStore('Loja Operacional');
+        $slot = $this->makeSlot($store, 'Cuba Operacional');
+        $product = $this->makeProductForSlot($slot, 50, 3 * 60);
+        $flavor = Flavor::create(['name' => 'Pack Mix', 'active' => true]);
+        $order = $this->makeOrder($store, User::factory()->create(), '2026-11-25 12:00', 'Lara Martins');
+        $order->update([
+            'customer_contact' => '913 342 202',
+            'payment_status' => 'partial',
+            'paid_amount' => 8.4,
+            'total' => 16.8,
+            'notes' => 'Levar guardanapos.',
+        ]);
+        $item = $this->addItem($order, $product, 50, ['flavors' => [$flavor->id]]);
+
+        $plan = app(FryingPlanningService::class)->forDateAndStore('2026-11-25', $store);
+        $task = $plan['slots'][0]['tasks'][0];
+
+        $this->assertSame($item->id, $task['order_item_id']);
+        $this->assertSame('913 342 202', $task['customer_contact']);
+        $this->assertSame('Loja Operacional', $task['store_name']);
+        $this->assertSame('partial', $task['payment_status']);
+        $this->assertSame(8.4, $task['paid_amount']);
+        $this->assertSame(16.8, $task['order_total']);
+        $this->assertSame('Levar guardanapos.', $task['notes']);
+        $this->assertSame(['Pack Mix'], $task['flavor_names']);
+    }
+
     public function test_it_reserves_the_cuba_heating_time_before_the_first_frying(): void
     {
         $store = $this->makeStore('Loja Aquecimento');
@@ -221,8 +251,8 @@ class FryingPlanningServiceTest extends TestCase
         return Order::create(['user_id' => $customer->id, 'store_id' => $store->id, 'status' => 'placed', 'customer_name' => $customerName, 'payment_status' => 'pending', 'slot' => 'tarde', 'scheduled_at' => $scheduledAt->copy()->utc(), 'pickup_date' => $scheduledAt->format('Y-m-d'), 'pickup_time' => $scheduledAt->format('H:i'), 'total' => 10]);
     }
 
-    private function addItem(Order $order, Product $product, int $units): void
+    private function addItem(Order $order, Product $product, int $units, array $options = [])
     {
-        $order->items()->create(['product_id' => $product->id, 'name_snapshot' => $product->name, 'price_snapshot' => 1, 'quantity' => $units, 'options' => [], 'total' => $units]);
+        return $order->items()->create(['product_id' => $product->id, 'name_snapshot' => $product->name, 'price_snapshot' => 1, 'quantity' => $units, 'options' => $options, 'total' => $units]);
     }
 }

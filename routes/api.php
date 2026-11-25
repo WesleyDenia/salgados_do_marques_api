@@ -97,6 +97,7 @@ Route::prefix('v1')->group(function () {
             Route::get('admin/orders/weekly', [OrderAdminController::class, 'weekly']);
             Route::get('admin/orders/period', [OrderAdminController::class, 'period']);
             Route::get('admin/frying-planning', [AdminFryingPlanningController::class, 'show']);
+            Route::post('admin/frying-planning/alarms', [AdminFryingPlanningController::class, 'registerAlarms']);
         });
 
         // Admin protected

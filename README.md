@@ -67,8 +67,8 @@ The Laravel framework is open-sourced software licensed under the [MIT license](
 
 ## Queue Worker
 
-Para envio assíncrono de WhatsApp, mantenha o worker de filas ativo no container/servidor. O supervisor do projeto já executa:
+Para envio assíncrono de WhatsApp e registo de alarmes no MacroDroid, mantenha o worker de filas ativo no container/servidor. O supervisor do projeto já executa:
 
 ```bash
-php artisan queue:work --queue=notifications,default --tries=3 --timeout=90
+php artisan queue:work --queue=notifications,frying-alarms,default --tries=3 --timeout=90
 ```

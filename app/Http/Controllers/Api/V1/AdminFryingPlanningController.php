@@ -5,12 +5,16 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\FryingPlanningApiRequest;
 use App\Models\Store;
+use App\Services\FryingAlarmRegistrationService;
 use App\Services\FryingPlanningService;
 use Carbon\CarbonInterface;
 
 class AdminFryingPlanningController extends Controller
 {
-    public function __construct(protected FryingPlanningService $planning) {}
+    public function __construct(
+        protected FryingPlanningService $planning,
+        protected FryingAlarmRegistrationService $alarms,
+    ) {}
 
     public function show(FryingPlanningApiRequest $request)
     {
@@ -66,6 +70,15 @@ class AdminFryingPlanningController extends Controller
                     ->all(),
             ],
         ]);
+    }
+
+    public function registerAlarms(FryingPlanningApiRequest $request)
+    {
+        $data = $request->validated();
+        $store = Store::query()->findOrFail((int) $data['store_id']);
+        $result = $this->alarms->register((string) $data['date'], $store);
+
+        return response()->json(['data' => $result]);
     }
 
     private function dateTime(?CarbonInterface $dateTime): ?string

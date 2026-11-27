@@ -54,6 +54,7 @@ class AdminFryingPlanningController extends Controller
                                 'notes' => $task['notes'],
                                 'product_name' => $task['product_name'],
                                 'flavor_names' => $task['flavor_names'],
+                                'is_frozen' => $task['is_frozen'],
                                 'batch_units' => $task['batch_units'],
                                 'preparation_time_seconds' => $task['preparation_time_seconds'],
                                 'heating_time_seconds' => $task['heating_time_seconds'],

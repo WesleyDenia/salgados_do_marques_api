@@ -140,7 +140,7 @@ class FryingPlanningServiceTest extends TestCase
             'total' => 16.8,
             'notes' => 'Levar guardanapos.',
         ]);
-        $item = $this->addItem($order, $product, 50, ['flavors' => [$flavor->id]]);
+        $item = $this->addItem($order, $product, 50, ['flavors' => [$flavor->id], 'is_frozen' => true]);
 
         $plan = app(FryingPlanningService::class)->forDateAndStore('2026-11-25', $store);
         $task = $plan['slots'][0]['tasks'][0];
@@ -153,6 +153,22 @@ class FryingPlanningServiceTest extends TestCase
         $this->assertSame(16.8, $task['order_total']);
         $this->assertSame('Levar guardanapos.', $task['notes']);
         $this->assertSame(['Pack Mix'], $task['flavor_names']);
+        $this->assertTrue($task['is_frozen']);
+    }
+
+    public function test_api_exposes_the_frozen_flag_for_planned_order_items(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $store = $this->makeStore('Loja API');
+        $slot = $this->makeSlot($store, 'Cuba API');
+        $product = $this->makeProductForSlot($slot, 50, 3 * 60);
+        $order = $this->makeOrder($store, User::factory()->create(), '2026-11-25 12:00', 'Cliente API');
+        $this->addItem($order, $product, 50, ['is_frozen' => true]);
+
+        $this->actingAs($admin, 'sanctum')
+            ->getJson('/api/v1/admin/frying-planning?date=2026-11-25&store_id='.$store->id)
+            ->assertOk()
+            ->assertJsonPath('data.slots.0.tasks.0.is_frozen', true);
     }
 
     public function test_it_reserves_the_cuba_heating_time_before_the_first_frying(): void

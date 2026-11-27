@@ -179,6 +179,7 @@ class FryingPlanningService
                     'notes' => $order->notes,
                     'product_name' => $item->name_snapshot ?? 'Artigo não identificado',
                     'flavor_names' => $flavorNames,
+                    'is_frozen' => (bool) ($item->options['is_frozen'] ?? false),
                     'batch_units' => $batchUnits,
                     'preparation_time_seconds' => (int) $setting->preparation_time_seconds,
                     'pickup_at' => $order->scheduledAtForDisplay($timezone),

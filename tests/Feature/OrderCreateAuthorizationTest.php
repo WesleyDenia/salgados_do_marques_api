@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Category;
+use App\Models\Order;
 use App\Models\Product;
 use App\Models\Store;
 use App\Models\User;
@@ -41,7 +42,7 @@ class OrderCreateAuthorizationTest extends TestCase
         $response->assertForbidden();
     }
 
-    public function test_atendimento_role_can_create_orders_through_api(): void
+    public function test_atendimento_order_is_created_as_accepted(): void
     {
         [$product, $store] = $this->makeOrderContext();
         $user = User::factory()->create(['role' => 'atendimento']);
@@ -50,7 +51,33 @@ class OrderCreateAuthorizationTest extends TestCase
 
         $response = $this->postJson('/api/v1/orders', $this->payload($store->id, $product->id));
 
-        $response->assertOk();
+        $response
+            ->assertOk()
+            ->assertJsonPath('data.status', 'accepted');
+
+        $this->assertDatabaseHas('orders', [
+            'status' => 'accepted',
+        ]);
+    }
+
+    public function test_operational_user_can_mark_an_accepted_order_as_ready(): void
+    {
+        [$product, $store] = $this->makeOrderContext();
+        $user = User::factory()->create(['role' => 'operacional']);
+        $order = Order::create([
+            'store_id' => $store->id,
+            'status' => 'accepted',
+            'scheduled_at' => now()->addHours(3)->utc(),
+            'total' => $product->price,
+        ]);
+
+        Sanctum::actingAs($user);
+
+        $this->patchJson("/api/v1/admin/orders/{$order->id}/status", [
+            'status' => 'ready',
+        ])
+            ->assertOk()
+            ->assertJsonPath('data.status', 'ready');
     }
 
     /**

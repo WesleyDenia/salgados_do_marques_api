@@ -9,7 +9,7 @@ class OrderStatusUpdateRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->can('manage') ?? false;
+        return $this->user()?->can('planning.view') ?? false;
     }
 
     public function rules(): array

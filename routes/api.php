@@ -100,6 +100,9 @@ Route::prefix('v1')->group(function () {
             Route::post('admin/frying-planning/alarms', [AdminFryingPlanningController::class, 'registerAlarms']);
         });
 
+        Route::patch('admin/orders/{order}/status', [OrderAdminController::class, 'updateStatus'])
+            ->middleware('can:planning.view');
+
         // Admin protected
         Route::middleware('can:manage')->group(function () {
             Route::get('admin/planning/slot-capacities', [AdminPlanningSlotCapacityController::class, 'show']);
@@ -124,7 +127,6 @@ Route::prefix('v1')->group(function () {
             Route::get('admin/orders', [OrderAdminController::class, 'index']);
             Route::get('admin/orders/{order}', [OrderAdminController::class, 'show']);
             Route::patch('admin/orders/{order}', [OrderAdminController::class, 'update']);
-            Route::patch('admin/orders/{order}/status', [OrderAdminController::class, 'updateStatus']);
             Route::post('admin/orders/{order}/whatsapp-message', [OrderAdminController::class, 'resendWhatsAppMessage']);
             Route::post('admin/orders/{order}/partial-withdrawals', [OrderAdminController::class, 'storePartialWithdrawal']);
 

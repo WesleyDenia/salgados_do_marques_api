@@ -366,17 +366,18 @@ class OrderRepository
         ?string $notes,
         array $lineItems,
         array $tagIds = [],
-        ?int $parentOrderId = null
+        ?int $parentOrderId = null,
+        string $status = 'placed'
     ): Order {
         /** @var Order $order */
-        $order = DB::transaction(function () use ($customerContact, $customerName, $lineItems, $notes, $parentOrderId, $paymentStatus, $pickupDate, $pickupTime, $scheduledAtUtc, $slot, $storeId, $tagIds, $userId) {
+        $order = DB::transaction(function () use ($customerContact, $customerName, $lineItems, $notes, $parentOrderId, $paymentStatus, $pickupDate, $pickupTime, $scheduledAtUtc, $slot, $status, $storeId, $tagIds, $userId) {
             $order = Order::query()->create([
                 'user_id' => $userId,
                 'parent_order_id' => $parentOrderId,
                 'customer_name' => $customerName,
                 'customer_contact' => $customerContact,
                 'store_id' => $storeId,
-                'status' => 'placed',
+                'status' => $status,
                 'payment_status' => $paymentStatus,
                 'slot' => $slot,
                 'scheduled_at' => $scheduledAtUtc,

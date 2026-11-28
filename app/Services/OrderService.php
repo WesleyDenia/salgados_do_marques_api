@@ -178,7 +178,9 @@ class OrderService
                 $pickupSchedule['pickup_time'],
                 $data['notes'] ?? null,
                 $lineItems,
-                $tagIds
+                $tagIds,
+                null,
+                $actor->isStaff() ? 'accepted' : 'placed'
             );
             $order->update(['paid_amount' => $payment['paid_amount']]);
 

@@ -75,7 +75,7 @@
         <div class="frying-summary-card">
           <div class="frying-summary-label">Encomendas em aberto</div>
           <div class="frying-summary-value">{{ $plan['orders_count'] }}</div>
-          <div class="frying-summary-detail">realizadas ou aceites</div>
+          <div class="frying-summary-detail">realizadas, aceites ou prontas</div>
         </div>
         <div class="frying-summary-card">
           <div class="frying-summary-label">Lotes a fritar</div>

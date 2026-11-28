@@ -44,6 +44,7 @@ class AdminFryingPlanningController extends Controller
                             ->map(fn (array $task): array => [
                                 'allocation_id' => $task['allocation_id'],
                                 'order_id' => $task['order_id'],
+                                'status' => $task['status'],
                                 'order_item_id' => $task['order_item_id'],
                                 'customer_name' => $task['customer_name'],
                                 'customer_contact' => $task['customer_contact'],

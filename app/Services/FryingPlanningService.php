@@ -14,7 +14,7 @@ use Illuminate\Support\Collection;
 
 class FryingPlanningService
 {
-    private const PLANNABLE_STATUSES = ['placed', 'accepted'];
+    private const PLANNABLE_STATUSES = ['placed', 'accepted', 'ready'];
 
     private const PACKAGING_TIME_SETTING_KEY = 'FRYING_PACKAGING_MINUTES';
 
@@ -169,6 +169,7 @@ class FryingPlanningService
                     // allocation created with an old cuba configuration.
                     'allocation_id' => $taskId++,
                     'order_id' => $order->id,
+                    'status' => $order->status,
                     'order_item_id' => $item->id,
                     'customer_name' => $order->customerNameForDisplay(),
                     'customer_contact' => $order->customerContactForDisplay(),

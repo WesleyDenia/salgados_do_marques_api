@@ -134,6 +134,7 @@ class FryingPlanningServiceTest extends TestCase
         $flavor = Flavor::create(['name' => 'Pack Mix', 'active' => true]);
         $order = $this->makeOrder($store, User::factory()->create(), '2026-11-25 12:00', 'Lara Martins');
         $order->update([
+            'status' => 'ready',
             'customer_contact' => '913 342 202',
             'payment_status' => 'partial',
             'paid_amount' => 8.4,
@@ -146,6 +147,7 @@ class FryingPlanningServiceTest extends TestCase
         $task = $plan['slots'][0]['tasks'][0];
 
         $this->assertSame($item->id, $task['order_item_id']);
+        $this->assertSame('ready', $task['status']);
         $this->assertSame('913 342 202', $task['customer_contact']);
         $this->assertSame('Loja Operacional', $task['store_name']);
         $this->assertSame('partial', $task['payment_status']);
@@ -168,6 +170,7 @@ class FryingPlanningServiceTest extends TestCase
         $this->actingAs($admin, 'sanctum')
             ->getJson('/api/v1/admin/frying-planning?date=2026-11-25&store_id='.$store->id)
             ->assertOk()
+            ->assertJsonPath('data.slots.0.tasks.0.status', 'placed')
             ->assertJsonPath('data.slots.0.tasks.0.is_frozen', true);
     }
 
